@@ -1,0 +1,134 @@
+.table {
+  background-color: var(--bg);
+  color: var(--fg);
+  border-collapse: separate;
+}
+
+.cell {}
+
+.cell_focused {}
+
+.row {}
+
+.row_focused {}
+
+.autosize_table_cell_wrapper {
+  display: table-cell;
+}
+
+.header {
+
+  background-color: var(--header-bg);
+  color: var(--header-fg);
+}
+
+.header_row {}
+
+.header_cell {
+  text-align: center;
+  font-weight: bold;
+  font-size: 0.9em;
+  padding: 0.3em 0.5em;
+  border-style: solid;
+  border-color: var(--header-header-border);
+}
+
+.body {}
+
+.body_cell {
+  padding: 0.3em 0.5em;
+  font-size: 0.8em;
+}
+
+/* Backgrounds */
+.body_row:nth-child(even) {
+  background: var(--row-even-bg);
+  color: var(--row-even-fg);
+}
+
+.body_row:nth-child(odd) {
+  background: var(--row-odd-bg);
+  color: var(--row-odd-fg);
+}
+
+.body_row.body_row_focused {
+  background: var(--row-focused-bg);
+  color: var(--row-focused-fg);
+}
+
+.body_cell.body_cell_focused {
+  background: var(--cell-focused-bg);
+  color: var(--cell-focused-fg);
+}
+
+.autosize_table_bottom_border_element {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 1px;
+  padding: 0;
+  border-width: 0;
+  border-top-width: 1px;
+}
+
+/* Due to how tables use the height and width value of the cells as a min-height/width,
+we have to set the borders on the inner div in order to maintain the pre-defined
+height and width values.
+
+There is also a strange interaction between border-collase: collapse and
+position: sticky which causes the header borders to be left behind when scrolling,
+and also causes the header to leave a space on the left border area
+ */
+.body_cell,
+.header_cell {
+  /* Top and left border values only */
+  border-width: 1px 0 0 1px;
+}
+
+.header_row:last-child .header_cell {
+  border-bottom: 1px solid var(--header-body-border);
+}
+
+.header_cell:last-child,
+.autosize_table_cell_wrapper:last-child > .body_cell {
+  /* Top, right, left border values */
+  border-width: 1px 1px 0 1px;
+}
+
+
+/* Backgrounds */
+.body_row:nth-child(even) {
+  background: var(--row-even-bg);
+  color: var(--row-even-fg);
+}
+
+.body_row:nth-child(odd) {
+  background: var(--row-odd-bg);
+  color: var(--row-odd-fg);
+}
+
+.body_row.body_row_focused {
+  background: var(--row-focused-bg);
+  color: var(--row-focused-fg);
+}
+
+.body_cell.body_cell_focused {
+  background: var(--cell-focused-bg);
+  color: var(--cell-focused-fg);
+}
+
+.body_cell {
+  border-style: solid;
+  border-color: var(--body-body-border);
+}
+
+.body_row_focused .body_cell {
+  border-color: var(--row-focused-border);
+}
+
+
+.body_row_focused + .body_row .body_cell {
+  border-top-color: var(--row-focused-border);
+}
+
+

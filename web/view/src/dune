@@ -1,0 +1,31 @@
+(library
+ (name bonsai_web_ui_view)
+ (public_name bonsai_web.ui_view)
+ (libraries bonsai bonsai_web_ui_form_view bonsai_web_ui_toggle
+   bonsai_web_ui_view_tailwind_interop core virtual_dom.css_gen js_of_ocaml
+   virtual_dom.input_widgets virtual_dom
+   virtual_dom_toplayer.floating_positioning virtual_dom_toplayer.popover)
+ (preprocess
+  (pps ppx_jane bonsai.ppx_bonsai ppx_css js_of_ocaml-ppx))
+ (flags :standard -alert -private_bonsai_view_library))
+
+(rule
+ (targets card_style.ml card_style.mli card_style__generated.ml
+   card_style__generated.mli)
+ (deps card_style.css)
+ (action
+  (bash "%{bin:css_inliner} %{deps} \"((rewrite ()))\"")))
+
+(rule
+ (targets autosize_table_styling.ml autosize_table_styling.mli
+   autosize_table_styling__generated.ml autosize_table_styling__generated.mli)
+ (deps autosize_table_styling.css)
+ (action
+  (bash "%{bin:css_inliner} %{deps} \"((rewrite ()))\"")))
+
+(rule
+ (targets default_table_styling.ml default_table_styling.mli
+   default_table_styling__generated.ml default_table_styling__generated.mli)
+ (deps default_table_styling.css)
+ (action
+  (bash "%{bin:css_inliner} %{deps} \"((rewrite ()))\"")))

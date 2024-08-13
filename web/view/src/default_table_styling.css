@@ -1,0 +1,132 @@
+.table {
+  background-color: var(--bg);
+  color: var(--fg);
+  border-spacing: 0;
+}
+
+.cell {
+}
+
+.cell_focused {
+}
+
+.row {
+}
+
+.row_focused {
+}
+
+/* Unused in this stylesheet but required to keep the types consistent */
+.autosize_table_cell_wrapper {
+}
+
+.header {
+  background-color: var(--header-bg);
+  color: var(--header-fg);
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.header_row {
+}
+
+.header_cell {
+  text-align: center;
+  font-weight: bold;
+  font-size: 0.9em;
+  padding: 0.3em 0.5em;
+  border-style: solid;
+  border-color: var(--header-header-border);
+}
+
+.header_row:last-child .header_cell {
+  border-bottom: 1px solid var(--header-body-border);
+}
+
+.body {
+}
+
+.body_cell {
+  padding: 0.3em 0.5em;
+  font-size: 0.8em;
+}
+
+/* Backgrounds */
+.body_row:nth-child(even) {
+  background: var(--row-even-bg);
+  color: var(--row-even-fg);
+}
+
+.body_row:nth-child(odd) {
+  background: var(--row-odd-bg);
+  color: var(--row-odd-fg);
+}
+
+.body_row.body_row_focused {
+  background: var(--row-focused-bg);
+  color: var(--row-focused-fg);
+}
+
+.body_cell.body_cell_focused {
+  background: var(--cell-focused-bg);
+  color: var(--cell-focused-fg);
+}
+
+.autosize_table_bottom_border_element {
+}
+
+/* Borders. Probably due to a browser bug, if we use full borders
+AND contain:paint (subset of strict) in PRT, we'll get weird, glitchy double borders.
+Instead, cells/rows (except for the last cell/row) only paint their top/left borders.
+ */
+.body_row {
+  border-width: 1px 0 0 0;
+}
+
+.body_row:last-child {
+  border-width: 1px 0 1px 0;
+}
+
+.header_cell {
+  /* Top and left border values only */
+  border-width: 1px 0 0 1px;
+}
+
+.header_cell:last-child {
+  /* Top, right, left border values */
+  border-width: 1px 1px 0 1px;
+}
+
+.body_cell {
+  border-width: 0 0 0 1px;
+}
+
+.body_cell:last-child {
+  border-width: 0 1px 0 1px;
+}
+
+.body_row,
+.body_cell {
+  border-style: solid;
+  border-color: var(--body-body-border);
+}
+
+.body_row.body_row_focused,
+.body_row_focused > .body_cell {
+  border-color: var(--row-focused-border);
+}
+
+/* `.body_row:has(+ .body_row_focused)`, or other uses of the css `+` selector applied
+to rows, result in a massively slow "Recalculate Styles" step.
+For some reason, this does not have the same performance problem.
+This is likely a chrome bug. */
+.body_row_focused ~ .body_row {
+  border-color: var(--row-focused-border);
+}
+
+.body_row_focused ~ .body_row ~ .body_row {
+  border-color: var(--body-body-border);
+}
+.body_row_focused ~ .body_row:last-child {
+  border-bottom-color: var(--body-body-border);
+}
