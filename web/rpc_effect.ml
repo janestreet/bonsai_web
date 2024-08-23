@@ -242,7 +242,7 @@ module Connector = struct
       { connection
       ; menu =
           Rvar.create (fun () ->
-            let%bind connection = connection in
+            let%bind connection in
             Versioned_rpc.Menu.request connection)
       }
   ;;
@@ -256,7 +256,7 @@ module Connector = struct
       let%bind connection = Conn.connected connection in
       callback connection
     | Connection { connection; menu = _ } ->
-      let%bind connection = connection in
+      let%bind connection in
       callback connection
     | Test_fallback ->
       Deferred.Or_error.error_string
@@ -275,7 +275,7 @@ module Connector = struct
       let%bind.Deferred.Or_error menu = Rvar.contents menu in
       callback (Versioned_rpc.Connection_with_menu.create_directly connection menu)
     | Connection { connection; menu } ->
-      let%bind connection = connection in
+      let%bind connection in
       let%bind.Deferred.Or_error menu = Rvar.contents menu in
       callback (Versioned_rpc.Connection_with_menu.create_directly connection menu)
     | Test_fallback ->
@@ -356,7 +356,7 @@ module Shared_poller = struct
   let create = Bonsai.Memo.create
   let custom_create = create
 
-  let lookup ?(here = Stdlib.Lexing.dummy_pos) ?sexp_of_model ~equal memo query =
+  let lookup ~(here : [%call_pos]) ?sexp_of_model ~equal memo query =
     let%sub res = Bonsai.Memo.lookup ~here ?sexp_of_model ~equal memo query in
     match%arr res with
     | Some x -> x
@@ -493,11 +493,11 @@ let generic_poll_or_error
   let%sub effect =
     let%sub path = Bonsai.path_id () in
     let%sub get_current_time = Bonsai.Clock.get_current_time () in
-    let%arr dispatcher = dispatcher
-    and inject_response = inject_response
-    and on_response_received = on_response_received
-    and get_current_time = get_current_time
-    and path = path in
+    let%arr dispatcher
+    and inject_response
+    and on_response_received
+    and get_current_time
+    and path in
     let open Effect.Let_syntax in
     let actually_send_rpc query =
       let%bind inflight_query_key = Effect.of_sync_fun Inflight_query_key.create () in
@@ -539,7 +539,7 @@ let generic_poll_or_error
      trigger on activate, and only use [on_activate] for running effects on
      activation. *)
   let%sub callback =
-    let%arr effect = effect in
+    let%arr effect in
     fun prev query ->
       match prev with
       | Some _ -> effect query
@@ -553,8 +553,7 @@ let generic_poll_or_error
       ~callback
   in
   let%sub send_rpc_effect =
-    let%arr effect = effect
-    and query = query in
+    let%arr effect and query in
     effect query
   in
   let%sub () =
@@ -567,7 +566,7 @@ let generic_poll_or_error
     in
     let poll_until_condition_met condition =
       let%sub should_poll =
-        let%arr condition = condition
+        let%arr condition
         and { last_ok_response; last_error; _ } = response in
         match last_ok_response, last_error with
         | None, _ | _, Some _ -> true
@@ -587,7 +586,7 @@ let generic_poll_or_error
   in
   let%sub () = Bonsai.Edge.lifecycle ~on_activate:send_rpc_effect () in
   let%arr { last_ok_response; last_error; inflight_queries } = response
-  and send_rpc_effect = send_rpc_effect in
+  and send_rpc_effect in
   let inflight_query = Option.map ~f:snd (Map.max_elt inflight_queries) in
   { Poll_result.last_ok_response; last_error; inflight_query; refresh = send_rpc_effect }
 ;;
@@ -647,7 +646,7 @@ module Our_rpc = struct
     =
     let open Bonsai.Let_syntax in
     let%sub connector = Bonsai.Dynamic_scope.lookup connector_var in
-    let%arr connector = connector in
+    let%arr connector in
     Effect.of_deferred_fun (dispatcher connector)
   ;;
 
@@ -672,7 +671,7 @@ module Our_rpc = struct
   ;;
 
   let poll
-    ?(here = Stdlib.Lexing.dummy_pos)
+    ~(here : [%call_pos])
     ?sexp_of_query
     ?sexp_of_response
     ~equal_query
@@ -710,7 +709,7 @@ module Our_rpc = struct
   ;;
 
   let babel_poll
-    ?(here = Stdlib.Lexing.dummy_pos)
+    ~(here : [%call_pos])
     ?sexp_of_query
     ?sexp_of_response
     ~equal_query
@@ -744,7 +743,7 @@ module Our_rpc = struct
   ;;
 
   let streamable_poll
-    ?(here = Stdlib.Lexing.dummy_pos)
+    ~(here : [%call_pos])
     ?sexp_of_query
     ?sexp_of_response
     ~equal_query
@@ -780,7 +779,7 @@ module Our_rpc = struct
 
   let shared_poller
     (type q cmp)
-    ?(here = Stdlib.Lexing.dummy_pos)
+    ~(here : [%call_pos])
     (module Q : Bonsai.Comparator with type t = q and type comparator_witness = cmp)
     ?sexp_of_response
     ?equal_response
@@ -814,7 +813,7 @@ module Our_rpc = struct
   ;;
 
   let poll_until_ok
-    ?(here = Stdlib.Lexing.dummy_pos)
+    ~(here : [%call_pos])
     ?sexp_of_query
     ?sexp_of_response
     ~equal_query
@@ -852,7 +851,7 @@ module Our_rpc = struct
   ;;
 
   let poll_until_condition_met
-    ?(here = Stdlib.Lexing.dummy_pos)
+    ~(here : [%call_pos])
     ?sexp_of_query
     ?sexp_of_response
     ~equal_query
@@ -891,7 +890,7 @@ module Our_rpc = struct
   ;;
 
   let babel_poll_until_ok
-    ?(here = Stdlib.Lexing.dummy_pos)
+    ~(here : [%call_pos])
     ?sexp_of_query
     ?sexp_of_response
     ~equal_query
@@ -928,7 +927,7 @@ module Our_rpc = struct
   ;;
 
   let babel_poll_until_condition_met
-    ?(here = Stdlib.Lexing.dummy_pos)
+    ~(here : [%call_pos])
     ?sexp_of_query
     ?sexp_of_response
     ~equal_query
@@ -976,9 +975,7 @@ module Our_rpc = struct
     let open Bonsai.Let_syntax in
     let%sub get_current_time = Bonsai.Clock.get_current_time () in
     let%sub path = Bonsai.path_id () in
-    let%arr dispatcher = dispatcher
-    and get_current_time = get_current_time
-    and path = path in
+    let%arr dispatcher and get_current_time and path in
     fun query ->
       match%bind.Effect For_introspection.should_record_effect with
       | false ->
@@ -998,7 +995,7 @@ module Our_rpc = struct
   ;;
 
   let dispatcher
-    ?(here = Stdlib.Lexing.dummy_pos)
+    ~(here : [%call_pos])
     ?sexp_of_query
     ?sexp_of_response
     rpc
@@ -1018,7 +1015,7 @@ module Our_rpc = struct
   ;;
 
   let streamable_dispatcher
-    ?(here = Stdlib.Lexing.dummy_pos)
+    ~(here : [%call_pos])
     ?sexp_of_query
     ?sexp_of_response
     rpc
@@ -1038,7 +1035,7 @@ module Our_rpc = struct
   ;;
 
   let babel_dispatcher
-    ?(here = Stdlib.Lexing.dummy_pos)
+    ~(here : [%call_pos])
     ?sexp_of_query
     ?sexp_of_response
     rpc
@@ -1083,8 +1080,7 @@ module Polling_state_rpc = struct
             Ok ()
           | Error error -> Error error)
       in
-      let%arr connector = connector
-      and client_rvar = client_rvar in
+      let%arr connector and client_rvar in
       let%bind.Effect () =
         match%bind.Effect
           Effect.of_deferred_fun perform_dispatch (connector, client_rvar)
@@ -1106,14 +1102,13 @@ module Polling_state_rpc = struct
           connection
           query)
     in
-    let%arr connector = connector
-    and client_rvar = client_rvar in
+    let%arr connector and client_rvar in
     Effect.of_deferred_fun (perform_query (connector, client_rvar))
   ;;
 
   let babel_dispatcher_internal ?on_forget_client_error caller ~where_to_connect =
     let create_client_rvar ~connector =
-      let%arr.Bonsai connector = connector in
+      let%arr.Bonsai connector in
       match Connector.menu_rvar (connector where_to_connect) with
       | None -> raise_s [%message [%here]]
       | Some menu_rvar ->
@@ -1146,7 +1141,7 @@ module Polling_state_rpc = struct
   ;;
 
   let generic_poll
-    ?(here = Stdlib.Lexing.dummy_pos)
+    ~(here : [%call_pos])
     ?sexp_of_query
     ?sexp_of_response
     ~sexp_of_underlying
@@ -1162,7 +1157,7 @@ module Polling_state_rpc = struct
     =
     let open Bonsai.Let_syntax in
     let%sub dispatcher =
-      let%arr dispatcher = dispatcher in
+      let%arr dispatcher in
       fun query ->
         let%map.Effect result = dispatcher query in
         Bonsai.Effect_throttling.Poll_result.Finished result
@@ -1185,7 +1180,7 @@ module Polling_state_rpc = struct
   ;;
 
   let poll
-    ?(here = Stdlib.Lexing.dummy_pos)
+    ~(here : [%call_pos])
     ?sexp_of_query
     ?sexp_of_response
     ~equal_query
@@ -1221,7 +1216,7 @@ module Polling_state_rpc = struct
   ;;
 
   let babel_poll
-    ?(here = Stdlib.Lexing.dummy_pos)
+    ~(here : [%call_pos])
     ?sexp_of_query
     ?sexp_of_response
     ~equal_query
@@ -1255,7 +1250,7 @@ module Polling_state_rpc = struct
   ;;
 
   let dispatcher
-    ?(here = Stdlib.Lexing.dummy_pos)
+    ~(here : [%call_pos])
     ?sexp_of_query
     ?sexp_of_response
     ?on_forget_client_error
@@ -1281,7 +1276,7 @@ module Polling_state_rpc = struct
   ;;
 
   let babel_dispatcher
-    ?(here = Stdlib.Lexing.dummy_pos)
+    ~(here : [%call_pos])
     ?sexp_of_query
     ?sexp_of_response
     ?on_forget_client_error
@@ -1309,7 +1304,7 @@ module Polling_state_rpc = struct
 
   let shared_poller
     (type q cmp)
-    ?(here = Stdlib.Lexing.dummy_pos)
+    ~(here : [%call_pos])
     (module Q : Bonsai.Comparator with type t = q and type comparator_witness = cmp)
     ?sexp_of_response
     ?equal_response
@@ -1462,8 +1457,7 @@ module Status = struct
     let%sub () =
       let%sub clock = Bonsai.Incr.with_clock Ui_incr.return in
       let%sub on_activate =
-        let%arr inject = inject
-        and clock = clock in
+        let%arr inject and clock in
         inject (Activate clock)
       in
       Bonsai.Edge.lifecycle ~on_activate ()

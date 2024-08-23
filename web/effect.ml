@@ -40,21 +40,21 @@ module Focus = struct
               , print_s [%message "blur effect for" name_for_testing] ))
             ~default:(Ignore, Ignore)
         in
-        fun _graph ->
+        fun (local_ _graph) ->
           Bonsai.return
             { attr = Vdom.Attr.empty
             ; focus = print_effect_focus
             ; blur = print_effect_blur
             }
       | `Browser | `Browser_benchmark ->
-        fun graph ->
+        fun (local_ graph) ->
           let path = Bonsai.path_id graph in
-          let%arr path = path in
+          let%arr path in
           let attr = Vdom.Attr.create "data-focus-handle" path in
           { attr; focus = focus_effect path; blur = blur_effect path }
   ;;
 
-  let on_activate ?name_for_testing () graph =
+  let on_activate ?name_for_testing () (local_ graph) =
     let open Bonsai.Let_syntax in
     let%sub { attr; focus; blur = _ } = on_effect ?name_for_testing () graph in
     let () = Bonsai.Edge.lifecycle ~on_activate:focus graph in

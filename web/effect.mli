@@ -26,7 +26,7 @@ module Focus : sig
 
       When [name_for_testing] is provided, the focus and blur effects will print in test mode.
       They will be a no-op otherwise. *)
-  val on_effect : ?name_for_testing:string -> unit -> Bonsai.graph -> t Bonsai.t
+  val on_effect : ?name_for_testing:string -> unit -> local_ Bonsai.graph -> t Bonsai.t
 
   (** [on_activate] will focus the element that the returned attr is attached to when
       this computation is activated.  See [Bonsai.Edge] for more details on the component
@@ -37,7 +37,7 @@ module Focus : sig
   val on_activate
     :  ?name_for_testing:string
     -> unit
-    -> Bonsai.graph
+    -> local_ Bonsai.graph
     -> Vdom.Attr.t Bonsai.t
 end
 

@@ -13,39 +13,39 @@ module Theme : sig
   val name : t -> string
 
   (** Fetches the theme currently installed into Bonsai's scope. *)
-  val current : Bonsai.graph -> t Bonsai.t
+  val current : local_ Bonsai.graph -> t Bonsai.t
 
   (** Sets the given theme as 'current' for the provided computation, and registers
       the returned Vdom node as the "application-node" giving it the power to do things
       like set the window's background color and font-family. *)
   val set_for_app
     :  t Bonsai.t
-    -> (Bonsai.graph -> Vdom.Node.t Bonsai.t)
-    -> Bonsai.graph
+    -> (local_ Bonsai.graph -> Vdom.Node.t Bonsai.t)
+    -> local_ Bonsai.graph
     -> Vdom.Node.t Bonsai.t
 
   (** Same as [set_for_app] but permits the app to return an arbitrary value in addition
       to the top-level app component *)
   val set_for_app'
     :  t Bonsai.t
-    -> (Bonsai.graph -> ('a * Vdom.Node.t) Bonsai.t)
-    -> Bonsai.graph
+    -> (local_ Bonsai.graph -> ('a * Vdom.Node.t) Bonsai.t)
+    -> local_ Bonsai.graph
     -> ('a * Vdom.Node.t) Bonsai.t
 
   (** This function allows the caller to build a new theme based on the current theme's
       constants, installing that new theme for all users inside the given computation. *)
   val override_constants_for_computation
     :  f:(Constants.t -> Constants.t)
-    -> (Bonsai.graph -> 'a Bonsai.t)
-    -> Bonsai.graph
+    -> (local_ Bonsai.graph -> 'a Bonsai.t)
+    -> local_ Bonsai.graph
     -> 'a Bonsai.t
 
   (** [set_temporarily] will install a new theme for all theme-users inside the given
       computation. *)
   val set_for_computation
     :  t Bonsai.t
-    -> (Bonsai.graph -> 'a Bonsai.t)
-    -> Bonsai.graph
+    -> (local_ Bonsai.graph -> 'a Bonsai.t)
+    -> local_ Bonsai.graph
     -> 'a Bonsai.t
 end
 
@@ -629,8 +629,8 @@ module Expert : sig
       installing this theme for the given computation. *)
   val override_theme_for_computation
     :  f:((module S) -> (module S))
-    -> (Bonsai.graph -> 'a Bonsai.t)
-    -> Bonsai.graph
+    -> (local_ Bonsai.graph -> 'a Bonsai.t)
+    -> local_ Bonsai.graph
     -> 'a Bonsai.t
 
   (* An attr that sets the [Bonsai_web_ui_view_tailwind_interop.bonsai_dark_class_for_tailwind]

@@ -5,6 +5,8 @@ open Js_of_ocaml
 module Bonsai_action = Bonsai.Private.Action
 module Tracker = Bonsai.Private.Stabilization_tracker
 
+let () = For_profiling.run_top_level_side_effects ()
+
 module type Result_spec = sig
   type t
   type extra
@@ -115,49 +117,8 @@ module Arrow_deprecated = struct
     ;;
   end
 
-  let make_instrumented_computation ?host ?port ?worker_name component =
-    let open Option.Let_syntax in
-    match
-      [%map
-        let host = host
-        and port = port
-        and worker_name = worker_name in
-        host, port, worker_name]
-    with
-    | Some (host, port, worker_name) ->
-      Forward_performance_entries.instrument ~host ~port ~worker_name component
-    | None ->
-      print_endline "debugger host and port not be specified";
-      { Forward_performance_entries.instrumented_computation = component
-      ; shutdown = (fun () -> ())
-      }
-  ;;
-
-  type debugging_state =
-    | Not_debugging
-    | Debugging of
-        { host : string option
-        ; port : int option
-        ; worker_name : string option
-        }
-
-  let start_bonsai_debugger
-    (is_debugging_var : debugging_state Incr.Var.t)
-    (host : Js.js_string Js.t Js.Optdef.t)
-    (port : int Js.Optdef.t)
-    (worker_name : Js.js_string Js.t Js.Optdef.t)
-    =
-    match Incr.Var.value is_debugging_var with
-    | Debugging _ -> print_endline "Already debugging."
-    | Not_debugging ->
-      print_endline "Starting the debugger.";
-      Incr.Var.set
-        is_debugging_var
-        (Debugging
-           { host = Js.Optdef.to_option host |> Option.map ~f:Js.to_string
-           ; port = Js.Optdef.to_option port
-           ; worker_name = Js.Optdef.to_option worker_name |> Option.map ~f:Js.to_string
-           })
+  let make_instrumented_computation component =
+    Forward_performance_entries.instrument component
   ;;
 
   let start_generic_poly
@@ -196,8 +157,6 @@ module Arrow_deprecated = struct
       get_app_input ~input ~inject_outgoing:Out_event.inject
     in
     let prev_lifecycle = ref Bonsai.Private.Lifecycle.Collection.empty in
-    let is_debugging_var = Incr.Var.create Not_debugging in
-    let debugger_shutdown = ref None in
     let tracker = Tracker.empty () in
     let module Incr_dom_app = struct
       module Model = struct
@@ -279,16 +238,11 @@ module Arrow_deprecated = struct
 
       let create model ~old_model ~inject =
         let open Incr.Let_syntax in
-        match%bind Incr.Var.watch is_debugging_var with
-        | Debugging { host; port; worker_name } ->
-          let { Forward_performance_entries.instrumented_computation; shutdown } =
-            make_instrumented_computation
-              ?host
-              ?port
-              ?worker_name
-              computation_for_instrumentation
+        match%bind For_profiling.is_profiling with
+        | Debugging ->
+          let { Forward_performance_entries.instrumented_computation } =
+            make_instrumented_computation computation_for_instrumentation
           in
-          debugger_shutdown := Some shutdown;
           let (T info') =
             let recursive_scopes = Bonsai.Private.Computation.Recursive_scopes.empty in
             Bonsai.Private.gather ~recursive_scopes ~time_source instrumented_computation
@@ -317,28 +271,17 @@ module Arrow_deprecated = struct
       ~initial_model:model.default
       ~stop:(Ivar.read handle.stop)
       (module Incr_dom_app);
-    let start_bonsai_debugger dry_run host port worker_name =
-      let print_message () =
-        print_endline
-          "Not starting debugger. Be aware that running the debugger will send \
-           performance data to the debugger server, which may be unacceptable if the \
-           data you work with is sensitive. Consider running a local server and calling \
-           this function again with the local host and port. If you wish to proceed, run \
-           this function again, passing \"true\" as the first parameter"
-      in
-      Js.Optdef.case dry_run print_message (fun dry_run ->
-        if Js.to_bool dry_run
-        then (
-          start_bonsai_debugger is_debugging_var host port worker_name;
-          Incr.stabilize ())
-        else print_message ())
+    let bonsai_bug_moved_message =
+      {| Bonsai-bug has moved to the bonsai chrome extension. To use bonsai bug:
+           1. Install the bonsai chrome extension if you haven't already! https://chrome-extensions/
+           2. Open the dev-tool panel.
+           3. A new pane titled "Bonsai Developer Tools" should appear. Click on it!
+           4. Click on "Bonsai Profiling"
+           5. Start profiling!
+      |}
     in
-    let stop_bonsai_debugger () =
-      Option.iter !debugger_shutdown ~f:(fun f -> f ());
-      debugger_shutdown := None;
-      Incr.Var.set is_debugging_var Not_debugging;
-      Incr.stabilize ()
-    in
+    let start_bonsai_debugger () = print_endline bonsai_bug_moved_message in
+    let stop_bonsai_debugger () = print_endline bonsai_bug_moved_message in
     Js.Unsafe.global##.startBonsaiDebugger := Js.Unsafe.callback start_bonsai_debugger;
     Js.Unsafe.global##.stopBonsaiDebugger := Js.Unsafe.callback stop_bonsai_debugger;
     handle

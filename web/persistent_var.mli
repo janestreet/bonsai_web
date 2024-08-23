@@ -30,7 +30,7 @@ val create
   -> 'a t
 
 val update : 'a t -> f:('a -> 'a) -> unit
-val set : ?here:Stdlib.Lexing.position -> 'a t -> 'a -> unit
+val set : here:[%call_pos] -> 'a t -> 'a -> unit
 val get : 'a t -> 'a
 val value : 'a t -> 'a Bonsai.t
 

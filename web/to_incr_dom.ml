@@ -27,7 +27,7 @@ let create_generic run ~fresh ~input ~model ~inject ~apply_action =
   let%map view, extra = Bonsai.Private.Snapshot.result snapshot
   and input = Bonsai.Private.Input.to_incremental (Bonsai.Private.Snapshot.input snapshot)
   and lifecycle = Bonsai.Private.Snapshot.lifecycle_or_empty snapshot
-  and model = model in
+  and model in
   let schedule_event = Vdom.Effect.Expert.handle_non_dom_event_exn in
   let apply_action action _state ~schedule_action:_ =
     apply_action ~inject ~schedule_event (Some input) model action

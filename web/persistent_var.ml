@@ -56,7 +56,7 @@ let create (type a) (module M : Sexpable with type t = a) kind ~unique_id ~defau
   { var; setter; clear; effect }
 ;;
 
-let set ?(here = Stdlib.Lexing.dummy_pos) { var; setter; clear = _; effect = _ } a =
+let set ~(here : [%call_pos]) { var; setter; clear = _; effect = _ } a =
   setter a;
   Bonsai.Var.set ~here var a
 ;;

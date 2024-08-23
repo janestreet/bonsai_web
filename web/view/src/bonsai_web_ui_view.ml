@@ -391,10 +391,10 @@ module Expert = struct
     Bonsai.Dynamic_scope.set theme_dyn_var theme ~inside
   ;;
 
-  let override_theme_for_computation ~f inside graph =
+  let override_theme_for_computation ~f inside (local_ graph) =
     let current_theme = current_theme graph in
     let new_theme =
-      let%arr current_theme = current_theme in
+      let%arr current_theme in
       override_theme current_theme ~f
     in
     set_theme_for_computation new_theme inside graph
@@ -427,24 +427,23 @@ module Theme = struct
     | Lazy { key; t } -> Lazy { key; t = Lazy.map t ~f:(with_attr attrs) }
   ;;
 
-  let set_for_app theme app graph =
+  let set_for_app theme app (local_ graph) =
     let app_vdom = set_for_computation theme app graph in
-    let%arr app_vdom = app_vdom
-    and theme = theme in
+    let%arr app_vdom and theme in
     with_attr [ force (App.top_attr theme) ] app_vdom
   ;;
 
-  let set_for_app' theme app graph =
+  let set_for_app' theme app (local_ graph) =
     let result_and_vdom = set_for_computation theme app graph in
     let%arr result, app_vdom = result_and_vdom
-    and theme = theme in
+    and theme in
     result, with_attr [ force (App.top_attr theme) ] app_vdom
   ;;
 
-  let override_constants_for_computation ~f inside graph =
+  let override_constants_for_computation ~f inside (local_ graph) =
     let current_theme = current_theme graph in
     let new_theme =
-      let%arr current_theme = current_theme in
+      let%arr current_theme in
       Theme.override_constants current_theme ~f
     in
     Expert.set_theme_for_computation new_theme inside graph
