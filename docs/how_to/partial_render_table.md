@@ -54,8 +54,6 @@ If we key this table by `symbol`, our `Row_key` module is just `String`.
 
 ### Defining Columns
 
-```{=html}
-```
 Next, we need to define a "column id" type, which we'll use to declare
 which columns our table should have, and how they should be displayed.
 If we use a variant type:

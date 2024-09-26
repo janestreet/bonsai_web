@@ -27,7 +27,7 @@ let create_generic run ~fresh ~input ~model ~inject ~apply_action =
   let%map view, extra = Bonsai.Private.Snapshot.result snapshot
   and input = Bonsai.Private.Input.to_incremental (Bonsai.Private.Snapshot.input snapshot)
   and lifecycle = Bonsai.Private.Snapshot.lifecycle_or_empty snapshot
-  and model = model in
+  and model in
   let schedule_event = Vdom.Effect.Expert.handle_non_dom_event_exn in
   let apply_action action _state ~schedule_action:_ =
     apply_action ~inject ~schedule_event (Some input) model action
@@ -92,11 +92,34 @@ let convert_generic
   end)
 ;;
 
-let convert_with_extra ?(optimize = false) component =
+let default_custom_connector _connector =
+  raise_s
+    [%message
+      "The component passed to [Bonsai_web.to_incr_dom] used a custom connector, but \
+       none was provided when the app was started. To fix this, use the \
+       [~custom_connector] argument when calling [Bonsai_web.Start.start]"]
+;;
+
+let convert_with_extra
+  ?(custom_connector = default_custom_connector)
+  ?(optimize = false)
+  component
+  =
   let fresh = Type_equal.Id.create ~name:"" sexp_of_opaque in
   let var = Bonsai.Private.(Value.named App_input fresh |> conceal_value) in
   let maybe_optimize = if optimize then Bonsai.Private.pre_process else Fn.id in
   let recursive_scopes = Bonsai.Private.Computation.Recursive_scopes.empty in
+  let component input graph =
+    Rpc_effect.Private.with_connector
+      (function
+        | Self ->
+          Rpc_effect.Private.self_connector ~on_conn_failure:Retry_until_success ()
+        | Url url ->
+          Rpc_effect.Private.url_connector ~on_conn_failure:Retry_until_success url
+        | Custom custom -> custom_connector custom)
+      (fun graph -> component input graph)
+      graph
+  in
   let (T { model; input = _; action; apply_action; run; reset = _; may_contain = _ }) =
     component var
     |> Bonsai.Private.top_level_handle
@@ -115,6 +138,9 @@ let convert_with_extra ?(optimize = false) component =
     ~sexp_of_model:model.sexp_of
 ;;
 
-let convert ?optimize component =
-  convert_with_extra ?optimize (Bonsai.Arrow_deprecated.map component ~f:(fun r -> r, ()))
+let convert ?custom_connector ?optimize component =
+  convert_with_extra
+    ?custom_connector
+    ?optimize
+    (Bonsai.Arrow_deprecated.map component ~f:(fun r -> r, ()))
 ;;

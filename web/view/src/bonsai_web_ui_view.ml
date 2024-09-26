@@ -9,6 +9,7 @@ module Card_title_kind = Constants.Card_title_kind
 module Font_style = Constants.Font_style
 module Font_size = Constants.Font_size
 module Table = Table
+module For_prt = For_prt
 include Layout
 
 let primary_colors ((module T) : Theme.t) = T.singleton#constants.primary
@@ -394,7 +395,7 @@ module Expert = struct
   let override_theme_for_computation ~f inside graph =
     let current_theme = current_theme graph in
     let new_theme =
-      let%arr current_theme = current_theme in
+      let%arr current_theme in
       override_theme current_theme ~f
     in
     set_theme_for_computation new_theme inside graph
@@ -429,22 +430,21 @@ module Theme = struct
 
   let set_for_app theme app graph =
     let app_vdom = set_for_computation theme app graph in
-    let%arr app_vdom = app_vdom
-    and theme = theme in
+    let%arr app_vdom and theme in
     with_attr [ force (App.top_attr theme) ] app_vdom
   ;;
 
   let set_for_app' theme app graph =
     let result_and_vdom = set_for_computation theme app graph in
     let%arr result, app_vdom = result_and_vdom
-    and theme = theme in
+    and theme in
     result, with_attr [ force (App.top_attr theme) ] app_vdom
   ;;
 
   let override_constants_for_computation ~f inside graph =
     let current_theme = current_theme graph in
     let new_theme =
-      let%arr current_theme = current_theme in
+      let%arr current_theme in
       Theme.override_constants current_theme ~f
     in
     Expert.set_theme_for_computation new_theme inside graph

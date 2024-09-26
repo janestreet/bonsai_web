@@ -3,12 +3,36 @@ open! Async_kernel
 open Async_rpc_kernel
 open Bonsai.For_open
 
+module On_conn_failure : sig
+  (** Persistent connections reuse a single connection. If there's a failure to connect,
+      it will wait a bit, then attempt to re-establish the connection.
+
+      On connection failure, our RPC can either wait until some retry attempt succeeds,
+      or treat the failure as an error.
+
+      For almost all polling RPCs, and most one-shot RPCs, [Surface_error_to_rpc] is
+      preferable. However, with one-shot RPCs, you might then want to repeatedly retry
+      the RPC until it succeeds. The [Retry_until_success] option can be useful here,
+      but if the connection never succeeds, the effect will never resolve. *)
+  type t =
+    | Surface_error_to_rpc
+    | Retry_until_success
+  [@@deriving sexp_of]
+end
+
 (** The place that an RPC should be sent. *)
 module Where_to_connect : sig
   module Custom : sig
     type t = ..
   end
 
+  (** [Self] and [Url] open a persistent Websockets connection. [Self] will use the URL
+      from which the web app is being accessed. [Url] will use the provided URL.
+
+      [Self] will reuse a single Websockets connection for all callsites.
+      Similarly, [Url] will open one connection per-URL.
+
+      [Self] and [Url] have the behavior of [On_conn_failure.Retry_until_success]. *)
   type t =
     | Self
     | Url of string
@@ -279,6 +303,12 @@ module Polling_state_rpc : sig
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Polling_state_rpc.t
     -> where_to_connect:Where_to_connect.t
+    -> ?when_to_start_next_effect:
+         [ `Wait_period_after_previous_effect_starts_blocking
+         | `Wait_period_after_previous_effect_finishes_blocking
+         | `Every_multiple_of_period_non_blocking
+         | `Every_multiple_of_period_blocking
+         ]
     -> every:Time_ns.Span.t
     -> 'query Bonsai.t
     -> Bonsai.graph
@@ -294,6 +324,12 @@ module Polling_state_rpc : sig
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Versioned_polling_state_rpc.Client.caller
     -> where_to_connect:Where_to_connect.t
+    -> ?when_to_start_next_effect:
+         [ `Wait_period_after_previous_effect_starts_blocking
+         | `Wait_period_after_previous_effect_finishes_blocking
+         | `Every_multiple_of_period_non_blocking
+         | `Every_multiple_of_period_blocking
+         ]
     -> every:Time_ns.Span.t
     -> 'query Bonsai.t
     -> Bonsai.graph
@@ -358,7 +394,10 @@ module Connector : sig
   type t
 
   val persistent_connection
-    :  (module Persistent_connection.S with type t = 'conn and type conn = Rpc.Connection.t)
+    :  on_conn_failure:On_conn_failure.t
+    -> (module Persistent_connection.S
+          with type t = 'conn
+           and type conn = Rpc.Connection.t)
     -> 'conn
     -> t
 
@@ -393,10 +432,10 @@ module Private : sig
     -> 'a Bonsai.t
 
   (** The connector for the server hosting the web page. *)
-  val self_connector : unit -> Connector.t
+  val self_connector : on_conn_failure:On_conn_failure.t -> unit -> Connector.t
 
   (** The connector for an arbitrary URL. *)
-  val url_connector : string -> Connector.t
+  val url_connector : on_conn_failure:On_conn_failure.t -> string -> Connector.t
 
   (** Determines whether the connector is the test fallback connector. This is
       used by the testing library to swap out the [test_fallback] connector with

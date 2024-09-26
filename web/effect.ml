@@ -31,7 +31,7 @@ module Focus = struct
     let open Bonsai.Let_syntax in
     fun ?name_for_testing () ->
       match Util.am_running_how with
-      | `Node_test | `Node_benchmark | `Node ->
+      | `Node_test | `Node_jsdom_test | `Node_benchmark | `Node ->
         let print_effect_focus, print_effect_blur =
           Option.value_map
             name_for_testing
@@ -46,10 +46,10 @@ module Focus = struct
             ; focus = print_effect_focus
             ; blur = print_effect_blur
             }
-      | `Browser | `Browser_benchmark ->
+      | `Browser | `Browser_test | `Browser_benchmark ->
         fun graph ->
           let path = Bonsai.path_id graph in
-          let%arr path = path in
+          let%arr path in
           let attr = Vdom.Attr.create "data-focus-handle" path in
           { attr; focus = focus_effect path; blur = blur_effect path }
   ;;
@@ -66,8 +66,12 @@ let reload_page =
   of_thunk (fun () ->
     match Util.am_running_how with
     | `Browser -> Dom_html.window##.location##reload
-    | `Node_test | `Node | `Node_benchmark | `Browser_benchmark ->
-      Core.print_s [%message "Reloading page skipped in test"])
+    | `Node_test
+    | `Node_jsdom_test
+    | `Node
+    | `Node_benchmark
+    | `Browser_test
+    | `Browser_benchmark -> Core.print_s [%message "Reloading page skipped in test"])
 ;;
 
 let alert =

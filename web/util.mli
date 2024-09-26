@@ -3,16 +3,26 @@ open! Js_of_ocaml
 
 (** [am_running_how] provides information on how the code is currently being run:
     - [`Node_test] means that the code is being run using node as part of an expect_test
+    - [`Node_jsdom_test] means that the code is being run using node as part of an
+      expect_test that enables jsdom to simulate a browser environment.
     - [`Node_benchmark] means that the code is being run using node as part of a benchmark
     - [`Node] means that the code is being run using node, but not as part of an
       expect_test or a benchmark
+    - [`Browser_test] means that the code is being run in a browser as part of an expect_test
     - [`Browser_benchmark] means that the code is being run in the browser as part of a
       benchmark
     - [`Browser] means that the code is being run in a browser but not as part of a
       benchmark
 *)
 val am_running_how
-  : [ `Browser | `Browser_benchmark | `Node | `Node_benchmark | `Node_test ]
+  : [ `Browser
+    | `Browser_test
+    | `Browser_benchmark
+    | `Node
+    | `Node_benchmark
+    | `Node_test
+    | `Node_jsdom_test
+    ]
 
 (** [am_within_disabled_fieldset] traverses up the DOM to see whether an event occurred
     within a fieldset element with the disabled attribute. As this function requires DOM

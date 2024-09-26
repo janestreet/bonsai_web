@@ -38,12 +38,14 @@ module type To_incr_dom = sig
   module type S = S
 
   val convert
-    :  ?optimize:bool
+    :  ?custom_connector:(Rpc_effect.Where_to_connect.Custom.t -> Rpc_effect.Connector.t)
+    -> ?optimize:bool
     -> ('input Bonsai.t -> Bonsai.graph -> Vdom.Node.t Bonsai.t)
     -> (module S with type Input.t = 'input and type Extra.t = unit)
 
   val convert_with_extra
-    :  ?optimize:bool
+    :  ?custom_connector:(Rpc_effect.Where_to_connect.Custom.t -> Rpc_effect.Connector.t)
+    -> ?optimize:bool
     -> ('input Bonsai.t -> Bonsai.graph -> (Vdom.Node.t * 'extra) Bonsai.t)
     -> (module S with type Input.t = 'input and type Extra.t = 'extra)
 end

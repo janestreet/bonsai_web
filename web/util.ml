@@ -2,27 +2,22 @@ open! Core
 open! Js_of_ocaml
 
 let am_running_how
-  : [ `Node_test | `Node_benchmark | `Node | `Browser_benchmark | `Browser ]
+  : [ `Browser
+    | `Browser_test
+    | `Browser_benchmark
+    | `Node
+    | `Node_benchmark
+    | `Node_test
+    | `Node_jsdom_test
+    ]
   =
-  let is_in_browser = Js.Optdef.test (Obj.magic Dom_html.document : _ Js.Optdef.t) in
-  let is_benchmark =
-    match Sys.getenv "BENCHMARKS_RUNNER" with
-    | Some "TRUE" -> true
-    | _ -> false
-  in
-  match is_in_browser, is_benchmark, Core.am_running_test with
-  | true, true, _ -> `Browser_benchmark
-  | true, false, true -> Core.raise_s [%message "cannot run tests in a browser"]
-  | true, false, false -> `Browser
-  | false, true, _ -> `Node_benchmark
-  | false, false, true -> `Node_test
-  | false, false, false -> `Node
+  Am_running_how_js.am_running_how
 ;;
 
 let am_within_disabled_fieldset (event : #Dom_html.event Js.t) =
   match am_running_how with
-  | `Node_test | `Node_benchmark | `Node -> false
-  | `Browser | `Browser_benchmark ->
+  | `Node_test | `Node_jsdom_test | `Node_benchmark | `Node -> false
+  | `Browser | `Browser_test | `Browser_benchmark ->
     let (event : < composedPath : 'a Js.js_array Js.t Js.meth ; Dom_html.event > Js.t) =
       Js.Unsafe.coerce event
     in
@@ -41,7 +36,11 @@ module For_bonsai_internal = struct
     let get_test_truncated_trace =
       match am_running_how with
       | `Browser | `Node -> Fn.id
-      | `Node_test | `Node_benchmark | `Browser_benchmark ->
+      | `Node_test
+      | `Node_jsdom_test
+      | `Node_benchmark
+      | `Browser_test
+      | `Browser_benchmark ->
         fun stack_trace ->
           let first_line =
             Core.String.split_lines stack_trace |> List.hd |> Option.value ~default:""

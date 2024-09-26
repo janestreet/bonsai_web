@@ -11,12 +11,14 @@ build: [
 ]
 depends: [
   "ocaml" {>= "5.1.0"}
+  "am_running_how_js"
   "async_durable"
   "async_js"
   "async_kernel"
   "async_rpc_kernel"
   "babel"
   "bonsai"
+  "bonsai_concrete"
   "core"
   "core_kernel"
   "incr_dom"

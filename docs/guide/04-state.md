@@ -487,8 +487,6 @@ other.
 
 ```{=html}
 ```
-```{=html}
-```
 ## Other State Primitives
 
 Bonsai has some other tools for state, such as `Bonsai.state_opt`,

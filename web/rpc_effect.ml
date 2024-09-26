@@ -159,14 +159,18 @@ end = struct
   ;;
 end
 
-module Connector = struct
+module On_conn_failure = struct
   type t =
-    | Async_durable :
-        { connection : Rpc.Connection.t Async_durable.t
-        ; menu : Versioned_rpc.Menu.t Rvar.t
-        }
-        -> t
-    | Persistent_connection :
+    | Surface_error_to_rpc
+    | Retry_until_success
+  [@@deriving sexp_of]
+end
+
+(* This is factored out because we want to be able to share a connection between clients
+   using different values of [retry_silently_on_conn_failure]. *)
+module Persistent_connection_packed = struct
+  type t =
+    | T :
         { connection_module :
             (module Persistent_connection.S
                with type t = 'conn
@@ -175,21 +179,8 @@ module Connector = struct
         ; menu : Versioned_rpc.Menu.t Rvar.t
         }
         -> t
-    | Connection :
-        { connection : Rpc.Connection.t Deferred.t
-        ; menu : Versioned_rpc.Menu.t Rvar.t
-        }
-        -> t
-    | Test_fallback : t
 
-  let menu_rvar = function
-    | Async_durable { menu : Versioned_rpc.Menu.t Rvar.t; _ } -> Some menu
-    | Persistent_connection { menu : Versioned_rpc.Menu.t Rvar.t; _ } -> Some menu
-    | Connection { menu : Versioned_rpc.Menu.t Rvar.t; _ } -> Some menu
-    | Test_fallback -> None
-  ;;
-
-  let persistent_connection
+  let create
     (type conn)
     (module Conn : Persistent_connection.S
       with type t = conn
@@ -198,13 +189,79 @@ module Connector = struct
     =
     let menu =
       Rvar.create (fun () ->
+        (* The menu [Rvar.t] is only used once a connection has been established,
+           so we want to bind on [Conn.connected] regardless of [retry_silently_on_conn_failure]. *)
         let%bind connection = Conn.connected connection in
         Versioned_rpc.Menu.request connection)
     in
     Bus.iter_exn (Conn.event_bus connection) [%here] ~f:(function
       | Disconnected -> Rvar.invalidate menu
       | _ -> ());
-    Persistent_connection { connection_module = (module Conn); connection; menu }
+    T { connection_module = (module Conn); connection; menu }
+  ;;
+
+  let self =
+    lazy
+      (create
+         (module Persistent_connection.Rpc)
+         (Persistent_connection.Rpc.create
+            ~server_name:"self-ws-server"
+            ~address:(module Unit)
+            ~connect:(fun () -> Async_js.Rpc.Connection.client ())
+            Deferred.Or_error.return))
+  ;;
+
+  let url =
+    Memo.of_comparable
+      (module String)
+      (fun url ->
+        create
+          (module Persistent_connection.Rpc)
+          (Persistent_connection.Rpc.create
+             ~server_name:url
+             ~address:(module String)
+             ~connect:(fun url ->
+               Async_js.Rpc.Connection.client ~uri:(Uri.of_string url) ())
+             (fun () -> Deferred.Or_error.return url)))
+  ;;
+end
+
+module Connector = struct
+  type t =
+    | Async_durable of
+        { connection : Rpc.Connection.t Async_durable.t
+        ; menu : Versioned_rpc.Menu.t Rvar.t
+        }
+    | Persistent_connection of
+        { connection : Persistent_connection_packed.t
+        ; on_conn_failure : On_conn_failure.t
+        }
+    | Connection of
+        { connection : Rpc.Connection.t Deferred.t
+        ; menu : Versioned_rpc.Menu.t Rvar.t
+        }
+    | Test_fallback
+
+  let menu_rvar = function
+    | Async_durable { menu : Versioned_rpc.Menu.t Rvar.t; _ } -> Some menu
+    | Persistent_connection
+        { connection = T { menu : Versioned_rpc.Menu.t Rvar.t; _ }; _ } -> Some menu
+    | Connection { menu : Versioned_rpc.Menu.t Rvar.t; _ } -> Some menu
+    | Test_fallback -> None
+  ;;
+
+  let persistent_connection
+    (type conn)
+    ~on_conn_failure
+    (module Conn : Persistent_connection.S
+      with type t = conn
+       and type conn = Rpc.Connection.t)
+    (connection : conn)
+    =
+    Persistent_connection
+      { connection = Persistent_connection_packed.create (module Conn) connection
+      ; on_conn_failure
+      }
   ;;
 
   let async_durable (connection : Rpc.Connection.t Async_durable.t) =
@@ -242,7 +299,7 @@ module Connector = struct
       { connection
       ; menu =
           Rvar.create (fun () ->
-            let%bind connection = connection in
+            let%bind connection in
             Versioned_rpc.Menu.request connection)
       }
   ;;
@@ -252,11 +309,19 @@ module Connector = struct
   let with_connection f ~where_to_connect ~callback =
     match f where_to_connect with
     | Async_durable { connection; menu = _ } -> Async_durable.with_ connection ~f:callback
-    | Persistent_connection { connection_module = (module Conn); connection; menu = _ } ->
-      let%bind connection = Conn.connected connection in
+    | Persistent_connection
+        { connection = T { connection_module = (module Conn); connection; menu = _ }
+        ; on_conn_failure
+        } ->
+      let%bind.Deferred.Or_error connection =
+        match on_conn_failure with
+        | Surface_error_to_rpc -> Conn.connected_or_failed_to_connect connection
+        | Retry_until_success ->
+          Conn.connected connection |> Deferred.map ~f:Or_error.return
+      in
       callback connection
     | Connection { connection; menu = _ } ->
-      let%bind connection = connection in
+      let%bind connection in
       callback connection
     | Test_fallback ->
       Deferred.Or_error.error_string
@@ -270,12 +335,20 @@ module Connector = struct
       Async_durable.with_ connection ~f:(fun connection ->
         let%bind.Deferred.Or_error menu = Rvar.contents menu in
         callback (Versioned_rpc.Connection_with_menu.create_directly connection menu))
-    | Persistent_connection { connection_module = (module Conn); connection; menu } ->
-      let%bind connection = Conn.connected connection in
+    | Persistent_connection
+        { connection = T { connection_module = (module Conn); connection; menu }
+        ; on_conn_failure
+        } ->
+      let%bind.Deferred.Or_error connection =
+        match on_conn_failure with
+        | Surface_error_to_rpc -> Conn.connected_or_failed_to_connect connection
+        | Retry_until_success ->
+          Conn.connected connection |> Deferred.map ~f:Or_error.return
+      in
       let%bind.Deferred.Or_error menu = Rvar.contents menu in
       callback (Versioned_rpc.Connection_with_menu.create_directly connection menu)
     | Connection { connection; menu } ->
-      let%bind connection = connection in
+      let%bind connection in
       let%bind.Deferred.Or_error menu = Rvar.contents menu in
       callback (Versioned_rpc.Connection_with_menu.create_directly connection menu)
     | Test_fallback ->
@@ -300,31 +373,14 @@ module Private = struct
       ~inside:computation
   ;;
 
-  let self_connector =
-    lazy
-      (Connector.persistent_connection
-         (module Persistent_connection.Rpc)
-         (Persistent_connection.Rpc.create
-            ~server_name:"self-ws-server"
-            ~address:(module Unit)
-            ~connect:(fun () -> Async_js.Rpc.Connection.client ())
-            Deferred.Or_error.return))
+  let self_connector ~on_conn_failure () =
+    Connector.Persistent_connection
+      { connection = force Persistent_connection_packed.self; on_conn_failure }
   ;;
 
-  let self_connector () = Lazy.force self_connector
-
-  let url_connector =
-    Memo.of_comparable
-      (module String)
-      (fun url ->
-        Connector.persistent_connection
-          (module Persistent_connection.Rpc)
-          (Persistent_connection.Rpc.create
-             ~server_name:"self-ws-server"
-             ~address:(module String)
-             ~connect:(fun url ->
-               Async_js.Rpc.Connection.client ~uri:(Uri.of_string url) ())
-             (fun () -> Deferred.Or_error.return url)))
+  let url_connector ~on_conn_failure url =
+    Connector.Persistent_connection
+      { connection = Persistent_connection_packed.url url; on_conn_failure }
   ;;
 
   let is_test_fallback connector =
@@ -394,6 +450,7 @@ let generic_poll_or_error
   ~clear_when_deactivated
   ~on_response_received
   dispatcher
+  ~when_to_start_next_effect
   ~every
   ~poll_behavior
   ~get_response
@@ -493,11 +550,11 @@ let generic_poll_or_error
   let%sub effect =
     let%sub path = Bonsai.path_id () in
     let%sub get_current_time = Bonsai.Clock.get_current_time () in
-    let%arr dispatcher = dispatcher
-    and inject_response = inject_response
-    and on_response_received = on_response_received
-    and get_current_time = get_current_time
-    and path = path in
+    let%arr dispatcher
+    and inject_response
+    and on_response_received
+    and get_current_time
+    and path in
     let open Effect.Let_syntax in
     let actually_send_rpc query =
       let%bind inflight_query_key = Effect.of_sync_fun Inflight_query_key.create () in
@@ -539,7 +596,7 @@ let generic_poll_or_error
      trigger on activate, and only use [on_activate] for running effects on
      activation. *)
   let%sub callback =
-    let%arr effect = effect in
+    let%arr effect in
     fun prev query ->
       match prev with
       | Some _ -> effect query
@@ -553,21 +610,20 @@ let generic_poll_or_error
       ~callback
   in
   let%sub send_rpc_effect =
-    let%arr effect = effect
-    and query = query in
+    let%arr effect and query in
     effect query
   in
   let%sub () =
     let clock =
       Bonsai.Clock.every
-        ~when_to_start_next_effect:`Wait_period_after_previous_effect_starts_blocking
+        ~when_to_start_next_effect
         ~trigger_on_activate:false
         every
         send_rpc_effect
     in
     let poll_until_condition_met condition =
       let%sub should_poll =
-        let%arr condition = condition
+        let%arr condition
         and { last_ok_response; last_error; _ } = response in
         match last_ok_response, last_error with
         | None, _ | _, Some _ -> true
@@ -587,7 +643,7 @@ let generic_poll_or_error
   in
   let%sub () = Bonsai.Edge.lifecycle ~on_activate:send_rpc_effect () in
   let%arr { last_ok_response; last_error; inflight_queries } = response
-  and send_rpc_effect = send_rpc_effect in
+  and send_rpc_effect in
   let inflight_query = Option.map ~f:snd (Map.max_elt inflight_queries) in
   { Poll_result.last_ok_response; last_error; inflight_query; refresh = send_rpc_effect }
 ;;
@@ -606,6 +662,7 @@ let generic_poll_or_error
   ?equal_response
   ?(clear_when_deactivated = true)
   ?(on_response_received = Bonsai.Value.return (fun _ _ -> Effect.Ignore))
+  ?(when_to_start_next_effect = `Wait_period_after_previous_effect_starts_blocking)
   dispatcher
   ~every
   ~poll_behavior
@@ -624,6 +681,7 @@ let generic_poll_or_error
       ~on_response_received
       ~clear_when_deactivated
       dispatcher
+      ~when_to_start_next_effect
       ~every
       ~poll_behavior
       ~get_response
@@ -647,7 +705,7 @@ module Our_rpc = struct
     =
     let open Bonsai.Let_syntax in
     let%sub connector = Bonsai.Dynamic_scope.lookup connector_var in
-    let%arr connector = connector in
+    let%arr connector in
     Effect.of_deferred_fun (dispatcher connector)
   ;;
 
@@ -976,9 +1034,7 @@ module Our_rpc = struct
     let open Bonsai.Let_syntax in
     let%sub get_current_time = Bonsai.Clock.get_current_time () in
     let%sub path = Bonsai.path_id () in
-    let%arr dispatcher = dispatcher
-    and get_current_time = get_current_time
-    and path = path in
+    let%arr dispatcher and get_current_time and path in
     fun query ->
       match%bind.Effect For_introspection.should_record_effect with
       | false ->
@@ -1083,8 +1139,7 @@ module Polling_state_rpc = struct
             Ok ()
           | Error error -> Error error)
       in
-      let%arr connector = connector
-      and client_rvar = client_rvar in
+      let%arr connector and client_rvar in
       let%bind.Effect () =
         match%bind.Effect
           Effect.of_deferred_fun perform_dispatch (connector, client_rvar)
@@ -1106,14 +1161,13 @@ module Polling_state_rpc = struct
           connection
           query)
     in
-    let%arr connector = connector
-    and client_rvar = client_rvar in
+    let%arr connector and client_rvar in
     Effect.of_deferred_fun (perform_query (connector, client_rvar))
   ;;
 
   let babel_dispatcher_internal ?on_forget_client_error caller ~where_to_connect =
     let create_client_rvar ~connector =
-      let%arr.Bonsai connector = connector in
+      let%arr.Bonsai connector in
       match Connector.menu_rvar (connector where_to_connect) with
       | None -> raise_s [%message [%here]]
       | Some menu_rvar ->
@@ -1155,6 +1209,7 @@ module Polling_state_rpc = struct
     ?equal_response
     ?clear_when_deactivated
     ?on_response_received
+    ?when_to_start_next_effect
     ~every
     ~get_response
     query
@@ -1162,7 +1217,7 @@ module Polling_state_rpc = struct
     =
     let open Bonsai.Let_syntax in
     let%sub dispatcher =
-      let%arr dispatcher = dispatcher in
+      let%arr dispatcher in
       fun query ->
         let%map.Effect result = dispatcher query in
         Bonsai.Effect_throttling.Poll_result.Finished result
@@ -1178,6 +1233,7 @@ module Polling_state_rpc = struct
       ?clear_when_deactivated
       ?on_response_received
       dispatcher
+      ?when_to_start_next_effect
       ~every
       ~poll_behavior:Always
       ~get_response
@@ -1194,6 +1250,7 @@ module Polling_state_rpc = struct
     ?on_response_received
     rpc
     ~where_to_connect
+    ?when_to_start_next_effect
     ~every
     query
     =
@@ -1214,6 +1271,7 @@ module Polling_state_rpc = struct
       ?equal_response
       ?clear_when_deactivated
       ?on_response_received
+      ?when_to_start_next_effect
       ~every
       ~get_response:fst
       query
@@ -1230,6 +1288,7 @@ module Polling_state_rpc = struct
     ?on_response_received
     rpc
     ~where_to_connect
+    ?when_to_start_next_effect
     ~every
     query
     =
@@ -1247,6 +1306,7 @@ module Polling_state_rpc = struct
       ?equal_response
       ?clear_when_deactivated
       ?on_response_received
+      ?when_to_start_next_effect
       ~every
       ~here
       query
@@ -1462,8 +1522,7 @@ module Status = struct
     let%sub () =
       let%sub clock = Bonsai.Incr.with_clock Ui_incr.return in
       let%sub on_activate =
-        let%arr inject = inject
-        and clock = clock in
+        let%arr inject and clock in
         inject (Activate clock)
       in
       Bonsai.Edge.lifecycle ~on_activate ()
