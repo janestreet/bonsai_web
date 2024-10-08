@@ -12,12 +12,10 @@ let instrument component =
   let instrumented_computation =
     Instrumentation.instrument_computation
       component
-      ~start_timer:(fun s -> Javascript_profiling.Manual.mark (s ^ "before"))
-      ~stop_timer:(fun s ->
-        let before = s ^ "before" in
-        let after = s ^ "after" in
-        Javascript_profiling.Manual.mark after;
-        Javascript_profiling.Manual.measure ~name:s ~start:before ~end_:after |> Fn.ignore)
+      ~start_timer:(fun s -> s, Javascript_profiling.Timer.start ())
+      ~stop_timer:(fun (s, timer) ->
+        let measurement = Javascript_profiling.Timer.stop timer in
+        Javascript_profiling.measure s measurement)
   in
   { instrumented_computation }
 ;;

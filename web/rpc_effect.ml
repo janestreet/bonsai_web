@@ -1,7 +1,6 @@
 open! Core
 open Async_kernel
 open Async_rpc_kernel
-module Bonsai = Bonsai.Proc
 
 (* NOTE: This top-level side effect is meant to run [For_introspection]'s side effects
    explicitly as a counter-measure of For_instrospection being dead-code eliminated. *)
@@ -367,10 +366,7 @@ let connector_var =
 
 module Private = struct
   let with_connector connector computation =
-    Bonsai.Dynamic_scope.set
-      connector_var
-      (Bonsai.Value.return connector)
-      ~inside:computation
+    Bonsai.Dynamic_scope.set connector_var (Bonsai.return connector) ~inside:computation
   ;;
 
   let self_connector ~on_conn_failure () =
@@ -412,8 +408,8 @@ module Shared_poller = struct
   let create = Bonsai.Memo.create
   let custom_create = create
 
-  let lookup ?(here = Stdlib.Lexing.dummy_pos) ?sexp_of_model ~equal memo query =
-    let%sub res = Bonsai.Memo.lookup ~here ?sexp_of_model ~equal memo query in
+  let lookup ?(here = Stdlib.Lexing.dummy_pos) ?sexp_of_model ~equal memo query graph =
+    let res = Bonsai.Memo.lookup ~here ?sexp_of_model ~equal memo query graph in
     match%arr res with
     | Some x -> x
     | None ->
@@ -436,7 +432,7 @@ module Poll_behavior = struct
     | Until_condition_met of
         (* Sends an rpc repeatedly until the user-provided function returns
            [`Stop_polling] on an ok response *)
-        ('response -> [ `Continue | `Stop_polling ]) Bonsai.Value.t
+        ('response -> [ `Continue | `Stop_polling ]) Bonsai.t
 end
 
 let generic_poll_or_error
@@ -456,6 +452,7 @@ let generic_poll_or_error
   ~get_response
   ~here
   query
+  graph
   =
   let module Query = struct
     type t = query
@@ -502,13 +499,13 @@ let generic_poll_or_error
     ; inflight_queries = Inflight_query_key.Map.empty
     }
   in
-  let%sub response, inject_response =
+  let response, inject_response =
     (* using a state_machine1 is important because we need add check the Computation_status
        to see if we should drop the action (due to [clear_when_responded]) *)
     Bonsai.state_machine1
       (* Use a var here to prevent bonsai from optimizing the [state_machine1] down to a
          [state_machine0] *)
-      Bonsai.Var.(create () |> value)
+      Bonsai.Expert.Var.(create () |> value)
       ~sexp_of_model:[%sexp_of: Model.t]
       ~sexp_of_action:[%sexp_of: Action.t]
       ~equal:[%equal: Model.t]
@@ -541,15 +538,16 @@ let generic_poll_or_error
               inflight_queries =
                 Map.add_exn model.inflight_queries ~key:inflight_query_key ~data:query
             }))
+      graph
   in
   let underlying_to_response = function
     | Bonsai.Effect_throttling.Poll_result.Aborted ->
       Bonsai.Effect_throttling.Poll_result.Aborted
     | Finished x -> Finished (Or_error.map x ~f:get_response)
   in
-  let%sub effect =
-    let%sub path = Bonsai.path_id () in
-    let%sub get_current_time = Bonsai.Clock.get_current_time () in
+  let effect =
+    let path = Bonsai.path_id graph in
+    let get_current_time = Bonsai.Clock.get_current_time graph in
     let%arr dispatcher
     and inject_response
     and on_response_received
@@ -595,21 +593,22 @@ let generic_poll_or_error
      activate by default. To avoid the redundancy, we make neither of them
      trigger on activate, and only use [on_activate] for running effects on
      activation. *)
-  let%sub callback =
+  let callback =
     let%arr effect in
     fun prev query ->
       match prev with
       | Some _ -> effect query
       | None -> Effect.Ignore
   in
-  let%sub () =
+  let () =
     Bonsai.Edge.on_change'
       ~sexp_of_model:[%sexp_of: Query.t]
       ~equal:equal_query
       query
       ~callback
+      graph
   in
-  let%sub send_rpc_effect =
+  let send_rpc_effect =
     let%arr effect and query in
     effect query
   in
@@ -621,8 +620,8 @@ let generic_poll_or_error
         every
         send_rpc_effect
     in
-    let poll_until_condition_met condition =
-      let%sub should_poll =
+    let poll_until_condition_met condition graph =
+      let should_poll =
         let%arr condition
         and { last_ok_response; last_error; _ } = response in
         match last_ok_response, last_error with
@@ -633,15 +632,19 @@ let generic_poll_or_error
            | `Continue -> true)
       in
       match%sub should_poll with
-      | true -> clock
-      | false -> Bonsai.const ()
+      | true ->
+        clock graph;
+        Bonsai.return ()
+      | false -> Bonsai.return ()
     in
     match poll_behavior with
-    | Poll_behavior.Always -> clock
-    | Until_ok -> poll_until_condition_met (Bonsai.Value.return (fun _ -> `Stop_polling))
-    | Until_condition_met condition -> poll_until_condition_met condition
+    | Poll_behavior.Always ->
+      clock graph;
+      Bonsai.return ()
+    | Until_ok -> poll_until_condition_met (Bonsai.return (fun _ -> `Stop_polling)) graph
+    | Until_condition_met condition -> poll_until_condition_met condition graph
   in
-  let%sub () = Bonsai.Edge.lifecycle ~on_activate:send_rpc_effect () in
+  let () = Bonsai.Edge.lifecycle ~on_activate:send_rpc_effect graph in
   let%arr { last_ok_response; last_error; inflight_queries } = response
   and send_rpc_effect in
   let inflight_query = Option.map ~f:snd (Map.max_elt inflight_queries) in
@@ -661,7 +664,7 @@ let generic_poll_or_error
   ~equal_query
   ?equal_response
   ?(clear_when_deactivated = true)
-  ?(on_response_received = Bonsai.Value.return (fun _ _ -> Effect.Ignore))
+  ?(on_response_received = Bonsai.return (fun _ _ -> Effect.Ignore))
   ?(when_to_start_next_effect = `Wait_period_after_previous_effect_starts_blocking)
   dispatcher
   ~every
@@ -669,6 +672,7 @@ let generic_poll_or_error
   query
   ~get_response
   ~here
+  graph
   =
   let c =
     generic_poll_or_error
@@ -688,23 +692,23 @@ let generic_poll_or_error
       ~here
       query
   in
-  let open Bonsai.Let_syntax in
   if clear_when_deactivated
   then (
-    let%sub result, reset = Bonsai.with_model_resetter c in
-    let%sub () = Bonsai.Edge.lifecycle ~on_deactivate:reset () in
-    return result)
-  else c
+    let result, reset = Bonsai.with_model_resetter ~f:c graph in
+    let () = Bonsai.Edge.lifecycle ~on_deactivate:reset graph in
+    result)
+  else c graph
 ;;
 
 let sexp_of_polling_state_rpc_underlying_response (_, sexp) = Lazy.force sexp
 
 module Our_rpc = struct
   let generic_dispatcher (type request response) dispatcher
-    : (request -> response Effect.t) Bonsai.Computation.t
+    : Bonsai.graph -> (request -> response Effect.t) Bonsai.t
     =
+    fun graph ->
     let open Bonsai.Let_syntax in
-    let%sub connector = Bonsai.Dynamic_scope.lookup connector_var in
+    let connector = Bonsai.Dynamic_scope.lookup connector_var graph in
     let%arr connector in
     Effect.of_deferred_fun (dispatcher connector)
   ;;
@@ -741,10 +745,10 @@ module Our_rpc = struct
     ~where_to_connect
     ~every
     query
+    graph
     =
-    let open Bonsai.Let_syntax in
-    let%sub dispatcher = dispatcher_internal rpc ~where_to_connect in
-    let%sub dispatcher = Bonsai.Effect_throttling.poll dispatcher in
+    let dispatcher = dispatcher_internal rpc ~where_to_connect graph in
+    let dispatcher = Bonsai.Effect_throttling.poll dispatcher graph in
     generic_poll_or_error
       ~rpc_kind:
         (Bonsai_introspection_protocol.Rpc_kind.Normal
@@ -765,6 +769,7 @@ module Our_rpc = struct
       ~get_response:Fn.id
       ~here
       query
+      graph
   ;;
 
   let babel_poll
@@ -779,10 +784,10 @@ module Our_rpc = struct
     ~where_to_connect
     ~every
     query
+    graph
     =
-    let open Bonsai.Let_syntax in
-    let%sub dispatcher = babel_dispatcher_internal rpc ~where_to_connect in
-    let%sub dispatcher = Bonsai.Effect_throttling.poll dispatcher in
+    let dispatcher = babel_dispatcher_internal rpc ~where_to_connect graph in
+    let dispatcher = Bonsai.Effect_throttling.poll dispatcher graph in
     generic_poll_or_error
       ~rpc_kind:
         (Babel { descriptions = Babel.Caller.descriptions rpc; interval = Poll { every } })
@@ -799,6 +804,7 @@ module Our_rpc = struct
       ~poll_behavior:Always
       ~here
       query
+      graph
   ;;
 
   let streamable_poll
@@ -813,10 +819,10 @@ module Our_rpc = struct
     ~where_to_connect
     ~every
     query
+    graph
     =
-    let open Bonsai.Let_syntax in
-    let%sub dispatcher = streamable_dispatcher_internal rpc ~where_to_connect in
-    let%sub dispatcher = Bonsai.Effect_throttling.poll dispatcher in
+    let dispatcher = streamable_dispatcher_internal rpc ~where_to_connect graph in
+    let dispatcher = Bonsai.Effect_throttling.poll dispatcher graph in
     generic_poll_or_error
       ~rpc_kind:
         (let%tydi { name; version } = Streamable.Plain_rpc.description rpc in
@@ -834,6 +840,7 @@ module Our_rpc = struct
       ~get_response:Fn.id
       ~here
       query
+      graph
   ;;
 
   let shared_poller
@@ -883,10 +890,10 @@ module Our_rpc = struct
     ~where_to_connect
     ~retry_interval
     query
+    graph
     =
-    let open Bonsai.Let_syntax in
-    let%sub dispatcher = dispatcher_internal rpc ~where_to_connect in
-    let%sub dispatcher = Bonsai.Effect_throttling.poll dispatcher in
+    let dispatcher = dispatcher_internal rpc ~where_to_connect graph in
+    let dispatcher = Bonsai.Effect_throttling.poll dispatcher graph in
     generic_poll_or_error
       ~rpc_kind:
         (Normal
@@ -907,6 +914,7 @@ module Our_rpc = struct
       ~get_response:Fn.id
       ~here
       query
+      graph
   ;;
 
   let poll_until_condition_met
@@ -922,10 +930,10 @@ module Our_rpc = struct
     ~every
     ~condition
     query
+    graph
     =
-    let open Bonsai.Let_syntax in
-    let%sub dispatcher = dispatcher_internal rpc ~where_to_connect in
-    let%sub dispatcher = Bonsai.Effect_throttling.poll dispatcher in
+    let dispatcher = dispatcher_internal rpc ~where_to_connect graph in
+    let dispatcher = Bonsai.Effect_throttling.poll dispatcher graph in
     generic_poll_or_error
       ~rpc_kind:
         (Normal
@@ -946,6 +954,7 @@ module Our_rpc = struct
       ~get_response:Fn.id
       query
       ~here
+      graph
   ;;
 
   let babel_poll_until_ok
@@ -960,10 +969,10 @@ module Our_rpc = struct
     ~where_to_connect
     ~retry_interval
     query
+    graph
     =
-    let open Bonsai.Let_syntax in
-    let%sub dispatcher = babel_dispatcher_internal rpc ~where_to_connect in
-    let%sub dispatcher = Bonsai.Effect_throttling.poll dispatcher in
+    let dispatcher = babel_dispatcher_internal rpc ~where_to_connect graph in
+    let dispatcher = Bonsai.Effect_throttling.poll dispatcher graph in
     generic_poll_or_error
       ~rpc_kind:
         (Babel
@@ -983,6 +992,7 @@ module Our_rpc = struct
       ~get_response:Fn.id
       ~here
       query
+      graph
   ;;
 
   let babel_poll_until_condition_met
@@ -998,10 +1008,10 @@ module Our_rpc = struct
     ~every
     ~condition
     query
+    graph
     =
-    let open Bonsai.Let_syntax in
-    let%sub dispatcher = babel_dispatcher_internal rpc ~where_to_connect in
-    let%sub dispatcher = Bonsai.Effect_throttling.poll dispatcher in
+    let dispatcher = babel_dispatcher_internal rpc ~where_to_connect graph in
+    let dispatcher = Bonsai.Effect_throttling.poll dispatcher graph in
     generic_poll_or_error
       ~rpc_kind:
         (Babel
@@ -1021,6 +1031,7 @@ module Our_rpc = struct
       ~get_response:Fn.id
       ~here
       query
+      graph
   ;;
 
   let maybe_track
@@ -1030,10 +1041,11 @@ module Our_rpc = struct
     ~rpc_kind
     ~get_response
     dispatcher
+    graph
     =
     let open Bonsai.Let_syntax in
-    let%sub get_current_time = Bonsai.Clock.get_current_time () in
-    let%sub path = Bonsai.path_id () in
+    let get_current_time = Bonsai.Clock.get_current_time graph in
+    let path = Bonsai.path_id graph in
     let%arr dispatcher and get_current_time and path in
     fun query ->
       match%bind.Effect For_introspection.should_record_effect with
@@ -1059,9 +1071,9 @@ module Our_rpc = struct
     ?sexp_of_response
     rpc
     ~where_to_connect
+    graph
     =
-    let open Bonsai.Let_syntax in
-    let%sub dispatcher = dispatcher_internal rpc ~where_to_connect in
+    let dispatcher = dispatcher_internal rpc ~where_to_connect graph in
     maybe_track
       ~sexp_of_query
       ~sexp_of_response
@@ -1071,6 +1083,7 @@ module Our_rpc = struct
       ~get_response:Fn.id
       dispatcher
       ~here
+      graph
   ;;
 
   let streamable_dispatcher
@@ -1079,9 +1092,9 @@ module Our_rpc = struct
     ?sexp_of_response
     rpc
     ~where_to_connect
+    graph
     =
-    let open Bonsai.Let_syntax in
-    let%sub dispatcher = streamable_dispatcher_internal rpc ~where_to_connect in
+    let dispatcher = streamable_dispatcher_internal rpc ~where_to_connect graph in
     maybe_track
       ~sexp_of_query
       ~sexp_of_response
@@ -1091,6 +1104,7 @@ module Our_rpc = struct
       ~get_response:Fn.id
       ~here
       dispatcher
+      graph
   ;;
 
   let babel_dispatcher
@@ -1099,9 +1113,9 @@ module Our_rpc = struct
     ?sexp_of_response
     rpc
     ~where_to_connect
+    graph
     =
-    let open Bonsai.Let_syntax in
-    let%sub dispatcher = babel_dispatcher_internal rpc ~where_to_connect in
+    let dispatcher = babel_dispatcher_internal rpc ~where_to_connect graph in
     maybe_track
       ~sexp_of_query
       ~sexp_of_response
@@ -1110,6 +1124,7 @@ module Our_rpc = struct
       ~get_response:Fn.id
       ~here
       dispatcher
+      graph
   ;;
 end
 
@@ -1120,11 +1135,12 @@ module Polling_state_rpc = struct
     create_client_rvar
     ~destroy_after_forget
     ~where_to_connect
+    graph
     =
     let open Bonsai.Let_syntax in
-    let%sub connector = Bonsai.Dynamic_scope.lookup connector_var in
-    let%sub client_rvar = create_client_rvar ~connector in
-    let%sub forget_client_on_server =
+    let connector = Bonsai.Dynamic_scope.lookup connector_var graph in
+    let client_rvar = create_client_rvar ~connector graph in
+    let forget_client_on_server =
       let perform_dispatch (connector, client_rvar) =
         Connector.with_connection connector ~where_to_connect ~callback:(fun connection ->
           let%bind.Eager_deferred.Or_error client = Rvar.contents client_rvar in
@@ -1151,7 +1167,7 @@ module Polling_state_rpc = struct
       then Effect.of_thunk (fun () -> Rvar.destroy client_rvar)
       else Effect.Ignore
     in
-    let%sub () = Bonsai.Edge.lifecycle ~on_deactivate:forget_client_on_server () in
+    let () = Bonsai.Edge.lifecycle ~on_deactivate:forget_client_on_server graph in
     let perform_query (connector, client) query =
       Connector.with_connection connector ~where_to_connect ~callback:(fun connection ->
         let%bind.Eager_deferred.Or_error client = Rvar.contents client in
@@ -1166,7 +1182,7 @@ module Polling_state_rpc = struct
   ;;
 
   let babel_dispatcher_internal ?on_forget_client_error caller ~where_to_connect =
-    let create_client_rvar ~connector =
+    let create_client_rvar ~connector _graph =
       let%arr.Bonsai connector in
       match Connector.menu_rvar (connector where_to_connect) with
       | None -> raise_s [%message [%here]]
@@ -1189,8 +1205,10 @@ module Polling_state_rpc = struct
   ;;
 
   let dispatcher_internal ?on_forget_client_error rpc ~where_to_connect =
-    let create_client_rvar ~connector:_ =
-      Bonsai.Expert.thunk (fun () -> Rvar.const (Polling_state_rpc.Client.create rpc))
+    let create_client_rvar ~connector:_ graph =
+      Bonsai.Expert.thunk
+        ~f:(fun () -> Rvar.const (Polling_state_rpc.Client.create rpc))
+        graph
     in
     dispatcher'
       ?on_forget_client_error
@@ -1214,9 +1232,10 @@ module Polling_state_rpc = struct
     ~get_response
     query
     ~dispatcher
+    graph
     =
     let open Bonsai.Let_syntax in
-    let%sub dispatcher =
+    let dispatcher =
       let%arr dispatcher in
       fun query ->
         let%map.Effect result = dispatcher query in
@@ -1238,6 +1257,7 @@ module Polling_state_rpc = struct
       ~poll_behavior:Always
       ~get_response
       query
+      graph
   ;;
 
   let poll
@@ -1253,9 +1273,9 @@ module Polling_state_rpc = struct
     ?when_to_start_next_effect
     ~every
     query
+    graph
     =
-    let open Bonsai.Let_syntax in
-    let%sub dispatcher = dispatcher_internal ~sexp_of_response rpc ~where_to_connect in
+    let dispatcher = dispatcher_internal ~sexp_of_response rpc ~where_to_connect graph in
     generic_poll
       ~here
       ~rpc_kind:
@@ -1276,6 +1296,7 @@ module Polling_state_rpc = struct
       ~get_response:fst
       query
       ~dispatcher
+      graph
   ;;
 
   let babel_poll
@@ -1291,10 +1312,10 @@ module Polling_state_rpc = struct
     ?when_to_start_next_effect
     ~every
     query
+    graph
     =
-    let open Bonsai.Let_syntax in
-    let%sub dispatcher =
-      babel_dispatcher_internal ~sexp_of_response rpc ~where_to_connect
+    let dispatcher =
+      babel_dispatcher_internal ~sexp_of_response rpc ~where_to_connect graph
     in
     generic_poll
       ~rpc_kind:
@@ -1312,6 +1333,7 @@ module Polling_state_rpc = struct
       query
       ~dispatcher
       ~get_response:fst
+      graph
   ;;
 
   let dispatcher
@@ -1321,10 +1343,15 @@ module Polling_state_rpc = struct
     ?on_forget_client_error
     rpc
     ~where_to_connect
+    graph
     =
-    let open Bonsai.Let_syntax in
-    let%sub dispatcher =
-      dispatcher_internal ~sexp_of_response ?on_forget_client_error rpc ~where_to_connect
+    let dispatcher =
+      dispatcher_internal
+        ~sexp_of_response
+        ?on_forget_client_error
+        rpc
+        ~where_to_connect
+        graph
     in
     Our_rpc.maybe_track
       ~here
@@ -1338,6 +1365,7 @@ module Polling_state_rpc = struct
            })
       ~get_response:fst
       dispatcher
+      graph
   ;;
 
   let babel_dispatcher
@@ -1347,14 +1375,15 @@ module Polling_state_rpc = struct
     ?on_forget_client_error
     caller
     ~where_to_connect
+    graph
     =
-    let open Bonsai.Let_syntax in
-    let%sub dispatcher =
+    let dispatcher =
       babel_dispatcher_internal
         ~sexp_of_response
         ?on_forget_client_error
         caller
         ~where_to_connect
+        graph
     in
     Our_rpc.maybe_track
       ~here
@@ -1365,6 +1394,7 @@ module Polling_state_rpc = struct
            { descriptions = Babel.Caller.descriptions caller; interval = Dispatch })
       ~get_response:fst
       dispatcher
+      graph
   ;;
 
   let shared_poller
@@ -1463,9 +1493,9 @@ module Status = struct
     [@@deriving sexp_of]
   end
 
-  let state ~where_to_connect =
-    let%sub dispatcher = dispatcher ~where_to_connect in
-    let%sub model, inject =
+  let state ~where_to_connect graph =
+    let dispatcher = dispatcher ~where_to_connect graph in
+    let model, inject =
       Bonsai.state_machine1
         ~sexp_of_model:[%sexp_of: Model.t]
         ~equal:[%equal: Model.t]
@@ -1518,14 +1548,15 @@ module Status = struct
             | State _ -> model.connecting_since
           in
           { state = new_state; clock; connecting_since })
+        graph
     in
-    let%sub () =
-      let%sub clock = Bonsai.Incr.with_clock Ui_incr.return in
-      let%sub on_activate =
+    let () =
+      let clock = Bonsai.Incr.with_clock ~f:Ui_incr.return graph in
+      let on_activate =
         let%arr inject and clock in
         inject (Activate clock)
       in
-      Bonsai.Edge.lifecycle ~on_activate ()
+      Bonsai.Edge.lifecycle ~on_activate graph
     in
     let%arr { Model.state; connecting_since; _ } = model in
     let state =

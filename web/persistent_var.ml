@@ -1,10 +1,9 @@
 open! Core
 open! Async_kernel
-module Bonsai = Bonsai.Proc
 open Js_of_ocaml
 
 type 'a t =
-  { var : 'a Bonsai.Var.t
+  { var : 'a Bonsai.Expert.Var.t
   ; setter : 'a -> unit
   ; clear : unit -> unit
   ; effect : 'a -> unit Effect.t
@@ -45,31 +44,31 @@ let create (type a) (module M : Sexpable with type t = a) kind ~unique_id ~defau
                (e : Error.t)];
          default)
   in
-  let var = Bonsai.Var.create value in
+  let var = Bonsai.Expert.Var.create value in
   let setter t = t |> M.sexp_of_t |> Sexp.to_string_mach |> setter unique_id in
   let clear () = deleter unique_id in
   let effect =
     Effect.of_sync_fun (fun a ->
       setter a;
-      Bonsai.Var.set var a)
+      Bonsai.Expert.Var.set var a)
   in
   { var; setter; clear; effect }
 ;;
 
 let set ?(here = Stdlib.Lexing.dummy_pos) { var; setter; clear = _; effect = _ } a =
   setter a;
-  Bonsai.Var.set ~here var a
+  Bonsai.Expert.Var.set ~here var a
 ;;
 
-let value { var; setter = _; clear = _; effect = _ } = Bonsai.Var.value var
+let value { var; setter = _; clear = _; effect = _ } = Bonsai.Expert.Var.value var
 
 let update { var; setter; clear = _; effect = _ } ~f =
-  Bonsai.Var.update var ~f:(fun old ->
+  Bonsai.Expert.Var.update var ~f:(fun old ->
     let new_ = f old in
     setter new_;
     new_)
 ;;
 
-let get { var; _ } = Bonsai.Var.get var
+let get { var; _ } = Bonsai.Expert.Var.get var
 let clear_persistence { var = _; setter = _; clear; effect = _ } = clear ()
 let effect { effect; _ } = effect
