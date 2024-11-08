@@ -5,62 +5,26 @@ open Incr.Let_syntax
 include To_incr_dom_intf
 module Bonsai_action = Bonsai.Private.Action
 
+let () = Lazy.force For_profiling.run_top_level_side_effects
+
 module State = struct
   type t = { mutable last_lifecycle : Bonsai.Private.Lifecycle.Collection.t }
 
   let create () = { last_lifecycle = Bonsai.Private.Lifecycle.Collection.empty }
 end
 
-let create_generic run ~fresh ~input ~model ~inject ~apply_action =
-  let environment =
-    Bonsai.Private.Environment.(empty |> add_exn ~key:fresh ~data:input)
-  in
-  let snapshot, () =
-    run
-      ~environment
-      ~fix_envs:Bonsai.Private.Environment.Recursive.empty
-      ~path:Bonsai.Private.Path.empty
-      ~model
-      ~inject
-    |> Bonsai.Private.Trampoline.run
-  in
-  let%map view, extra = Bonsai.Private.Snapshot.result snapshot
-  and input = Bonsai.Private.Input.to_incremental (Bonsai.Private.Snapshot.input snapshot)
-  and lifecycle = Bonsai.Private.Snapshot.lifecycle_or_empty snapshot
-  and model in
-  let schedule_event = Vdom.Effect.Expert.handle_non_dom_event_exn in
-  let apply_action action _state ~schedule_action:_ =
-    apply_action ~inject ~schedule_event (Some input) model action
-  in
-  let on_display state ~schedule_action:_ =
-    let diff =
-      Bonsai.Private.Lifecycle.Collection.diff state.State.last_lifecycle lifecycle
-    in
-    state.State.last_lifecycle <- lifecycle;
-    Vdom.Effect.Expert.handle_non_dom_event_exn diff;
-    Bonsai.Time_source.Private.trigger_after_display
-      Incr_dom.Start_app.Private.time_source
-  in
-  Incr_dom.Component.create_with_extra ~on_display ~extra ~apply_action model view
-;;
-
 let convert_generic
   (type input action_input model action extra)
+  ~computation
   ~fresh
-  ~(run :
-      ( model
-        , action
-        , action_input
-        , Vdom.Node.t * extra
-        , unit )
-        Bonsai.Private.Computation.eval_fun)
-  ~default_model
-  ~(action_type_id : action Bonsai_action.id)
-  ~apply_action
-  ~equal_model
-  ~sexp_of_model
+  ~recursive_scopes
+  ~time_source
+  (info : (model, action, action_input, _, unit) Bonsai.Private.Computation.info)
   : (module S with type Input.t = input and type Extra.t = extra)
   =
+  let equal_model = info.model.equal in
+  let sexp_of_model = info.model.sexp_of in
+  let default_model = info.model.default in
   (module struct
     module Input = struct
       type t = input
@@ -75,7 +39,7 @@ let convert_generic
     module Action = struct
       type t = action Bonsai_action.t
 
-      let sexp_of_t = Bonsai_action.Type_id.to_sexp action_type_id
+      let sexp_of_t = Bonsai_action.Type_id.to_sexp info.action
     end
 
     module Extra = struct
@@ -86,35 +50,96 @@ let convert_generic
 
     type t = (Action.t, Model.t, State.t, Extra.t) Incr_dom.Component.with_extra
 
+    let create_generic
+      ~fresh
+      ~input
+      ~(model : model Incr.t)
+      ~(inject : action Bonsai_action.t -> unit Ui_effect.t)
+      ~apply_action
+      run
+      =
+      let environment =
+        Bonsai.Private.Environment.(empty |> add_exn ~key:fresh ~data:input)
+      in
+      let snapshot, () =
+        run
+          ~environment
+          ~fix_envs:Bonsai.Private.Environment.Recursive.empty
+          ~path:Bonsai.Private.Path.empty
+          ~model
+          ~inject
+        |> Bonsai.Private.Trampoline.run
+      in
+      let%map view, extra = Bonsai.Private.Snapshot.result snapshot
+      and input =
+        Bonsai.Private.Input.to_incremental (Bonsai.Private.Snapshot.input snapshot)
+      and lifecycle = Bonsai.Private.Snapshot.lifecycle_or_empty snapshot ~here:[%here]
+      and model in
+      let schedule_event = Vdom.Effect.Expert.handle_non_dom_event_exn in
+      let apply_action action _state ~schedule_action:_ =
+        apply_action ~inject ~schedule_event (Some input) model action
+      in
+      let on_display state ~schedule_action:_ =
+        let diff =
+          Bonsai.Private.Lifecycle.Collection.diff state.State.last_lifecycle lifecycle
+        in
+        state.State.last_lifecycle <- lifecycle;
+        Vdom.Effect.Expert.handle_non_dom_event_exn diff;
+        Bonsai.Time_source.Private.trigger_after_display
+          Incr_dom.Start_app.Private.time_source;
+        For_profiling.log_all_computation_watcher_nodes_in_javascript_console ()
+      in
+      Incr_dom.Component.create_with_extra ~on_display ~extra ~apply_action model view
+    ;;
+
     let create ~input ~old_model:_ ~model ~inject =
-      create_generic run ~fresh ~input ~model ~inject ~apply_action
+      For_profiling.create_with_computation_watcher
+        ~computation
+        ~time_source
+        ~recursive_scopes
+        ~f:(create_generic ~fresh ~input ~model ~inject ~apply_action:info.apply_action)
+        info
     ;;
   end)
 ;;
 
-let convert_with_extra ?(optimize = false) component =
+let default_custom_connector _connector =
+  raise_s
+    [%message
+      "The component passed to [Bonsai_web.to_incr_dom] used a custom connector, but \
+       none was provided when the app was started. To fix this, use the \
+       [~custom_connector] argument when calling [Bonsai_web.Start.start]"]
+;;
+
+let convert_with_extra
+  ?(custom_connector = default_custom_connector)
+  ?(optimize = false)
+  component
+  =
   let fresh = Type_equal.Id.create ~name:"" sexp_of_opaque in
   let var = Bonsai.Private.(Value.named App_input fresh |> conceal_value) in
   let maybe_optimize = if optimize then Bonsai.Private.pre_process else Fn.id in
   let recursive_scopes = Bonsai.Private.Computation.Recursive_scopes.empty in
-  let (T { model; input = _; action; apply_action; run; reset = _; may_contain = _ }) =
-    component var
-    |> Bonsai.Private.top_level_handle
-    |> maybe_optimize
-    |> Bonsai.Private.gather
-         ~recursive_scopes
-         ~time_source:Incr_dom.Start_app.Private.time_source
+  let component input graph =
+    Rpc_effect.Private.with_connector
+      (function
+        | Self ->
+          Rpc_effect.Private.self_connector ~on_conn_failure:Retry_until_success ()
+        | Url url ->
+          Rpc_effect.Private.url_connector ~on_conn_failure:Retry_until_success url
+        | Custom custom -> custom_connector custom)
+      (fun graph -> component input graph)
+      graph
   in
-  convert_generic
-    ~run
-    ~fresh
-    ~action_type_id:action
-    ~apply_action
-    ~default_model:model.default
-    ~equal_model:model.equal
-    ~sexp_of_model:model.sexp_of
+  let computation = component var |> Bonsai.Private.top_level_handle |> maybe_optimize in
+  let time_source = Incr_dom.Start_app.Private.time_source in
+  let (T info) = Bonsai.Private.gather ~recursive_scopes ~time_source computation in
+  convert_generic ~computation ~fresh ~time_source ~recursive_scopes info
 ;;
 
-let convert ?optimize component =
-  convert_with_extra ?optimize (Bonsai.Arrow_deprecated.map component ~f:(fun r -> r, ()))
+let convert ?custom_connector ?optimize component =
+  convert_with_extra
+    ?custom_connector
+    ?optimize
+    (Bonsai.Arrow_deprecated.map component ~f:(fun r -> r, ()))
 ;;

@@ -24,8 +24,6 @@ It's critical that `parse_exn` and `unparse` "roundtrip":
 `unparse (parse_exn (x))` must equal `x`, and `parse_exn (unparse (y))`
 must equal `y`.
 
-```{=html}
-```
 Historically, these functions had to be written by hand. This gives
 total control over what the routes look like, but can be difficult to
 implement and invites tricky bugs.
@@ -154,7 +152,8 @@ You can use `Url_var.Typed.make`:
 ``` ocaml
   module Typed : sig
     val make
-      :  ?on_fallback_raises:'a
+      :  ?navigation:[ `Ignore | `Intercept ]
+      -> ?on_fallback_raises:'a
       -> ?encoding_behavior:Uri_parsing.Percent_encoding_behavior.t
       -> (module T with type t = 'a)
       -> 'a Uri_parsing.Versioned_parser.t

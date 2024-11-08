@@ -4,21 +4,16 @@
   border-spacing: 0;
 }
 
-.cell {
-}
+.cell {}
 
-.cell_focused {
-}
+.cell_focused {}
 
-.row {
-}
+.row {}
 
-.row_focused {
-}
+.row_focused {}
 
 /* Unused in this stylesheet but required to keep the types consistent */
-.autosize_table_cell_wrapper {
-}
+.autosize_table_cell_wrapper {}
 
 .header {
   background-color: var(--header-bg);
@@ -27,8 +22,7 @@
   border-spacing: 0;
 }
 
-.header_row {
-}
+.header_row {}
 
 .header_cell {
   text-align: center;
@@ -43,8 +37,7 @@
   border-bottom: 1px solid var(--header-body-border);
 }
 
-.body {
-}
+.body {}
 
 .body_cell {
   padding: 0.3em 0.5em;
@@ -72,8 +65,7 @@
   color: var(--cell-focused-fg);
 }
 
-.autosize_table_bottom_border_element {
-}
+.autosize_table_bottom_border_element {}
 
 /* Borders. Probably due to a browser bug, if we use full borders
 AND contain:paint (subset of strict) in PRT, we'll get weird, glitchy double borders.
@@ -112,7 +104,7 @@ Instead, cells/rows (except for the last cell/row) only paint their top/left bor
 }
 
 .body_row.body_row_focused,
-.body_row_focused > .body_cell {
+.body_row_focused>.body_cell {
   border-color: var(--row-focused-border);
 }
 
@@ -120,13 +112,14 @@ Instead, cells/rows (except for the last cell/row) only paint their top/left bor
 to rows, result in a massively slow "Recalculate Styles" step.
 For some reason, this does not have the same performance problem.
 This is likely a chrome bug. */
-.body_row_focused ~ .body_row {
+.body_row_focused~.body_row {
   border-color: var(--row-focused-border);
 }
 
-.body_row_focused ~ .body_row ~ .body_row {
+.body_row_focused~.body_row~.body_row {
   border-color: var(--body-body-border);
 }
-.body_row_focused ~ .body_row:last-child {
+
+.body_row_focused~.body_row:last-child {
   border-bottom-color: var(--body-body-border);
 }

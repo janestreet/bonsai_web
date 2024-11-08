@@ -5,7 +5,8 @@ open Js_of_ocaml
 module Bonsai_action = Bonsai.Private.Action
 module Tracker = Bonsai.Private.Stabilization_tracker
 
-let () = For_profiling.run_top_level_side_effects ()
+let () = Lazy.force For_profiling.run_top_level_side_effects
+let () = Lazy.force For_incr_node_introspection.run_top_level_side_effects
 
 module type Result_spec = sig
   type t
@@ -117,12 +118,9 @@ module Arrow_deprecated = struct
     ;;
   end
 
-  let make_instrumented_computation component =
-    Forward_performance_entries.instrument component
-  ;;
-
   let start_generic_poly
     (type input action_input input_and_inject model action result extra incoming outgoing)
+    ~recursive_scopes
     ~(simulate_body_focus_on_root_element : bool)
     ~(profile : bool)
     ~(get_app_result : result -> (extra, incoming) App_result.t)
@@ -224,12 +222,15 @@ module Arrow_deprecated = struct
           fun () ~schedule_event model action ->
             apply_action ~inject ~schedule_event (Some input) model action
         and on_display =
-          let%map lifecycle = Bonsai.Private.Snapshot.lifecycle_or_empty snapshot in
+          let%map lifecycle =
+            Bonsai.Private.Snapshot.lifecycle_or_empty ~here:[%here] snapshot
+          in
           fun () ~schedule_event ->
             Handle.set_started handle;
             schedule_event
               (Bonsai.Private.Lifecycle.Collection.diff !prev_lifecycle lifecycle);
             Bonsai.Time_source.Private.trigger_after_display time_source;
+            For_profiling.log_all_computation_watcher_nodes_in_javascript_console ();
             prev_lifecycle := lifecycle
         in
         let update_visibility model ~schedule_event:_ = model in
@@ -237,30 +238,12 @@ module Arrow_deprecated = struct
       ;;
 
       let create model ~old_model ~inject =
-        let open Incr.Let_syntax in
-        match%bind For_profiling.is_profiling with
-        | Debugging ->
-          let { Forward_performance_entries.instrumented_computation } =
-            make_instrumented_computation computation_for_instrumentation
-          in
-          let (T info') =
-            let recursive_scopes = Bonsai.Private.Computation.Recursive_scopes.empty in
-            Bonsai.Private.gather ~recursive_scopes ~time_source instrumented_computation
-          in
-          (match
-             Bonsai.Private.Meta.(
-               ( Model.Type_id.same_witness info.model.type_id info'.model.type_id
-               , Bonsai_action.Type_id.same_witness info.action info'.action
-               , Input.same_witness info.input info'.input ))
-           with
-           | Some T, Some T, Some T -> create model ~old_model ~inject info'.run
-           | _ ->
-             print_endline
-               "Not starting debugger. An error occurred while attempting to instrument \
-                the computation; the resulting computation does not typecheck. Reusing \
-                previously gathered run information to execute";
-             create model ~old_model ~inject info.run)
-        | Not_debugging -> create model ~old_model ~inject info.run
+        For_profiling.create_with_computation_watcher
+          ~recursive_scopes
+          ~computation:computation_for_instrumentation
+          ~time_source
+          ~f:(create model ~old_model ~inject)
+          info
       ;;
     end
     in
@@ -296,6 +279,9 @@ module Arrow_deprecated = struct
     ~bind_to_element_with_id
     ~component
     =
+    let module Profiling =
+      Incr_dom.Start_app.For_profiling.Performance_measure.For_bonsai_web_start_only
+    in
     Util.For_bonsai_internal.set_stack_overflow_exception_check ();
     let fresh = Type_equal.Id.create ~name:"" sexp_of_opaque in
     let var =
@@ -303,15 +289,25 @@ module Arrow_deprecated = struct
     in
     let time_source = Bonsai.Time_source.create ~start:(Time_ns.now ()) in
     let computation =
-      component var
-      |> Bonsai.Private.top_level_handle
-      |> if optimize then Bonsai.Private.pre_process else Fn.id
+      Profiling.timer_start ~profile Bonsai_graph_application;
+      let graph_applied = Bonsai.Private.top_level_handle (component var) in
+      Profiling.timer_stop ~profile Bonsai_graph_application;
+      if optimize
+      then (
+        Profiling.timer_start ~profile Bonsai_preprocess;
+        let optimized = Bonsai.Private.pre_process graph_applied in
+        Profiling.timer_stop ~profile Bonsai_preprocess;
+        optimized)
+      else graph_applied
     in
     let recursive_scopes = Bonsai.Private.Computation.Recursive_scopes.empty in
+    Profiling.timer_start ~profile Bonsai_gather;
     let (T info) = Bonsai.Private.gather ~recursive_scopes ~time_source computation in
+    Profiling.timer_stop ~profile Bonsai_gather;
     start_generic_poly
       ~simulate_body_focus_on_root_element
       ~profile
+      ~recursive_scopes
       ~get_app_result
       ~initial_input
       ~bind_to_element_with_id
@@ -415,8 +411,10 @@ module Proc = struct
     let computation =
       Rpc_effect.Private.with_connector
         (function
-          | Self -> Rpc_effect.Private.self_connector ()
-          | Url url -> Rpc_effect.Private.url_connector url
+          | Self ->
+            Rpc_effect.Private.self_connector ~on_conn_failure:Retry_until_success ()
+          | Url url ->
+            Rpc_effect.Private.url_connector ~on_conn_failure:Retry_until_success url
           | Custom custom -> custom_connector custom)
         computation
     in

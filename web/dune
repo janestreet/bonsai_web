@@ -1,13 +1,13 @@
 (library
  (name bonsai_web)
- (libraries async_kernel bonsai core_kernel.bus core
-   async_kernel.eager_deferred incr_dom core_kernel.moption
-   core_kernel.reversed_list bonsai_web_ui_view virtual_dom.ui_effect
-   virtual_dom.ui_effect_of_deferred incr_dom.ui_incr virtual_dom
-   bonsai.protocol bonsai.introspection_protocol async_rpc_kernel
-   polling_state_rpc versioned_polling_state_rpc async_durable babel uri
-   async_js incr_dom.javascript_profiling js_of_ocaml streamable
-   core_kernel.uuid)
+ (libraries am_running_how_js async_durable async_js async_kernel
+   async_rpc_kernel babel bonsai bonsai.introspection_protocol
+   bonsai.protocol bonsai_web_ui_view core_kernel.bus core
+   async_kernel.eager_deferred incr_dom incr_dom.javascript_profiling
+   js_of_ocaml core_kernel.moption polling_state_rpc
+   core_kernel.reversed_list streamable virtual_dom.ui_effect
+   virtual_dom.ui_effect_of_deferred bonsai_concrete.ui_incr uri
+   core_kernel.uuid versioned_polling_state_rpc virtual_dom)
  (preprocess
   (pps ppx_jane js_of_ocaml-ppx bonsai.ppx_bonsai))
  (public_name bonsai_web))

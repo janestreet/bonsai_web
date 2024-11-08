@@ -56,6 +56,7 @@ let iter_entries performance_observer_entry_list ~f =
 
 let performance_observer_ref = ref None
 let queue : Bonsai_protocol.Worker_message.t Queue.t = Queue.create ()
+let computation_watcher_queue = Queue.create ()
 let latest_graph_info = ref (Some Bonsai.Private.Graph_info.empty)
 let graph_info_changed = ref true
 
@@ -114,7 +115,10 @@ let commence_debugger () =
     PerformanceObserver.observe ~entry_types:[ "measure" ] ~f
   in
   performance_observer_ref := Some performance_observer;
-  Ui_incr.stabilize ()
+  Ui_incr.Incr.stabilize ();
+  (* Clear the watcher queue after the first stabilize so that the initialization
+     of the incrementals don't log to console *)
+  Queue.clear computation_watcher_queue
 ;;
 
 let start_profiling () =
@@ -132,6 +136,17 @@ let stop_profiling () =
   Javascript_profiling.clear_marks ();
   Javascript_profiling.clear_measures ();
   Ui_incr.stabilize ()
+;;
+
+let log_all_computation_watcher_nodes_in_javascript_console () =
+  Bonsai.Private.Computation_watcher.Output_queue.process_queue
+    ~f:(fun node ->
+      let open Js_of_ocaml in
+      let stringified_node = Bonsai.Private.Computation_watcher.Node.to_string node in
+      Js.Unsafe.global##.console##log
+        (Js.Optdef.return (Js.string "%O"))
+        (Js.Optdef.return (Js.string stringified_node)))
+    computation_watcher_queue
 ;;
 
 let init_global =
@@ -153,4 +168,60 @@ let init_global =
     | Not_debugging -> ()
 ;;
 
-let run_top_level_side_effects () = init_global ()
+type 'result t = { instrumented_computation : 'result Bonsai.Private.Computation.t }
+
+let instrument component =
+  let component =
+    Bonsai.Private.Graph_info.iter_graph_updates
+      component
+      ~on_update:set_latest_graph_info
+  in
+  let instrumented_computation =
+    Bonsai.Private.Instrumentation.instrument_computation
+      component
+      ~start_timer:(fun s -> s, Javascript_profiling.Timer.start ())
+      ~stop_timer:(fun (s, timer) ->
+        let measurement = Javascript_profiling.Timer.stop timer in
+        Javascript_profiling.measure s measurement)
+  in
+  { instrumented_computation }
+;;
+
+let create_with_computation_watcher
+  (type action_input model action result a)
+  ~(f :
+      (model, action, action_input, result, unit) Bonsai.Private.Computation.eval_fun
+      -> a Ui_incr.Incr.t)
+  ~(recursive_scopes : Bonsai.Private.Computation.Recursive_scopes.t)
+  ~(time_source : Bonsai.Time_source.t)
+  ~(computation : result Bonsai.Private.Computation.t)
+  (info : (model, action, action_input, result, unit) Bonsai.Private.Computation.info)
+  : a Ui_incr.Incr.t
+  =
+  let open Ui_incr.Incr.Let_syntax in
+  match%bind is_profiling with
+  | Debugging ->
+    let { instrumented_computation } = instrument computation in
+    let (T info') =
+      Bonsai.Private.Enable_computation_watcher.run
+        ~watcher_queue:computation_watcher_queue
+        instrumented_computation
+      |> Bonsai.Private.gather ~recursive_scopes ~time_source
+    in
+    (match
+       Bonsai.Private.Meta.(
+         ( Model.Type_id.same_witness info.model.type_id info'.model.type_id
+         , Bonsai.Private.Action.Type_id.same_witness info.action info'.action
+         , Input.same_witness info.input info'.input ))
+     with
+     | Some T, Some T, Some T -> f info'.run
+     | _ ->
+       print_endline
+         "Not starting computation watcher. An error occurred while attempting to \
+          instrument the computation; the resulting computation does not typecheck. \
+          Reusing previously gathered run information to execute";
+       f info.run)
+  | Not_debugging -> f info.run
+;;
+
+let run_top_level_side_effects = lazy (init_global ())

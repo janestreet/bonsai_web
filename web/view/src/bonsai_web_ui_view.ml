@@ -363,9 +363,7 @@ module For_components = struct
   end
 
   module Prt = struct
-    let styling ?(autosize = false) ((module T) : Theme.t) () =
-      T.singleton#prt_styling ~autosize ()
-    ;;
+    let styling ((module T) : Theme.t) = T.singleton#prt_styling
   end
 
   module Changelog = struct
