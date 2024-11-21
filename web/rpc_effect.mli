@@ -453,4 +453,18 @@ module Private : sig
   end
 end
 
+module Mock : sig
+  (** Turns a computation into a new computation that has access to some sort of
+      connection. This is the primitive and most powerful way of providing access to a
+      connection. Since it has access to the [Where_to_connect.t], it can create different
+      kinds of connections based on what is being connected to. This can be useful when
+      you want to run an existing client app in a mocked context, like for sandbox
+      testing. *)
+  val with_connector
+    :  (Where_to_connect.t -> Connector.t)
+    -> (Bonsai.graph -> 'a Bonsai.t)
+    -> Bonsai.graph
+    -> 'a Bonsai.t
+end
+
 module For_introspection = For_introspection

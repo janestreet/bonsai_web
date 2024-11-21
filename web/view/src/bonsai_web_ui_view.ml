@@ -9,7 +9,6 @@ module Card_title_kind = Constants.Card_title_kind
 module Font_style = Constants.Font_style
 module Font_size = Constants.Font_size
 module Table = Table
-module For_prt = For_prt
 include Layout
 
 let primary_colors ((module T) : Theme.t) = T.singleton#constants.primary
@@ -364,9 +363,7 @@ module For_components = struct
   end
 
   module Prt = struct
-    let styling ?(autosize = false) ((module T) : Theme.t) () =
-      T.singleton#prt_styling ~autosize ()
-    ;;
+    let styling ((module T) : Theme.t) = T.singleton#prt_styling
   end
 
   module Changelog = struct

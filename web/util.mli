@@ -12,8 +12,7 @@ open! Js_of_ocaml
     - [`Browser_benchmark] means that the code is being run in the browser as part of a
       benchmark
     - [`Browser] means that the code is being run in a browser but not as part of a
-      benchmark
-*)
+      benchmark *)
 val am_running_how
   : [ `Browser
     | `Browser_test
@@ -33,8 +32,7 @@ val am_running_how
     this check is not within a disabled fieldset (or vice versa).
     For example, mousemove events will originate from the element under the mouse, so if
     the mouse is over a different disabled form, [am_within_disabled_fieldset] will be
-    [true], even if the component which performs this check is not.
-*)
+    [true], even if the component which performs this check is not. *)
 val am_within_disabled_fieldset : #Dom_html.event Js.t -> bool
 
 module For_bonsai_internal : sig

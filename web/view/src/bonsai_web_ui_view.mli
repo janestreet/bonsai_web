@@ -60,7 +60,6 @@ end
     [Theme.override_constants_temporarily]. *)
 
 module Constants = Constants
-module For_prt = For_prt
 
 (** A getter for the constants in a theme. *)
 val constants : Theme.t -> Constants.t
@@ -595,7 +594,7 @@ module For_components : sig
   end
 
   module Prt : sig
-    val styling : ?autosize:bool -> Theme.t -> unit -> For_prt.t
+    val styling : Theme.t -> Bonsai_web_ui_partial_render_table_styling.t
   end
 
   module Changelog : sig

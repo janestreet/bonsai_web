@@ -1,0 +1,31 @@
+(library
+ (name bonsai_web_ui_partial_render_table_styling)
+ (public_name bonsai_web.web_ui_partial_render_table_styling)
+ (libraries core virtual_dom.css_gen virtual_dom)
+ (preprocess
+  (pps ppx_jane bonsai.ppx_bonsai ppx_css js_of_ocaml-ppx)))
+
+(rule
+ (targets autosize_cols_table_styling.ml autosize_cols_table_styling.mli
+   autosize_cols_table_styling__generated.ml
+   autosize_cols_table_styling__generated.mli)
+ (deps autosize_cols_table_styling.css)
+ (action
+  (bash "%{bin:css_inliner} %{deps} \"()\"")))
+
+(rule
+ (targets default_table_styling.ml default_table_styling.mli
+   default_table_styling__generated.ml default_table_styling__generated.mli)
+ (deps default_table_styling.css)
+ (action
+  (bash "%{bin:css_inliner} %{deps} \"()\"")))
+
+(rule
+ (targets autosize_cols_vs_default_table_styling.diff)
+ (deps autosize_cols_table_styling.css default_table_styling.css)
+ (action
+  (bash "%{bin:patdiff-for-review} %{bin:patdiff} %{deps} > %{targets}")))
+
+(alias
+ (name DEFAULT)
+ (deps autosize_cols_vs_default_table_styling.diff))

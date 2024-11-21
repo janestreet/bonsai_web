@@ -390,6 +390,10 @@ module Private = struct
   end
 end
 
+module Mock = struct
+  let with_connector = Private.with_connector
+end
+
 module Poll_result = struct
   type ('query, 'response) t =
     { last_ok_response : ('query * 'response) option

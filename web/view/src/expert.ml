@@ -384,8 +384,27 @@ let default_theme =
 
           method codemirror_theme : For_codemirror.Theme.t option = None
 
-          method prt_styling ?(autosize = false) () =
-            For_prt.default ~autosize self#constants
+          method prt_styling =
+            Bonsai_web_ui_partial_render_table_styling.create
+              { colors =
+                  { page_bg = self#constants.primary.background
+                  ; page_fg = self#constants.primary.foreground
+                  ; header_bg = self#constants.table.header_row.background
+                  ; header_fg = self#constants.table.header_row.foreground
+                  ; row_even_bg = self#constants.table.body_row_even.background
+                  ; row_even_fg = self#constants.table.body_row_even.foreground
+                  ; row_odd_bg = self#constants.table.body_row_odd.background
+                  ; row_odd_fg = self#constants.table.body_row_odd.foreground
+                  ; cell_focused_bg = self#constants.table.body_cell_focused.background
+                  ; cell_focused_fg = self#constants.table.body_cell_focused.foreground
+                  ; row_focused_bg = self#constants.table.body_row_focused.background
+                  ; row_focused_fg = self#constants.table.body_row_focused.foreground
+                  ; row_focused_border = self#constants.table.body_row_focused_border
+                  ; header_header_border = self#constants.table.header_header_border
+                  ; body_body_border = self#constants.table.body_body_border
+                  ; header_body_border = self#constants.table.header_body_border
+                  }
+              }
 
           method changelog_styling = For_changelog.default self#constants
 
