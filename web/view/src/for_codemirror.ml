@@ -11,5 +11,6 @@ module Theme = struct
     | Material_dark
     | Vscode_dark
     | Vscode_light
+    | Vscode_default
   [@@deriving sexp_of]
 end

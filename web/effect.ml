@@ -30,8 +30,8 @@ module Focus = struct
     in
     let open Bonsai.Let_syntax in
     fun ?name_for_testing () ->
-      match Util.am_running_how with
-      | `Node_test | `Node_jsdom_test | `Node_benchmark | `Node ->
+      match Am_running_how_js.am_in_browser_like_api with
+      | false ->
         let print_effect_focus, print_effect_blur =
           Option.value_map
             name_for_testing
@@ -46,7 +46,7 @@ module Focus = struct
             ; focus = print_effect_focus
             ; blur = print_effect_blur
             }
-      | `Browser | `Browser_test | `Browser_benchmark ->
+      | true ->
         fun (local_ graph) ->
           let path = Bonsai.path_id graph in
           let%arr path in
@@ -76,4 +76,18 @@ let reload_page =
 
 let alert =
   of_sync_fun (fun s -> Js_of_ocaml.Dom_html.window##alert (Js_of_ocaml.Js.string s))
+;;
+
+let set_document_title =
+  of_sync_fun (fun title ->
+    match Am_running_how_js.am_in_browser_like_api with
+    | false -> Core.print_s [%message "set document title" (title : string)]
+    | true -> Js_of_ocaml.Dom_html.document##.title := Js_of_ocaml.Js.string title)
+;;
+
+let on_change_set_document_title title =
+  Bonsai.Edge.on_change
+    ~equal:String.equal
+    title
+    ~callback:(Bonsai.return set_document_title)
 ;;

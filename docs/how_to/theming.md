@@ -1,5 +1,9 @@
 # `Bonsai.View` and Theming
 
+NOTE: We are in the process of deprecating the `theme` API and
+`Bonsai_web_ui_view` in favor of styled UI component libraries. We do
+not recommend using `theme` in new apps.
+
 The `Bonsai_web.View` library defines themable, higher-level helpers for
 common UI patterns and elements. It enables the creation of unstyled,
 "functional" UI components.
@@ -27,9 +31,9 @@ let flex_container =
   Vdom.Node.div
     ~attrs:
       [ {%css|
-            flex-direction: row;
-            flex-wrap: wrap;
-          |}
+          flex-direction: row;
+          flex-wrap: wrap;
+        |}
       ]
     [ text_a; text_b; text_c ]
 ;;

@@ -177,7 +177,7 @@ want to augment an `int` textbox with its error message:
 ```
 ``` ocaml
 let display_error error =
-  View.text ~attrs:[ [%css {|color: red;|}] ] [%string "⚠  %{Error.to_string_hum error}"]
+  View.text ~attrs:[ {%css|color: red;|} ] [%string "⚠  %{Error.to_string_hum error}"]
 ;;
 
 let int_with_error_display (local_ graph) =
@@ -186,7 +186,7 @@ let int_with_error_display (local_ graph) =
   Form.map_view textbox ~f:(fun view ->
     let error_display =
       match Form.value textbox with
-      | Ok _ -> Vdom.Node.none_deprecated [@alert "-deprecated"]
+      | Ok _ -> Vdom.Node.none
       | Error error -> display_error error
     in
     View.hbox ~gap:(`Px 5) [ view; error_display ])
@@ -210,7 +210,7 @@ general function which adds a submit button underneath a form:
 let with_submit_button (form : ('a, 'view) Form.t) ~(on_submit : 'a -> unit Effect.t) =
   let submit_button ~extra_attrs =
     Vdom.Node.button
-      ~attrs:([%css {|width: max-content;|}] :: extra_attrs)
+      ~attrs:({%css|width: max-content;|} :: extra_attrs)
       [ Vdom.Node.text "Submit!" ]
   in
   Form.map_view form ~f:(fun view ->

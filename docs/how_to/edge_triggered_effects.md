@@ -42,3 +42,6 @@ Declarative programs are easy to reason about and test. Extensive use of
 the `Edge` module will make your program less and less declarative. As a
 general rule, you should try to avoid using `Edge` if other, more
 declarative solutions exist.
+
+Try very hard to [avoid using `Edge` to synchronize Bonsai
+states](./organizing_state.mdx).

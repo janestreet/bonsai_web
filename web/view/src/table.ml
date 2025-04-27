@@ -276,7 +276,7 @@ module Default_table_styling =
         display: block;
         width: 100%;
       }
-      |}]
+    |}]
 
 let table_attr (constants : Constants.t) =
   let vars =

@@ -4,12 +4,12 @@
   }
 
   .app.dark {
-    color-scheme:dark;
+    color-scheme: dark;
     background: var(--bg, #1a1d21);
   }
-  
+
   .app.light {
-    color-scheme:light;
+    color-scheme: light;
     background: var(--bg, #e5e2de);
   }
 }

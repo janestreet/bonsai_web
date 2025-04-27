@@ -59,7 +59,7 @@ let default (constants : Constants.t) =
             border-top: 1px solid #ddd;
           }
         }
-        |}]
+      |}]
   in
   let chip_color (entry_type : Entry_type.t) =
     match entry_type with

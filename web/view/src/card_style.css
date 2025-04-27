@@ -12,18 +12,18 @@
   }
 
   :not(.card_legend).title-text {
-    color:var(--intent-fg);
+    color: var(--intent-fg);
     padding-left: 0.5em;
     padding-right: 0.25em;
   }
 
   .card_legend.title-text {
-    color:var(--intent-fg);
+    color: var(--intent-fg);
     margin-left: 0.25em;
   }
 
   :not(.card_legend).title-bar {
-    background :var(--intent-bg);
+    background: var(--intent-bg);
     border-radius: 2px;
   }
 

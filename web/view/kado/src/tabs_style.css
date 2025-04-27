@@ -19,8 +19,8 @@
   }
 
   .tab_button.selected,
-  .tab_button.selected:hover { 
-    opacity: 1.0;
+  .tab_button.selected:hover {
+    opacity: 1;
   }
 
   .tab_button:hover {

@@ -50,7 +50,7 @@ let modal
   in
   let view =
     match%sub is_open with
-    | false -> Bonsai.return (Vdom.Node.none_deprecated [@alert "-deprecated"])
+    | false -> Bonsai.return Vdom.Node.none
     | true ->
       (* only instantiate [content] here in the [true] branch *)
       let%arr content = content graph
@@ -63,19 +63,18 @@ let modal
       in
       Vdom.Node.div
         ~attrs:
-          [ [%css
-              {|
-                position: fixed;
-                top: 0;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                height: fit-content;
-                width: fit-content;
-                margin: auto;
-                border: 1px solid black;
-                background-color: white;
-              |}]
+          [ {%css|
+              position: fixed;
+              top: 0;
+              bottom: 0;
+              left: 0;
+              right: 0;
+              height: fit-content;
+              width: fit-content;
+              margin: auto;
+              border: 1px solid black;
+              background-color: white;
+            |}
           ]
         [ Vdom.Node.h1 [ title; close_button ]; content ]
   in
@@ -106,7 +105,7 @@ let modal_example (local_ graph) =
   let { view = modal_view; open_modal } = modal ~title ~content graph in
   let%arr modal_view and open_modal in
   Vdom.Node.div
-    ~attrs:[ [%css {|height: 400px;|}] ]
+    ~attrs:[ {%css|height: 400px;|} ]
     [ modal_view
     ; Vdom.Node.button
         ~attrs:[ Vdom.Attr.on_click (fun _ -> open_modal) ]

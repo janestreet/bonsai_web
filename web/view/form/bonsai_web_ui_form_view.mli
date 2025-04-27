@@ -118,10 +118,10 @@ and field =
   }
 [@@deriving sexp_of]
 
-(** [of_vdom] creates a Form's view from a raw [Vdom.Node.t]. [unique_key] is used to disambiguate
-    different input fields during [Vdom] diffing and patching, as well as linking a label
-    to the input. That is, if you attach the supplied [unique_key] to a text input, then users who
-    click on the label will focus the textbox.
+(** [of_vdom] creates a Form's view from a raw [Vdom.Node.t]. [unique_key] is used to
+    disambiguate different input fields during [Vdom] diffing and patching, as well as
+    linking a label to the input. That is, if you attach the supplied [unique_key] to a
+    text input, then users who click on the label will focus the textbox.
 
     Because unique keys are required to be unique, you should ~always use [Bonsai.path_id]
     to generate the [unique keys] that you pass. *)
@@ -142,8 +142,8 @@ val tuple : t list -> t
 val record : field list -> t
 
 (** [variant] takes a selector for selecting which variant case, as well as an optional
-    [selected_clause] which contains the name of the currently selected clause and the
-    [t] representing that clause's arguments. *)
+    [selected_clause] which contains the name of the currently selected clause and the [t]
+    representing that clause's arguments. *)
 val variant : clause_selector:Vdom.Node.t -> selected_clause:clause option -> t
 
 (** [option] takes a [toggle] for switching between [None] and [Some _], as well as a
@@ -161,8 +161,8 @@ val option : toggle:Vdom.Node.t -> status:option_status -> t
 
     [collapsible_state] can be:
     - [Collapsed None] if the view is collapsed and we shouldn't render any subform
-    - [Collapsed (Some view)] if the view is collapsed but we want to render a subform
-      in this case (e.g. displaying [...] in a code editor when folded)
+    - [Collapsed (Some view)] if the view is collapsed but we want to render a subform in
+      this case (e.g. displaying [...] in a code editor when folded)
     - [Expanded view] if the view is expanded and [view] is the subform to show *)
 val collapsible : label:Vdom.Node.t -> state:collapsed_state -> t
 
@@ -179,8 +179,8 @@ val list_item : view:t -> remove_item:remove_item -> list_item
 
     [append_item] can either be:
     - [Append_info { append; text }] in which case the rendering function will decide how
-      to render an append button with [append] being scheduled on click and [text] being the
-      text for the button
+      to render an append button with [append] being scheduled on click and [text] being
+      the text for the button
     - [Append_view view] in which case [view] will be used as the append button *)
 val list
   :  append_item:append_item

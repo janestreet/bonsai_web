@@ -23,7 +23,7 @@ module Vdom = struct
 end
 
 module State_examples = struct
-  let counter_ui (local_ graph) =
+  let counter (local_ graph) =
     Bonsai.return Vdom.Node.none
 end
 
@@ -58,7 +58,7 @@ let maybe_show_naive show (local_ graph) =
   let counter = counter ~step:(return 1) graph in
   let%arr counter and show in
   match show with
-  | false -> Vdom.Node.none_deprecated [@alert "-deprecated"]
+  | false -> Vdom.Node.none
   | true -> counter
 ;;
 ```
@@ -84,7 +84,7 @@ We can avoid this and get a performance boost using Bonsai's
 let maybe_show show (local_ graph) =
   let counter = counter ~step:(return 1) graph in
   match%sub show with
-  | false -> Bonsai.return (Vdom.Node.none_deprecated [@alert "-deprecated"])
+  | false -> Bonsai.return Vdom.Node.none
   | true -> counter
 ;;
 ```
@@ -120,7 +120,7 @@ let maybe_show_2 show (local_ graph) =
   match%sub show with
   | `Count_by_1 -> counter ~step:(return 1) graph
   | `Count_by_2 -> counter ~step:(return 2) graph
-  | `No -> Bonsai.return (Vdom.Node.none_deprecated [@alert "-deprecated"])
+  | `No -> Bonsai.return Vdom.Node.none
 ;;
 ```
 
@@ -158,7 +158,7 @@ allowing us to conditionally access data:
 let maybe_show_var show (local_ graph) =
   match%sub show with
   | `Count_by step -> counter ~step graph
-  | `No -> Bonsai.return (Vdom.Node.none_deprecated [@alert "-deprecated"])
+  | `No -> Bonsai.return Vdom.Node.none
 ;;
 ```
 
@@ -183,7 +183,7 @@ let maybe_show_var_guard show (local_ graph) =
   | `Count_by step when Int.equal step 1 -> counter ~step graph
   | `Count_by step when Int.equal step 4 -> counter ~step graph
   | `Count_by step -> counter ~step graph
-  | `No -> Bonsai.return (Vdom.Node.none_deprecated [@alert "-deprecated"])
+  | `No -> Bonsai.return Vdom.Node.none
 ;;
 ```
 
@@ -210,7 +210,7 @@ let maybe_show_var_scope_model show (local_ graph) =
       ~on:step
       ~for_:(fun (local_ graph) -> counter ~step graph)
       graph
-  | `No -> Bonsai.return (Vdom.Node.none_deprecated [@alert "-deprecated"])
+  | `No -> Bonsai.return Vdom.Node.none
 ;;
 ```
 
@@ -222,10 +222,8 @@ let maybe_show_var_scope_model show (local_ graph) =
 ```
 ## Creating a Dynamic Number of `Bonsai.t`s
 
-```{=html}
-```
 In the [last chapter](./04-state.mdx), we created two separate counters
-by calling `counter_ui graph` twice. But what if we want to create `n`
+by calling `counter graph` twice. But what if we want to create `n`
 counters, where `n` is an `int Bonsai.t` that can change at runtime?
 
 Let's try to build this with the tools we have:
@@ -234,11 +232,11 @@ Let's try to build this with the tools we have:
 # let multiple_counters (n : int Bonsai.t) (local_ graph) =
   let%arr n = n in
   let (counters : Vdom.Node.t Bonsai.t list) =
-    List.init n ~f:(fun _ -> State_examples.counter_ui graph)
+    List.init n ~f:(fun _ -> State_examples.counter graph)
   in
   let%arr counters = Bonsai.all counters in
   Vdom.Node.div counters
-Line 4, characters 56-61:
+Line 4, characters 53-58:
 Error: The value graph is local, so cannot be used inside a function that might escape.
 Hint: The function might escape because it is an argument to a tail call
 ```
@@ -257,7 +255,7 @@ Instead, we can use Bonsai's `assoc` primitive:
 ``` ocaml
 val assoc
   :  here:[%call_pos]
-  -> ('k, 'cmp) Bonsai.comparator
+  -> ('k, 'cmp) Comparator.Module.t
   -> ('k, 'v, 'cmp) Map.t Bonsai.t
   -> f:('k Bonsai.t -> 'v Bonsai.t -> local_ Bonsai.graph -> 'result Bonsai.t)
   -> local_ Bonsai.graph
@@ -272,7 +270,7 @@ with the ability to use `graph` to instantiate things per-key.
 ```{=html}
 <aside>
 ```
-`Bonsai.comparator` is a first class module with a `type t` and a
+`Comparator.Module.t` is a first class module with a `type t` and a
 `sexp_of` function.
 ```{=html}
 </aside>
@@ -296,6 +294,7 @@ let multiple_counters (input : unit Int.Map.t Bonsai.t) (local_ graph) =
       input
       ~f:(fun key (_ : unit Bonsai.t) (local_ graph) ->
         let%arr key
+        (* [counter_ui] is like [counter] but only returns the view. *)
         and counter = State_examples.counter_ui graph in
         Vdom.Node.tr
           [ Vdom.Node.td [ Vdom.Node.textf "counter #%d:" key ]

@@ -12,11 +12,10 @@ let two_counters (local_ graph) =
   and counter2 = State_examples.counter_ui graph in
   Vdom.Node.div
     ~attrs:
-      [ [%css
-          {|
-            border: 1px solid black;
-            padding: 4px;
-          |}]
+      [ {%css|
+          border: 1px solid black;
+          padding: 4px;
+        |}
       ]
     [ counter1; counter2 ]
 ;;
@@ -56,11 +55,10 @@ let resettable_counters_from_inside (local_ graph) =
       and reset in
       Vdom.Node.div
         ~attrs:
-          [ [%css
-              {|
-                border: 1px solid black;
-                padding: 4px;
-              |}]
+          [ {%css|
+              border: 1px solid black;
+              padding: 4px;
+            |}
           ]
         [ counter1
         ; Vdom.Node.button
@@ -287,7 +285,7 @@ end
 
 let order_manager (exchange : Exchange.t) (local_ graph) =
   let model, inject_action =
-    Bonsai.state_machine0
+    Bonsai.state_machine
       ~default_model:Model.empty
       ~apply_action:
         (fun
@@ -378,15 +376,15 @@ orders.
 
 Resetting the model doesn't automatically cancel our open orders on the
 exchange: we need to do this ourselves. We'll change the use of
-`Bonsai.state_machine0`, providing a `reset` implementation that uses
-the `Apply_action_context.t` parameter:
+`Bonsai.state_machine`, providing a `reset` implementation that uses the
+`Apply_action_context.t` parameter:
 
 ```{=html}
 <!-- $MDX file=../../examples/bonsai_guide_code/state_reset_examples.ml,part=order_manager_with_reset -->
 ```
 ``` ocaml
   let model, inject_action =
-    Bonsai.state_machine0
+    Bonsai.state_machine
       ~default_model:Model.empty
       ~apply_action:
         (fun

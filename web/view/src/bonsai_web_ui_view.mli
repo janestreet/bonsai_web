@@ -2,9 +2,8 @@ open! Core
 open! Import
 module Bonsai := Bonsai.Cont
 
-(** Docs: {{: bonsai/docs/how_to/theming.mdx}}
-    Examples: {{: bonsai/examples/bonsai_view/main.ml}}
-*)
+(** Docs: {:bonsai/docs/how_to/theming.mdx} Examples:
+    {:bonsai/examples/bonsai_view/main.ml} *)
 
 module Theme : sig
   type t
@@ -15,9 +14,9 @@ module Theme : sig
   (** Fetches the theme currently installed into Bonsai's scope. *)
   val current : local_ Bonsai.graph -> t Bonsai.t
 
-  (** Sets the given theme as 'current' for the provided computation, and registers
-      the returned Vdom node as the "application-node" giving it the power to do things
-      like set the window's background color and font-family. *)
+  (** Sets the given theme as 'current' for the provided computation, and registers the
+      returned Vdom node as the "application-node" giving it the power to do things like
+      set the window's background color and font-family. *)
   val set_for_app
     :  t Bonsai.t
     -> (local_ Bonsai.graph -> Vdom.Node.t Bonsai.t)
@@ -55,8 +54,8 @@ end
 
 (** {1 Constants}
 
-    Themes have a set of associated constants, which can be accessed by the functions
-    in this section.  These constants may be overritten by calling
+    Themes have a set of associated constants, which can be accessed by the functions in
+    this section. These constants may be overritten by calling
     [Theme.override_constants_temporarily]. *)
 
 module Constants = Constants
@@ -75,9 +74,9 @@ module Fg_bg : sig
 end
 
 module Intent : sig
-  (** An [Intent.t] is an indicator to the component that it should render
-      the component differently.  Usually this means incorporating the
-      intent-colors as defined by the theme. *)
+  (** An [Intent.t] is an indicator to the component that it should render the component
+      differently. Usually this means incorporating the intent-colors as defined by the
+      theme. *)
 
   type t =
     | Info
@@ -90,8 +89,8 @@ end
 (** A getter for the primary colors in a theme. *)
 val primary_colors : Theme.t -> Fg_bg.t
 
-(** A getter for the "extreme" colors.  Extreme colors mimic the primary colors,
-    but have a higher contrast ratio. *)
+(** A getter for the "extreme" colors. Extreme colors mimic the primary colors, but have a
+    higher contrast ratio. *)
 val extreme_colors : Theme.t -> Fg_bg.t
 
 (* A color that is used for the border between a [primary] and [extreme] color set *)
@@ -103,8 +102,8 @@ val intent_colors : Theme.t -> Intent.t -> Fg_bg.t
 type 'a format := ('a, unit, string, Vdom.Node.t) format4
 
 (** {1 Text}
-    The text functions render a <span> of text with optional attributes.
-    [textf] can be used with format syntax. *)
+    The text functions render a <span> of text with optional attributes. [textf] can be
+    used with format syntax. *)
 
 val text : ?attrs:Vdom.Attr.t list -> string -> Vdom.Node.t
 val textf : ?attrs:Vdom.Attr.t list -> 'a format -> 'a
@@ -150,17 +149,17 @@ val themed_textf
 
 (** {1 Layout}
 
-    Layout helper functions are used to wrap other vdom nodes inside a container.
-    [hbox] and [vbox] both use css "flexbox", for more, read this documentation:
+    Layout helper functions are used to wrap other vdom nodes inside a container. [hbox]
+    and [vbox] both use css "flexbox", for more, read this documentation:
 
     https://css-tricks.com/snippets/css/a-guide-to-flexbox/
 
-    The only terminology difference between the css properties and our function
-    arguments is that we refer to "justify-content" as "main_axis_alignment"
-    and "align-items" as "cross_axis_alignment".
+    The only terminology difference between the css properties and our function arguments
+    is that we refer to "justify-content" as "main_axis_alignment" and "align-items" as
+    "cross_axis_alignment".
 
-    Layout helpers do not take a Theme.t as input because themes should not
-    be able to influence a layout explicitly requested by the user. *)
+    Layout helpers do not take a Theme.t as input because themes should not be able to
+    influence a layout explicitly requested by the user. *)
 
 module Flex = Layout.Flex
 
@@ -184,8 +183,7 @@ val vbox
   -> Vdom.Node.t list
   -> Vdom.Node.t
 
-(** A horizontal flexbox container whose content will wrap
-    onto multiple rows if necessary *)
+(** A horizontal flexbox container whose content will wrap onto multiple rows if necessary *)
 val hbox_wrap
   :  ?attrs:Vdom.Attr.t list
   -> ?row_gap:Css_gen.Length.t
@@ -197,8 +195,8 @@ val hbox_wrap
   -> Vdom.Node.t list
   -> Vdom.Node.t
 
-(** A vertical flexbox container whose content will wrap
-    onto multiple columns if necessary *)
+(** A vertical flexbox container whose content will wrap onto multiple columns if
+    necessary *)
 val vbox_wrap
   :  ?attrs:Vdom.Attr.t list
   -> ?row_gap:Css_gen.Length.t
@@ -219,10 +217,10 @@ val vbox_wrap
     Optional and named arguments:
 
     - [attr], if provided, will be attached to the topmost button element.
-    - [disabled] defaults to false.  If provided (and set to true), the button
-      will be marked as disabled and will be unclickable.
-    - [intent] is used by the theme to color and style the button to indicate
-      the intent of the button.
+    - [disabled] defaults to false. If provided (and set to true), the button will be
+      marked as disabled and will be unclickable.
+    - [intent] is used by the theme to color and style the button to indicate the intent
+      of the button.
     - [tooltip] is used to display some text near the button when hovered.
     - [on_click] contains an effect to schedule when the button is clicked
 
@@ -237,8 +235,8 @@ val button
   -> string
   -> Vdom.Node.t
 
-(** Same as [button] but the contents of the button are specified as a list
-    of vdom nodes instead of as a string *)
+(** Same as [button] but the contents of the button are specified as a list of vdom nodes
+    instead of as a string *)
 val button'
   :  Theme.t
   -> ?attrs:Vdom.Attr.t list
@@ -267,8 +265,8 @@ module Tooltip_alignment : sig
   [@@deriving sexp, sexp_grammar, equal, compare, enumerate]
 end
 
-(** Tooltips can be used to provide additional information to a user when they
-    hover over an element.
+(** Tooltips can be used to provide additional information to a user when they hover over
+    an element.
 
     [hoverable_inside] defaults to false. *)
 val tooltip_attr
@@ -301,8 +299,8 @@ module Tooltip_direction : sig
     | Left
 end
 
-(** Tooltips can be used to provide more information to a user when they
-    hover over an element. *)
+(** Tooltips can be used to provide more information to a user when they hover over an
+    element. *)
 val tooltip
   :  Theme.t
   -> ?container_attrs:Vdom.Attr.t list
@@ -312,8 +310,8 @@ val tooltip
   -> string
   -> Vdom.Node.t
 
-(** [tooltip'] is just like [tooltip] except that it allows both the tooltip
-    and the wrapped element to be arbitrary vdom nodes instead of just [string] *)
+(** [tooltip'] is just like [tooltip] except that it allows both the tooltip and the
+    wrapped element to be arbitrary vdom nodes instead of just [string] *)
 val tooltip'
   :  Theme.t
   -> ?container_attrs:Vdom.Attr.t list
@@ -326,8 +324,8 @@ val tooltip'
 (** A badge is a small bit of text with a background, usually used as a label or to
     provide context.
 
-    If [on_dismiss] is provided, the badge will have a dismiss button, which will run
-    the provided effect on click. *)
+    If [on_dismiss] is provided, the badge will have a dismiss button, which will run the
+    provided effect on click. *)
 val badge
   :  Theme.t
   -> ?attrs:Vdom.Attr.t list
@@ -336,7 +334,7 @@ val badge
   -> string
   -> Vdom.Node.t
 
-(** Like [badge], but contents can be any list of vdom nodes.  *)
+(** Like [badge], but contents can be any list of vdom nodes. *)
 val badge'
   :  Theme.t
   -> ?attrs:Vdom.Attr.t list
@@ -345,8 +343,8 @@ val badge'
   -> Vdom.Node.t list
   -> Vdom.Node.t
 
-(** Builds a horizontally-aligned grouping of tabs, keyed on an item representing
-    the tab, with one of those items serving to indicate the currently active tab. *)
+(** Builds a horizontally-aligned grouping of tabs, keyed on an item representing the tab,
+    with one of those items serving to indicate the currently active tab. *)
 val tabs
   :  Theme.t
   -> ?attrs:Vdom.Attr.t list
@@ -368,8 +366,8 @@ val tabs_enum
   -> active:'a
   -> Vdom.Node.t
 
-(** A devbar is the attention-catching bar across the top of an app to indicate that
-    the user isn't on a production instance of the application. *)
+(** A devbar is the attention-catching bar across the top of an app to indicate that the
+    user isn't on a production instance of the application. *)
 val devbar
   :  Theme.t
   -> ?attrs:Vdom.Attr.t list
@@ -382,7 +380,8 @@ module Card_title_kind : sig
   type t =
     | Prominent (** Rendered in an easier to see bar. Use to make your title stand out. *)
     | Discreet
-    (** Title is rendered alongside the top of the border of the card in a more discrete way. Use to give structure to your content. *)
+    (** Title is rendered alongside the top of the border of the card in a more discrete
+        way. Use to give structure to your content. *)
 end
 
 (** A "card" is a way of highlighting important messages, and to also bring some
@@ -416,16 +415,16 @@ val card'
 (** A module for building tables *)
 module Table : sig
   module Col : sig
-    (** A ['a Col.t] represents a column (or set of columns) that defines a way
-        to render cells from a row in the table that has type ['a]. *)
+    (** A ['a Col.t] represents a column (or set of columns) that defines a way to render
+        cells from a row in the table that has type ['a]. *)
     type 'a t
 
-    (** [make] builds a column for a row ['a] by providing a getter ['a -> 'b] and
-        a renderer for the ['b].  The first parameter is a string that is used for
-        the label of the column.
+    (** [make] builds a column for a row ['a] by providing a getter ['a -> 'b] and a
+        renderer for the ['b]. The first parameter is a string that is used for the label
+        of the column.
 
-        [header_attr] is an optional attribute attached to the <th> element containing
-        the label.
+        [header_attr] is an optional attribute attached to the <th> element containing the
+        label.
 
         [cell_attr] is for building attribute that will be attached to the <td> element
         containing the rendered content of the cell. *)
@@ -437,8 +436,8 @@ module Table : sig
       -> render:(Theme.t -> 'b -> Vdom.Node.t)
       -> 'a t
 
-    (** [make_opt] is the same as [make] except that the return value from [get] can
-        be an option *)
+    (** [make_opt] is the same as [make] except that the return value from [get] can be an
+        option *)
     val make_opt
       :  ?cell_attrs:('b -> Vdom.Attr.t list)
       -> ?header_attrs:Vdom.Attr.t list
@@ -447,8 +446,8 @@ module Table : sig
       -> render:(Theme.t -> 'b -> Vdom.Node.t)
       -> 'a t
 
-    (** [group] produces a column group over the provided list of columns with the
-        string parameter being used as the label for the group.
+    (** [group] produces a column group over the provided list of columns with the string
+        parameter being used as the label for the group.
 
         [header_attr] behaves the same as it does for the [make] function *)
     val group : ?header_attrs:Vdom.Attr.t list -> string -> 'a t list -> 'a t
@@ -456,8 +455,8 @@ module Table : sig
     (* [lift] is used to move a column group from one type to another *)
     val lift : 'a t -> f:('b -> 'a) -> 'b t
 
-    (** The remaining "prime" functions in this module are identical to their
-        "non-prime" versions except that the "label" argument is an arbitrary Vdom node.*)
+    (** The remaining "prime" functions in this module are identical to their "non-prime"
+        versions except that the "label" argument is an arbitrary Vdom node. *)
 
     val make'
       :  ?cell_attrs:('b -> Vdom.Attr.t list)
@@ -649,5 +648,6 @@ end
 
 (** The [Raw] module contains helper functions for building vdom nodes that have styling
     pulled from a theme, but rely on the user to properly structure and organize the nodes
-    manually.  You probably shouldn't use these APIs if the standard functions are sufficient *)
+    manually. You probably shouldn't use these APIs if the standard functions are
+    sufficient *)
 module Raw : Raw_intf.S with module Theme := Theme

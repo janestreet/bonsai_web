@@ -38,12 +38,11 @@ it is attached to:
 let view =
   Vdom.Node.div
     ~attrs:
-      [ [%css
-          {|
-            background-color: tomato;
-            min-width: 2rem;
-            min-height: 2rem;
-          |}]
+      [ {%css|
+          background-color: tomato;
+          min-width: 2rem;
+          min-height: 2rem;
+        |}
       ]
     [ Vdom.Node.text "Very Red Background" ]
 ;;
@@ -64,7 +63,7 @@ It also supports string interpolation, [similar to
 ``` ocaml
 let box_with_border (color : Css_gen.Color.t) (width : Css_gen.Length.t) =
   Vdom.Node.div
-    ~attrs:[ [%css {|border: %{width#Css_gen.Length} solid %{color#Css_gen.Color};|}] ]
+    ~attrs:[ {%css|border: %{width#Css_gen.Length} solid %{color#Css_gen.Color};|} ]
     [ Vdom.Node.text "Nice Borders!" ]
 ;;
 ```
@@ -89,21 +88,20 @@ let hoverable_blocks =
   let block =
     Vdom.Node.div
       ~attrs:
-        [ [%css
-            {|
-              background-color: green;
-              min-width: 2rem;
-              min-height: 2rem;
-              border: 1px solid black;
+        [ {%css|
+            background-color: green;
+            min-width: 2rem;
+            min-height: 2rem;
+            border: 1px solid black;
 
-              &:hover {
-                background-color: tomato;
-              }
+            &:hover {
+              background-color: tomato;
+            }
 
-              &:not(:nth-child(odd)):hover {
-                background-color: purple;
-              }
-            |}]
+            &:not(:nth-child(odd)):hover {
+              background-color: purple;
+            }
+          |}
         ]
       [ Vdom.Node.text "Hoverable" ]
   in
@@ -125,9 +123,9 @@ You can split up your styling into a bunch of `[%css {||}]` calls:
 ``` ocaml
 let multiple_ppx_css =
   Vdom.Node.div
-    ~attrs:[ [%css {|color: red;|}] ]
+    ~attrs:[ {%css|color: red;|} ]
     [ Vdom.Node.text "Foo"
-    ; Vdom.Node.div ~attrs:[ [%css {|color: blue;|}] ] [ Vdom.Node.text "Bar" ]
+    ; Vdom.Node.div ~attrs:[ {%css|color: blue;|} ] [ Vdom.Node.text "Bar" ]
     ]
 ;;
 ```
@@ -183,7 +181,7 @@ module Style =
           font-size: 20px;
         }
       }
-      |}]
+    |}]
 
 let stylesheet_demo = Vdom.Node.div ~attrs:[ Style.container ] [ Vdom.Node.text "Hello" ]
 ```
@@ -216,7 +214,7 @@ let stylesheet_interpol small_bg large_bg =
             background-color: %{large_bg#Css_gen.Color};
           }
         }
-        |}]
+      |}]
   in
   Vdom.Node.div ~attrs:[ Style.container ] [ Vdom.Node.text "Hello" ]
 ;;
@@ -258,7 +256,7 @@ setter will be made available through a `Style.Variables` module:
             background-color: var(--large-bg);
           }
         }
-        |}]
+      |}]
 
   let stylesheet_vars =
     Vdom.Node.div

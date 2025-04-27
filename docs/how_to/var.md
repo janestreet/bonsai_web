@@ -10,6 +10,7 @@ result:
     [Bonsai.assoc](../guide/05-control_flow.mdx#creating-a-dynamic-number-of-bonsaits)s
     will not have separate state for each key in the input map.
 -   [Model resetters](./resetting_state.mdx) will not work on `Var`s
+-   [scope_model](./state_per_key.mdx)s will not work with `Var`s
 
 ## Test Input Driver
 

@@ -6,10 +6,10 @@ This is quite similar to [React's
 Context](https://react.dev/learn/passing-data-deeply-with-context). Some
 usecases are:
 
--   [Theming](./theming.mdx)
 -   Keyboard shortcuts
 -   Getting / setting the current [Url.t](./url_var.mdx)
 -   Accumumating errors / notifications somewhere central in your UI
+-   [Theming](./theming.mdx)
 
 ## Reading `Dynamic_scope.t`s
 
@@ -27,14 +27,14 @@ module Theme = struct
   let styles = function
     | Light ->
       {%css|
-          background-color: black;
-          color: white;
-        |}
+        background-color: black;
+        color: white;
+      |}
     | Dark ->
       {%css|
-          background-color: white;
-          color: black;
-        |}
+        background-color: white;
+        color: black;
+      |}
   ;;
 end
 
@@ -64,9 +64,6 @@ let app (local_ graph) =
 ```{=html}
 </iframe>
 ```
-Bonsai actually provides a [theming system](./theming.mdx) accessed
-through`Dynamic_scope.t`s.
-
 ## Setting `Dynamic_scope.t`s
 
 We didn't set anything in the example above, so the `fallback` value was

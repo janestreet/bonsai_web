@@ -5,9 +5,9 @@ module type S = sig
   module Theme : T
 
   module Table : sig
-    (** A lower-level module for building tables that puts more burden on the user
-        to manage the structure of the table, but also provides more freedom
-        regarding the structure of the table. *)
+    (** A lower-level module for building tables that puts more burden on the user to
+        manage the structure of the table, but also provides more freedom regarding the
+        structure of the table. *)
 
     module Header_cell : T
     module Header_row : T

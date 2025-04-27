@@ -3,51 +3,51 @@
 
   .button-box-container {
     display: inline-flex;
-    position:relative;
-    align-self:flex-start;
+    position: relative;
+    align-self: flex-start;
 
-    margin:0.25em;
-    padding-right:0.5em;
+    margin: 0.25em;
+    padding-right: 0.5em;
 
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius:4px;
+    border-radius: 4px;
 
-    white-space:pre;
-    user-select:none;
-    cursor:pointer;
+    white-space: pre;
+    user-select: none;
+    cursor: pointer;
   }
 
   .button-box-container:has(:focus-visible) {
     outline: 3px solid var(--touch);
-    z-index:1;
+    z-index: 1;
     outline-offset: -3px;
   }
 
   .button-box-container > input {
     appearance: none;
-    position:relative;
+    position: relative;
 
     margin: 0px;
     margin-right: 0.5em;
 
-    font-size:inherit;
-    line-height:1.2em;
+    font-size: inherit;
+    line-height: 1.2em;
 
     width: 1.2em;
     height: 1.2em;
 
-    border-radius:0;
-    border-top-left-radius:3px;
-    border-bottom-left-radius:3px;
+    border-radius: 0;
+    border-top-left-radius: 3px;
+    border-bottom-left-radius: 3px;
 
     border: 1px solid transparent;
     border-right: 1px solid var(--border);
 
     outline: 0px;
-    outline-offset:-1px;
+    outline-offset: -1px;
 
-    cursor:pointer;
+    cursor: pointer;
   }
 
   .button-box-container > input:focus-visible {
@@ -55,12 +55,12 @@
   }
 
   .button-box-container:has(input:checked) {
-    background: var(--touch_highlight)
+    background: var(--touch_highlight);
   }
 
   .button-box-container > input:checked {
-    background:var(--touch);
-    border:0;
+    background: var(--touch);
+    border: 0;
     outline: 1px solid var(--touch);
     outline-offset: 0px;
   }
@@ -91,7 +91,7 @@
   .button-box-container:hover > input::before {
     width: 35%;
     height: 13%;
-    transform: rotate(45deg) translate(145%,230%);
+    transform: rotate(45deg) translate(145%, 230%);
     border-bottom-right-radius: 1px;
   }
 
@@ -127,12 +127,12 @@
 
   .vbox > .button-box-container {
     margin: 0;
-    align-self:unset;
+    align-self: unset;
   }
 
   .vbox > .button-box-container,
   .vbox > .button-box-container > input {
-    border-radius:0;
+    border-radius: 0;
   }
 
   .vbox > .button-box-container:first-child,
@@ -144,7 +144,7 @@
     border-top-right-radius: 3px;
   }
 
-  .vbox > .button-box-container:last-child ,
+  .vbox > .button-box-container:last-child,
   .vbox > .button-box-container:last-child > input {
     border-bottom-left-radius: 3px;
   }
@@ -154,6 +154,6 @@
   }
 
   .vbox > .button-box-container:not(:first-child) {
-    border-top:0;
+    border-top: 0;
   }
 }

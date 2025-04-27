@@ -28,8 +28,8 @@ ultimately gets compiled down to `Incr.t`s.
 `Computation.t` represents the "structure" of the computation graph.
 It's implemented as a variant of types such as:
 
--   `Leaf0` and `Leaf1`: correspond to `state_machine0` and
-    `state_machine1` respectively
+-   `Leaf0` and `Leaf1`: correspond to `state_machine` and
+    `state_machine_with_input` respectively
 -   `Store` and `Fetch`: powers Bonsai's `Dynamic_scope` tools
 -   `Assoc`: allows creating a dynamic number of copies of some internal
     `Computation.t`, each with their own state / lifecycle.

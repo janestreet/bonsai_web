@@ -26,18 +26,17 @@ module Rvar : sig
   (** Makes a new container that asynchronously computes its contents on demand. *)
   val create : (unit -> 'a Deferred.Or_error.t) -> 'a t
 
-  (** Mark the current contents of the container as being no longer valid,
-      which means that the next time anyone wants to look at it, it must be
-      re-computed. *)
+  (** Mark the current contents of the container as being no longer valid, which means
+      that the next time anyone wants to look at it, it must be re-computed. *)
   val invalidate : 'a t -> unit
 
-  (** Computes the container's contents in order to return them. Getting the
-      contents of the same ['a t] twice should only force computation once,
-      unless it is invalidated between the calls to [contents], or the first
-      call returns an error before the second call begins.
+  (** Computes the container's contents in order to return them. Getting the contents of
+      the same ['a t] twice should only force computation once, unless it is invalidated
+      between the calls to [contents], or the first call returns an error before the
+      second call begins.
 
-      If [invalidate] is called in the middle of computing the result, the
-      computation starts over. *)
+      If [invalidate] is called in the middle of computing the result, the computation
+      starts over. *)
   val contents : 'a t -> 'a Deferred.Or_error.t
 
   val derived : 'a t -> ('a -> 'b Deferred.Or_error.t) -> 'b t
@@ -66,7 +65,6 @@ end = struct
   let create_common f =
     let invalidated =
       Bus.create_exn
-        [%here]
         Arity1
         ~on_subscription_after_first_write:Allow
         ~on_callback_raise:Error.raise
@@ -143,8 +141,7 @@ end = struct
            Derived { common = create_common f; on_destroy })
       and subscriber =
         lazy
-          (Bus.subscribe_exn inner_invalidated [%here] ~f:(fun () ->
-             invalidate (Lazy.force me)))
+          (Bus.subscribe_exn inner_invalidated ~f:(fun () -> invalidate (Lazy.force me)))
       in
       Lazy.force me
   ;;
@@ -193,7 +190,7 @@ module Persistent_connection_packed = struct
         let%bind connection = Conn.connected connection in
         Versioned_rpc.Menu.request connection)
     in
-    Bus.iter_exn (Conn.event_bus connection) [%here] ~f:(function
+    Bus.subscribe_permanently_exn (Conn.event_bus connection) ~f:(function
       | Disconnected -> Rvar.invalidate menu
       | _ -> ());
     T { connection_module = (module Conn); connection; menu }
@@ -267,12 +264,13 @@ module Connector = struct
     let menu =
       Rvar.create (fun () -> Async_durable.with_ connection ~f:Versioned_rpc.Menu.request)
     in
-    Bus.iter_exn (Async_durable.is_intact_bus connection) [%here] ~f:(fun is_intact ->
-      if not is_intact then Rvar.invalidate menu);
+    Bus.subscribe_permanently_exn
+      (Async_durable.is_intact_bus connection)
+      ~f:(fun is_intact -> if not is_intact then Rvar.invalidate menu);
     Async_durable { connection; menu }
   ;;
 
-  let for_test implementations ~connection_state =
+  let make_fake_connection ?time_source implementations ~connection_state =
     let open Async_rpc_kernel in
     let open Async_kernel in
     let to_server = Pipe.create () in
@@ -282,7 +280,7 @@ module Connector = struct
         Pipe_transport.create Pipe_transport.Kind.string (fst pipe_to) (snd pipe_from)
       in
       let%bind conn =
-        Rpc.Connection.create ?implementations ~connection_state transport
+        Rpc.Connection.create ?time_source ?implementations ~connection_state transport
       in
       return (Result.ok_exn conn)
     in
@@ -291,8 +289,17 @@ module Connector = struct
          one_connection (Some implementations) ~connection_state to_server to_client
        in
        Rpc.Connection.close_finished server_conn);
+    one_connection None ~connection_state:(fun _conn -> ()) to_client to_server
+  ;;
+
+  let for_test implementations ~connection_state =
     let connection =
-      one_connection None ~connection_state:(fun _conn -> ()) to_client to_server
+      make_fake_connection
+        ~time_source:
+          (Synchronous_time_source.create ~now:Time_ns.epoch ()
+           |> Synchronous_time_source.read_only)
+        implementations
+        ~connection_state
     in
     Connection
       { connection
@@ -300,6 +307,24 @@ module Connector = struct
           Rvar.create (fun () ->
             let%bind connection in
             Versioned_rpc.Menu.request connection)
+      }
+  ;;
+
+  let for_preview implementations ~connection_state =
+    let connection =
+      Async_rpc_kernel.Persistent_connection.Rpc.create
+        ~server_name:"preview"
+        ~connect:(fun () ->
+          make_fake_connection implementations ~connection_state >>| Result.return)
+        ~address:(module Unit)
+        Deferred.Result.return
+    in
+    Persistent_connection
+      { connection =
+          Persistent_connection_packed.create
+            (module Async_rpc_kernel.Persistent_connection.Rpc)
+            connection
+      ; on_conn_failure = Retry_until_success
       }
   ;;
 
@@ -390,6 +415,10 @@ module Private = struct
   end
 end
 
+module Mock = struct
+  let with_connector = Private.with_connector
+end
+
 module Poll_result = struct
   type ('query, 'response) t =
     { last_ok_response : ('query * 'response) option
@@ -435,9 +464,34 @@ module Poll_behavior = struct
         ('response -> [ `Continue | `Stop_polling ]) Bonsai.t
 end
 
+let rpc_name ~rpc_kind =
+  match rpc_kind with
+  | Bonsai_introspection_protocol.Rpc_kind.Normal { name; _ }
+  | Babel { descriptions = { name; _ } :: _; _ }
+  | Streamable { name; _ }
+  | Polling_state_rpc { name; _ }
+  | Babel_polling_state_rpc { descriptions = { name; _ } :: _; _ } -> name
+;;
+
+let time_rpc_effect
+  ~(rpc_kind : Bonsai_introspection_protocol.Rpc_kind.t Bonsai.t)
+  (effect : ('query -> 'response Effect.t) Bonsai.t)
+  =
+  let%arr.Bonsai effect and rpc_kind in
+  let name = rpc_name ~rpc_kind in
+  fun query ->
+    let%bind.Effect timer = Effect.of_sync_fun Javascript_profiling.Timer.start () in
+    let%map.Effect response = effect query in
+    let () =
+      let measurement = Javascript_profiling.Timer.stop timer in
+      Javascript_profiling.measure ~track:"RPC Effect" ~color:Tertiary name measurement
+    in
+    response
+;;
+
 let generic_poll_or_error
   (type query response)
-  ~(rpc_kind : Bonsai_introspection_protocol.Rpc_kind.t)
+  ~(rpc_kind : Bonsai_introspection_protocol.Rpc_kind.t Bonsai.t)
   ~sexp_of_query
   ~sexp_of_underlying
   ~sexp_of_response
@@ -502,7 +556,7 @@ let generic_poll_or_error
   let response, inject_response =
     (* using a state_machine1 is important because we need add check the Computation_status
        to see if we should drop the action (due to [clear_when_responded]) *)
-    Bonsai.state_machine1
+    Bonsai.state_machine_with_input
       (* Use a var here to prevent bonsai from optimizing the [state_machine1] down to a
          [state_machine0] *)
       Bonsai.Expert.Var.(create () |> value)
@@ -552,7 +606,8 @@ let generic_poll_or_error
     and inject_response
     and on_response_received
     and get_current_time
-    and path in
+    and path
+    and rpc_kind in
     let open Effect.Let_syntax in
     let actually_send_rpc query =
       let%bind inflight_query_key = Effect.of_sync_fun Inflight_query_key.create () in
@@ -588,6 +643,7 @@ let generic_poll_or_error
       | Bonsai.Effect_throttling.Poll_result.Finished response ->
         on_response_received query response
   in
+  let effect = time_rpc_effect ~rpc_kind effect in
   (* Below are three constructs that schedule the effect to run. The tricky part
      of this is that [Clock.every] and [Edge.on_change] both run effects on
      activate by default. To avoid the redundancy, we make neither of them
@@ -751,7 +807,8 @@ module Our_rpc = struct
     let dispatcher = Bonsai.Effect_throttling.poll dispatcher graph in
     generic_poll_or_error
       ~rpc_kind:
-        (Bonsai_introspection_protocol.Rpc_kind.Normal
+        (let%arr.Bonsai every in
+         Bonsai_introspection_protocol.Rpc_kind.Normal
            { name = Rpc.Rpc.name rpc
            ; version = Rpc.Rpc.version rpc
            ; interval = Poll { every }
@@ -790,7 +847,9 @@ module Our_rpc = struct
     let dispatcher = Bonsai.Effect_throttling.poll dispatcher graph in
     generic_poll_or_error
       ~rpc_kind:
-        (Babel { descriptions = Babel.Caller.descriptions rpc; interval = Poll { every } })
+        (let%arr.Bonsai every in
+         Bonsai_introspection_protocol.Rpc_kind.Babel
+           { descriptions = Babel.Caller.descriptions rpc; interval = Poll { every } })
       ~sexp_of_query
       ~sexp_of_underlying:sexp_of_response
       ~sexp_of_response
@@ -825,8 +884,10 @@ module Our_rpc = struct
     let dispatcher = Bonsai.Effect_throttling.poll dispatcher graph in
     generic_poll_or_error
       ~rpc_kind:
-        (let%tydi { name; version } = Streamable.Plain_rpc.description rpc in
-         Streamable { name; version; interval = Poll { every } })
+        (let%arr.Bonsai every in
+         let%tydi { name; version } = Streamable.Plain_rpc.description rpc in
+         Bonsai_introspection_protocol.Rpc_kind.Streamable
+           { name; version; interval = Poll { every } })
       ~sexp_of_query
       ~sexp_of_underlying:sexp_of_response
       ~sexp_of_response
@@ -843,10 +904,48 @@ module Our_rpc = struct
       graph
   ;;
 
+  let streamable_poll_until_ok
+    ~(here : [%call_pos])
+    ?sexp_of_query
+    ?sexp_of_response
+    ~equal_query
+    ?equal_response
+    ?clear_when_deactivated
+    ?on_response_received
+    rpc
+    ~where_to_connect
+    ~retry_interval
+    query
+    (local_ graph)
+    =
+    let dispatcher = streamable_dispatcher_internal rpc ~where_to_connect graph in
+    let dispatcher = Bonsai.Effect_throttling.poll dispatcher graph in
+    generic_poll_or_error
+      ~rpc_kind:
+        (let%arr.Bonsai retry_interval in
+         let%tydi { name; version } = Streamable.Plain_rpc.description rpc in
+         Bonsai_introspection_protocol.Rpc_kind.Streamable
+           { name; version; interval = Poll_until_ok { retry_interval } })
+      ~sexp_of_query
+      ~sexp_of_underlying:sexp_of_response
+      ~sexp_of_response
+      ~equal_query
+      ?equal_response
+      ?clear_when_deactivated
+      ?on_response_received
+      dispatcher
+      ~every:retry_interval
+      ~poll_behavior:Until_ok
+      ~get_response:Fn.id
+      ~here
+      query
+      graph
+  ;;
+
   let shared_poller
     (type q cmp)
     ~(here : [%call_pos])
-    (module Q : Bonsai.Comparator with type t = q and type comparator_witness = cmp)
+    (module Q : Comparator.S with type t = q and type comparator_witness = cmp)
     ?sexp_of_response
     ?equal_response
     ?clear_when_deactivated
@@ -866,7 +965,7 @@ module Our_rpc = struct
       ~f:(fun query ->
         poll
           ~here
-          ~sexp_of_query:M.sexp_of_t
+          ~sexp_of_query:M.comparator.sexp_of_t
           ?sexp_of_response
           ~equal_query:M.equal
           ?equal_response
@@ -896,7 +995,8 @@ module Our_rpc = struct
     let dispatcher = Bonsai.Effect_throttling.poll dispatcher graph in
     generic_poll_or_error
       ~rpc_kind:
-        (Normal
+        (let%arr.Bonsai retry_interval in
+         Bonsai_introspection_protocol.Rpc_kind.Normal
            { name = Rpc.Rpc.name rpc
            ; version = Rpc.Rpc.version rpc
            ; interval = Poll_until_ok { retry_interval }
@@ -936,7 +1036,8 @@ module Our_rpc = struct
     let dispatcher = Bonsai.Effect_throttling.poll dispatcher graph in
     generic_poll_or_error
       ~rpc_kind:
-        (Normal
+        (let%arr.Bonsai every in
+         Bonsai_introspection_protocol.Rpc_kind.Normal
            { name = Rpc.Rpc.name rpc
            ; version = Rpc.Rpc.version rpc
            ; interval = Poll_until_condition_met { every }
@@ -975,7 +1076,8 @@ module Our_rpc = struct
     let dispatcher = Bonsai.Effect_throttling.poll dispatcher graph in
     generic_poll_or_error
       ~rpc_kind:
-        (Babel
+        (let%arr.Bonsai retry_interval in
+         Bonsai_introspection_protocol.Rpc_kind.Babel
            { descriptions = Babel.Caller.descriptions rpc
            ; interval = Poll_until_ok { retry_interval }
            })
@@ -1014,7 +1116,8 @@ module Our_rpc = struct
     let dispatcher = Bonsai.Effect_throttling.poll dispatcher graph in
     generic_poll_or_error
       ~rpc_kind:
-        (Babel
+        (let%arr.Bonsai every in
+         Bonsai_introspection_protocol.Rpc_kind.Babel
            { descriptions = Babel.Caller.descriptions rpc
            ; interval = Poll_until_condition_met { every }
            })
@@ -1046,23 +1149,26 @@ module Our_rpc = struct
     let open Bonsai.Let_syntax in
     let get_current_time = Bonsai.Clock.get_current_time graph in
     let path = Bonsai.path_id graph in
-    let%arr dispatcher and get_current_time and path in
-    fun query ->
-      match%bind.Effect For_introspection.should_record_effect with
-      | false ->
-        let%map.Effect response = dispatcher query in
-        Or_error.map response ~f:get_response
-      | true ->
-        For_introspection.send_and_track_rpc_from_dispatch
-          ~rpc_kind
-          ~get_current_time
-          ~sexp_of_query
-          ~sexp_of_response
-          ~path
-          ~send_rpc:dispatcher
-          ~get_response
-          ~query
-          ~here
+    let effect =
+      let%arr dispatcher and get_current_time and path and rpc_kind in
+      fun query ->
+        match%bind.Effect For_introspection.should_record_effect with
+        | false ->
+          let%map.Effect response = dispatcher query in
+          Or_error.map response ~f:get_response
+        | true ->
+          For_introspection.send_and_track_rpc_from_dispatch
+            ~rpc_kind
+            ~get_current_time
+            ~sexp_of_query
+            ~sexp_of_response
+            ~path
+            ~send_rpc:dispatcher
+            ~get_response
+            ~query
+            ~here
+    in
+    time_rpc_effect ~rpc_kind effect
   ;;
 
   let dispatcher
@@ -1078,8 +1184,12 @@ module Our_rpc = struct
       ~sexp_of_query
       ~sexp_of_response
       ~rpc_kind:
-        (Bonsai_introspection_protocol.Rpc_kind.Normal
-           { name = Rpc.Rpc.name rpc; version = Rpc.Rpc.version rpc; interval = Dispatch })
+        (Bonsai.return
+           (Bonsai_introspection_protocol.Rpc_kind.Normal
+              { name = Rpc.Rpc.name rpc
+              ; version = Rpc.Rpc.version rpc
+              ; interval = Dispatch
+              }))
       ~get_response:Fn.id
       dispatcher
       ~here
@@ -1099,8 +1209,10 @@ module Our_rpc = struct
       ~sexp_of_query
       ~sexp_of_response
       ~rpc_kind:
-        (let%tydi { name; version } = Streamable.Plain_rpc.description rpc in
-         Streamable { name; version; interval = Dispatch })
+        (Bonsai.return
+           (let%tydi { name; version } = Streamable.Plain_rpc.description rpc in
+            Bonsai_introspection_protocol.Rpc_kind.Streamable
+              { name; version; interval = Dispatch }))
       ~get_response:Fn.id
       ~here
       dispatcher
@@ -1120,7 +1232,9 @@ module Our_rpc = struct
       ~sexp_of_query
       ~sexp_of_response
       ~rpc_kind:
-        (Babel { descriptions = Babel.Caller.descriptions rpc; interval = Dispatch })
+        (Bonsai.return
+           (Bonsai_introspection_protocol.Rpc_kind.Babel
+              { descriptions = Babel.Caller.descriptions rpc; interval = Dispatch }))
       ~get_response:Fn.id
       ~here
       dispatcher
@@ -1171,11 +1285,17 @@ module Polling_state_rpc = struct
     let perform_query (connector, client) query =
       Connector.with_connection connector ~where_to_connect ~callback:(fun connection ->
         let%bind.Eager_deferred.Or_error client = Rvar.contents client in
-        Polling_state_rpc.Client.For_introspection.dispatch_with_underlying_diff
-          ?sexp_of_response
-          client
-          connection
-          query)
+        match%map.Eager_deferred
+          Polling_state_rpc.Client.For_introspection.dispatch_with_underlying_diff
+            ?sexp_of_response
+            client
+            connection
+            query
+        with
+        | `Ok (Ok result) -> Ok (Bonsai.Effect_throttling.Poll_result.Finished result)
+        | `Ok (Error _ as error) -> error
+        | `Raised exn -> Error (Error.of_exn exn)
+        | `Aborted -> Ok Bonsai.Effect_throttling.Poll_result.Aborted)
     in
     let%arr connector and client_rvar in
     Effect.of_deferred_fun (perform_query (connector, client_rvar))
@@ -1238,8 +1358,10 @@ module Polling_state_rpc = struct
     let dispatcher =
       let%arr dispatcher in
       fun query ->
-        let%map.Effect result = dispatcher query in
-        Bonsai.Effect_throttling.Poll_result.Finished result
+        match%map.Effect dispatcher query with
+        | Ok (Bonsai.Effect_throttling.Poll_result.Aborted as aborted) -> aborted
+        | Ok (Finished result) -> Finished (Ok result)
+        | Error _ as error -> Finished error
     in
     generic_poll_or_error
       ~here
@@ -1279,7 +1401,8 @@ module Polling_state_rpc = struct
     generic_poll
       ~here
       ~rpc_kind:
-        (Polling_state_rpc
+        (let%arr.Bonsai every in
+         Bonsai_introspection_protocol.Rpc_kind.Polling_state_rpc
            { name = Polling_state_rpc.name rpc
            ; version = Polling_state_rpc.version rpc
            ; interval = Poll { every }
@@ -1319,7 +1442,9 @@ module Polling_state_rpc = struct
     in
     generic_poll
       ~rpc_kind:
-        (Babel { descriptions = Babel.Caller.descriptions rpc; interval = Poll { every } })
+        (let%arr.Bonsai every in
+         Bonsai_introspection_protocol.Rpc_kind.Babel
+           { descriptions = Babel.Caller.descriptions rpc; interval = Poll { every } })
       ?sexp_of_query
       ?sexp_of_response
       ~sexp_of_underlying:(Some sexp_of_polling_state_rpc_underlying_response)
@@ -1336,6 +1461,13 @@ module Polling_state_rpc = struct
       graph
   ;;
 
+  let collapse_sequencer_error dispatcher query =
+    match%map.Effect dispatcher query with
+    | Error _ as error -> error
+    | Ok (Bonsai.Effect_throttling.Poll_result.Finished x) -> Ok x
+    | Ok Aborted -> Or_error.error_string "Request aborted"
+  ;;
+
   let dispatcher
     ~(here : [%call_pos])
     ?sexp_of_query
@@ -1345,6 +1477,7 @@ module Polling_state_rpc = struct
     ~where_to_connect
     (local_ graph)
     =
+    let open Bonsai.Let_syntax in
     let dispatcher =
       dispatcher_internal
         ~sexp_of_response
@@ -1352,17 +1485,19 @@ module Polling_state_rpc = struct
         rpc
         ~where_to_connect
         graph
+      >>| collapse_sequencer_error
     in
     Our_rpc.maybe_track
       ~here
       ~sexp_of_query
       ~sexp_of_response:(Some sexp_of_polling_state_rpc_underlying_response)
       ~rpc_kind:
-        (Polling_state_rpc
-           { name = Polling_state_rpc.name rpc
-           ; version = Polling_state_rpc.version rpc
-           ; interval = Dispatch
-           })
+        (Bonsai.return
+           (Bonsai_introspection_protocol.Rpc_kind.Polling_state_rpc
+              { name = Polling_state_rpc.name rpc
+              ; version = Polling_state_rpc.version rpc
+              ; interval = Dispatch
+              }))
       ~get_response:fst
       dispatcher
       graph
@@ -1377,6 +1512,7 @@ module Polling_state_rpc = struct
     ~where_to_connect
     (local_ graph)
     =
+    let open Bonsai.Let_syntax in
     let dispatcher =
       babel_dispatcher_internal
         ~sexp_of_response
@@ -1384,14 +1520,16 @@ module Polling_state_rpc = struct
         caller
         ~where_to_connect
         graph
+      >>| collapse_sequencer_error
     in
     Our_rpc.maybe_track
       ~here
       ~sexp_of_query
       ~sexp_of_response:(Some sexp_of_polling_state_rpc_underlying_response)
       ~rpc_kind:
-        (Babel_polling_state_rpc
-           { descriptions = Babel.Caller.descriptions caller; interval = Dispatch })
+        (Bonsai.return
+           (Bonsai_introspection_protocol.Rpc_kind.Babel_polling_state_rpc
+              { descriptions = Babel.Caller.descriptions caller; interval = Dispatch }))
       ~get_response:fst
       dispatcher
       graph
@@ -1400,7 +1538,7 @@ module Polling_state_rpc = struct
   let shared_poller
     (type q cmp)
     ~(here : [%call_pos])
-    (module Q : Bonsai.Comparator with type t = q and type comparator_witness = cmp)
+    (module Q : Comparator.S with type t = q and type comparator_witness = cmp)
     ?sexp_of_response
     ?equal_response
     ?clear_when_deactivated
@@ -1419,7 +1557,7 @@ module Polling_state_rpc = struct
       (module Q)
       ~f:(fun query ->
         poll
-          ~sexp_of_query:M.sexp_of_t
+          ~sexp_of_query:M.comparator.sexp_of_t
           ?sexp_of_response
           ~equal_query:[%equal: M.t]
           ?equal_response
@@ -1496,7 +1634,7 @@ module Status = struct
   let state ~where_to_connect (local_ graph) =
     let dispatcher = dispatcher ~where_to_connect graph in
     let model, inject =
-      Bonsai.state_machine1
+      Bonsai.state_machine_with_input
         ~sexp_of_model:[%sexp_of: Model.t]
         ~equal:[%equal: Model.t]
         ~sexp_of_action:[%sexp_of: Action.t]
