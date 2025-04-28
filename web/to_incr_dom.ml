@@ -93,7 +93,8 @@ let convert_generic
     ;;
 
     let create ~input ~old_model:_ ~model ~inject =
-      For_profiling.create_with_computation_watcher
+      Bonsai.Private.Instrumentation.create_computation_with_instrumentation
+        For_profiling.default_instrumentation_for_incr_dom_start_app
         ~computation
         ~time_source
         ~recursive_scopes
@@ -120,6 +121,7 @@ let convert_with_extra
   let var = Bonsai.Private.(Value.named App_input fresh |> conceal_value) in
   let maybe_optimize = if optimize then Bonsai.Private.pre_process else Fn.id in
   let recursive_scopes = Bonsai.Private.Computation.Recursive_scopes.empty in
+  let () = () in
   let component input graph =
     Rpc_effect.Private.with_connector
       (function
@@ -138,8 +140,6 @@ let convert_with_extra
 ;;
 
 let convert ?custom_connector ?optimize component =
-  convert_with_extra
-    ?custom_connector
-    ?optimize
-    (Bonsai.Arrow_deprecated.map component ~f:(fun r -> r, ()))
+  convert_with_extra ?custom_connector ?optimize (fun input graph ->
+    Bonsai.map (component input graph) ~f:(fun r -> r, ()))
 ;;

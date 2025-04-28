@@ -93,7 +93,7 @@ module Css =
         opacity: 0%;
         cursor: pointer;
       }
-      |}]
+    |}]
 
 let view colors ~toggle ~inner ~direction =
   let direction_class =

@@ -5,7 +5,7 @@ which can have some *attributes* attached. The `virtual_dom` library
 provides an OCaml interface for constructing these trees.
 
 In this chapter, we'll learn how to write HTML in OCaml using
-`virtual_dom` and `ppx_css`.
+`virtual_dom` and `ppx_html`, and style it with `ppx_css`.
 
 ## Vdom.Node.t
 
@@ -62,7 +62,7 @@ let bulleted_list : Vdom.Node.t =
 ```{=html}
 </iframe>
 ```
-For the bulleted list, the `ul` and `li` functions are required. These
+For the bulleted list, we use the `ul` and `li` functions. These
 correspond to the [ul
 element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/ul)
 and the [li
@@ -123,7 +123,7 @@ Or color text with inline css:
 ```
 ``` ocaml
 let css : Vdom.Node.t =
-  Vdom.Node.span ~attrs:[ [%css {|color: red;|}] ] [ Vdom.Node.text "this text is red" ]
+  Vdom.Node.span ~attrs:[ {%css|color: red;|} ] [ Vdom.Node.text "this text is red" ]
 ;;
 ```
 

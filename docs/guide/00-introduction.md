@@ -142,7 +142,7 @@ open Virtual_dom
 
 let message_vdom ~name ~new_emails =
   Vdom.Node.div
-    ~attrs:[ [%css {|font-size: 16px;|}] ]
+    ~attrs:[ {%css|font-size: 16px;|} ]
     [ Vdom.Node.textf "hello %s! you have %d new emails" name new_emails ]
 ;;
 ```

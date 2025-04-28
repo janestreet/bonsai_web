@@ -84,7 +84,7 @@ module Style =
       .tooltip_container.right > .tooltip {
         left: 100%;
       }
-      |}]
+    |}]
 
 let make
   (constants : Constants.t)

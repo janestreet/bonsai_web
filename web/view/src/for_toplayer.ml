@@ -51,7 +51,7 @@ let default_styles ~intent constants =
             border-radius: 2px;
           }
         }
-        |}]
+      |}]
   in
   Vdom.Attr.many
     [ Style.toplayer
@@ -70,7 +70,7 @@ let default_tooltip_styles ~intent constants =
             max-width: 300px;
           }
         }
-        |}]
+      |}]
   in
   Vdom.Attr.combine (default_styles ~intent constants) Style.tooltip
 ;;
@@ -87,7 +87,7 @@ let default_tooltip_anchor_styles =
             text-underline-offset: 0.15em;
           }
         }
-        |}]
+      |}]
   in
   Style.anchor
 ;;
@@ -109,7 +109,7 @@ let default_modal_styles constants =
             }
           }
         }
-        |}]
+      |}]
   in
   Vdom.Attr.combine (default_styles ~intent:None constants) Modal.modal
 ;;

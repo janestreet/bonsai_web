@@ -441,6 +441,3 @@ let%expect_test "test clock" =
   [%expect {| 1970-01-01 00:00:02.000000000Z |}]
 ;;
 ```
-
-```{=html}
-```

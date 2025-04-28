@@ -3,6 +3,17 @@
 `Bonsai_web`'s `Rpc_effect` provides effects for dispatching RPCs and
 tracking their results.
 
+```{=html}
+<aside>
+```
+You can see `Rpc_effect`s in Chrome [DevTools performance
+traces](https://developer.chrome.com/docs/devtools/performance) if you
+click the "gear" icon in the top right corner of the "Performance"
+panel, and check ["Show custom
+tracks"](https://developer.chrome.com/docs/devtools/performance/extension#view-custom-data).
+```{=html}
+</aside>
+```
 ### One-shot RPCs
 
 In this example, we'll build a simple full-stack app:
@@ -224,7 +235,7 @@ let current_time_app (local_ graph) =
       ~equal_query:[%equal: string]
       ~equal_response:[%equal: Current_time.t]
       ~where_to_connect
-      ~every:(Time_ns.Span.of_sec 0.1)
+      ~every:(Bonsai.return (Time_ns.Span.of_sec 0.1))
       zone
       graph
   in
@@ -244,7 +255,7 @@ let current_time_app (local_ graph) =
         [ Vdom.Node.text [%string "Got error when requesting time in zone '%{zone}'"]
         ; Vdom.Node.pre [ Vdom.Node.text (Error.to_string_hum error) ]
         ]
-    | None -> Vdom.Node.none_deprecated [@alert "-deprecated"]
+    | None -> Vdom.Node.none
   in
   Vdom.Node.div [ zone_view; Vdom.Node.div [ Vdom.Node.text text ]; error_view ]
 ;;
@@ -375,7 +386,6 @@ let%expect_test "Clicking the button should double the number" =
   Handle.show handle;
   [%expect
     {|
-    ------ between bonsai frame ------
     <div>
       <div> The number is: 2 </div>
       <button @on_click> Double the number </button>

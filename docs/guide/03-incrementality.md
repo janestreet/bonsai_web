@@ -57,10 +57,8 @@ let int_view (a : int Bonsai.t) : Vdom.Node.t Bonsai.t =
 ```{=html}
 </iframe>
 ```
-`let%arr` is just pretty syntax for
-`val Bonsai.map : 'a t -> f:('a -> 'b) -> 'b t`. It's ok to use
-`Bonsai.map` directly, but `let%arr` is usually more ergonomic,
-especially when mapping multiple `Bonsai.t`s together:
+Most of your `let%arr`s will compute a `Bonsai.t` as a function of
+multiple `Bonsai.t`s:
 
 ```{=html}
 <!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=sum_and_display -->
@@ -78,6 +76,195 @@ let sum_and_display (a : int Bonsai.t) (b : int Bonsai.t) : Vdom.Node.t Bonsai.t
 ```{=html}
 </iframe>
 ```
+### `let%arr` vs `let%map` vs `Bonsai.map` vs `>>|`
+
+`let%arr` is just pretty syntax for
+`val Bonsai.map : 'a t -> f:('a -> 'b) -> 'b t`, with an incremental
+[cutoff](../how_to/cutoff.mdx) against any ignored patterns. So if you
+`let%arr` on a record, but only care about some of the fields,
+`let%arr`s will only recompute when that field changes:
+
+```{=html}
+<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=let_arr_record_good -->
+```
+``` ocaml
+    let%arr { foo; _ } = my_thing in
+    do_something foo
+```
+
+If you don't destructure in the `let%arr`:
+
+```{=html}
+<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=let_arr_record_bad -->
+```
+``` ocaml
+    let%arr my_thing in
+    do_something my_thing.foo
+```
+
+Or use `let%map`:
+
+```{=html}
+<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=let_map_record_bad -->
+```
+``` ocaml
+    let%map { foo; _ } = my_thing in
+    do_something foo
+```
+
+`do_something` will be recomputed every time *any* field of `my_thing`
+changes.
+
+As a guideline:
+
+-   ALWAYS use `let%arr` instead of `let%map`
+-   `Bonsai.map` and `>>|` don't have the cutoff, but are sometimes
+    nicer for ergonomic reasons. Only use them for very simple / fast
+    operations
+-   Every `Bonsai.map` / `>>|` adds incremental nodes, so strongly
+    prefer a single `let%arr` over chaining multiple `>>|`.
+
+```{=html}
+```
+## `let%arr` Must Be Pure!
+
+It might be tempting to react to changes in a `Bonsai.t` by running side
+effects in a `let%arr` that depends on it. For example:
+
+```{=html}
+<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=side_effect_let_arr_print -->
+```
+``` ocaml
+let print_on_change (a : int Bonsai.t) : int Bonsai.t =
+  let%arr a in
+  print_endline [%string "state is now %{a#Int}"];
+  a
+;;
+```
+
+or
+
+```{=html}
+<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=side_effect_let_arr_send_query -->
+```
+``` ocaml
+let dispatch_query_on_change (a : int Bonsai.t) : int Bonsai.t =
+  let%arr a in
+  send_http_request [%string "https://example.com?query=%{a#Int}"];
+  a
+;;
+```
+
+Do not do this! A `let%arr`:
+
+-   might run multiple times per frame
+-   might run as part of some code that starts as
+    [inactive](../how_to/lifecycles.mdx), switches to being active, and
+    then becomes inactive again, all in the same frame.
+-   will only run when its explicit dependencies change
+-   not run at all, if it is not linked into the incremental computation
+    of your app's result
+
+Note that "get" operations can also be side effects! For example, the
+following will recompute when `prefix` or `suffix` changes, but not when
+the [document
+title](https://developer.mozilla.org/en-US/docs/Web/API/Document/title)
+changes:
+
+```{=html}
+<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=side_effect_let_arr_compute_title -->
+```
+``` ocaml
+let compute_title (prefix : string Bonsai.t) (suffix : string Bonsai.t) : string Bonsai.t =
+  let%arr prefix and suffix in
+  (* https://developer.mozilla.org/en-US/docs/Web/API/Document/title *)
+  let document_title = get_document_title () in
+  [%string "%{prefix} %{document_title} %{suffix}"]
+;;
+```
+
+This is one reason why side effects should be performed within a
+`'a Effect.t`: there's a limited set of safe APIs for running
+`Effect.t`s, so you can't accidentially run one within a `let%arr`.
+
+If you need to do something whenever a `'a Bonsai.t` changes, use
+[Edge.on_change](../how_to/edge_triggered_effects.mdx) or [lifeycle
+events](../how_to/lifecycles.mdx).
+
+## Don't Do Work While Computing `Effect.t`s
+
+Most [`Effect.t`s](./02-effects.mdx) you'll see are incrementally
+computed, because most side effects you might want to perform depend on
+some `'a Bonsai.t`.
+
+An easy mistake to make when incrementally computing an `Effect.t` is to
+do part of its work during computation. For example:
+
+```{=html}
+<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=doing_work_to_compute_effect -->
+```
+``` ocaml
+let copy_to_clipboard_button (data : Big_data.t Bonsai.t) (label : string Bonsai.t)
+  : Vdom.Node.t Bonsai.t
+  =
+  let on_click =
+    let%arr data in
+    let serialized_data = Big_data.sexp_of_t data |> Sexp.to_string in
+    Copy_to_clipboard.text_effect serialized_data
+  in
+  let%arr on_click and label in
+  Vdom.Node.button
+    ~attrs:[ Vdom.Attr.on_click (fun _ -> on_click) ]
+    [ Vdom.Node.text [%string "Copy: %{label}"] ]
+;;
+```
+
+```{=html}
+<iframe data-external="1" src="https://bonsai:8535#doing_work_to_compute_effect">
+```
+```{=html}
+</iframe>
+```
+Serializing data is pure, so this code isn't *incorrect*, but it's very
+*inefficient*, because we're doing an expensive serialization at least
+once every time `data` changes, but we don't actually use the result
+unless the user clicks the button.
+
+Instead, we can move this work inside the `Effect.t`:
+
+```{=html}
+<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=doing_work_as_part_of_effect -->
+```
+``` ocaml
+let copy_to_clipboard_button (data : Big_data.t Bonsai.t) (label : string Bonsai.t)
+  : Vdom.Node.t Bonsai.t
+  =
+  let on_click =
+    let%arr data in
+    let%bind.Effect serialized_data =
+      Effect.of_thunk (fun () -> Big_data.sexp_of_t data |> Sexp.to_string)
+    in
+    Copy_to_clipboard.text_effect serialized_data
+  in
+  let%arr on_click and label in
+  Vdom.Node.button
+    ~attrs:[ Vdom.Attr.on_click (fun _ -> on_click) ]
+    [ Vdom.Node.text [%string "Copy: %{label}"] ]
+;;
+```
+
+```{=html}
+<iframe data-external="1" src="https://bonsai:8535#doing_work_as_part_of_effect">
+```
+```{=html}
+</iframe>
+```
+Now, we only serialize when the user clicks the button!
+
+There's still a potential bug if the `data` changes after `view` was
+last rendered, but before the user clicks the button. We can solve this
+with a [Bonsai.peek](../how_to/effects_and_stale_values.mdx).
+
 ## Incremental Structure Matters
 
 When writing code, it can be beneficial to "factor out" expensive,

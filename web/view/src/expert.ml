@@ -391,12 +391,18 @@ let default_theme =
                   ; page_fg = self#constants.primary.foreground
                   ; header_bg = self#constants.table.header_row.background
                   ; header_fg = self#constants.table.header_row.foreground
+                  ; header_cell_focused_bg = self#constants.table.header_row.background
+                  ; header_cell_focused_fg = self#constants.table.header_row.foreground
                   ; row_even_bg = self#constants.table.body_row_even.background
                   ; row_even_fg = self#constants.table.body_row_even.foreground
                   ; row_odd_bg = self#constants.table.body_row_odd.background
                   ; row_odd_fg = self#constants.table.body_row_odd.foreground
                   ; cell_focused_bg = self#constants.table.body_cell_focused.background
                   ; cell_focused_fg = self#constants.table.body_cell_focused.foreground
+                  ; cell_focused_outline =
+                      Some self#constants.table.body_row_focused_border
+                  ; row_of_focused_cell_fg = None
+                  ; row_of_focused_cell_bg = None
                   ; row_focused_bg = self#constants.table.body_row_focused.background
                   ; row_focused_fg = self#constants.table.body_row_focused.foreground
                   ; row_focused_border = self#constants.table.body_row_focused_border
@@ -404,6 +410,9 @@ let default_theme =
                   ; body_body_border = self#constants.table.body_body_border
                   ; header_body_border = self#constants.table.header_body_border
                   }
+              ; lengths =
+                  Bonsai_web_ui_partial_render_table_styling.Params.Lengths.default
+              ; fonts = Bonsai_web_ui_partial_render_table_styling.Params.Fonts.default
               }
 
           method changelog_styling = For_changelog.default self#constants

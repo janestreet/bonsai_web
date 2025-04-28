@@ -1,5 +1,6 @@
 open! Core
 open Js_of_ocaml
+module Incr_node_introspection = For_incr_node_introspection
 open Bonsai_introspection_protocol
 
 let get_id = Effect.of_thunk Rpc_id.create
@@ -73,23 +74,25 @@ let set_revision revision =
   global##.rpcEffectRevision := Js.Optdef.return (Js.string revision)
 ;;
 
-let init_global () =
-  global##.rpcEffectIntrospectionSupported := Js.bool true;
-  global##.ppxModuleTimerIntrospectionSupported := Js.bool true;
-  (match is_recording () with
-   | true ->
-     (* In order to catch rpc's from the very beginning, the devtool panel api
+let init_global =
+  lazy
+    (global##.rpcEffectIntrospectionSupported := Js.bool true;
+     global##.ppxModuleTimerIntrospectionSupported := Js.bool true;
+     (match is_recording () with
+      | true ->
+        (* In order to catch rpc's from the very beginning, the devtool panel api
         will set is_recording to true before any javascript in the page runs.
         If this is the case, then we do not want to set is_recording to false. *)
-     ()
-   | false -> global##.rpcEffectIsRecording := Js.Optdef.return (Js.bool false));
-  global##.rpcEffectStartRecording := Js.wrap_callback start_recording;
-  global##.rpcEffectStopRecording := Js.wrap_callback stop_recording;
-  global##.rpcEffectPopEvents := Js.wrap_callback pop_events;
-  global##.ppxModuleTimerReadEvents := Js.wrap_callback readModuleTimerEvents
+        ()
+      | false -> global##.rpcEffectIsRecording := Js.Optdef.return (Js.bool false));
+     global##.rpcEffectStartRecording := Js.wrap_callback start_recording;
+     global##.rpcEffectStopRecording := Js.wrap_callback stop_recording;
+     global##.rpcEffectPopEvents := Js.wrap_callback pop_events;
+     global##.ppxModuleTimerReadEvents := Js.wrap_callback readModuleTimerEvents;
+     force Incr_node_introspection.run_top_level_side_effects)
 ;;
 
-let run_top_level_side_effects () = init_global ()
+let run_top_level_side_effects () = force init_global
 
 let send_and_track_rpc
   ~rpc_kind

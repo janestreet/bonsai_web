@@ -3,7 +3,7 @@
 A very common problem is performantly displaying lots of tabular data.
 
 If your list has tens or even hundreds of entries, you might get away
-with a simple `View.table`. But once we get to thousands, the browser
+with a simple HTML table. But once we get to thousands, the browser
 starts to struggle.
 
 `bonsai_web_ui_partial_render_table` implements a reusable table
@@ -150,8 +150,8 @@ Then, we specify how the cells and headers should be rendered:
 ``` ocaml
   module Table = Bonsai_web_ui_partial_render_table.Basic
 
-  let columns : (Symbol.t, Row.t, Col_id.t) Table.New_columns.t =
-    Table.New_columns.build
+  let columns : (Symbol.t, Row.t, Col_id.t) Table.Columns.t =
+    Table.Columns.build
       (module Col_id)
       ~columns:structure
       ~render_cell:
@@ -165,15 +165,11 @@ Then, we specify how the cells and headers should be rendered:
                | Num_owned -> Vdom.Node.text (string_of_int num_owned)
                | Last_updated -> Vdom.Node.text (Time_ns.to_string last_updated)))
       ~render_header:(fun col (local_ _graph) ->
-        let%arr col in
-        let name =
-          match col with
-          | Symbol -> Vdom.Node.text "Symbol"
-          | Price -> Vdom.Node.text "Price"
-          | Num_owned -> Vdom.Node.text "Num_owned"
-          | Last_updated -> Vdom.Node.text "Last Updated"
-        in
-        Table.New_columns.Sortable.Header.with_icon name)
+        match%arr col with
+        | Symbol -> Vdom.Node.text "Symbol"
+        | Price -> Vdom.Node.text "Price"
+        | Num_owned -> Vdom.Node.text "Num_owned"
+        | Last_updated -> Vdom.Node.text "Last Updated")
   ;;
 ```
 
@@ -262,7 +258,7 @@ Finally, we glue all our pieces together:
 ```
 ### Sorting
 
-The `Table.Basic.New_columns.build` function takes an optional `sorts`
+The `Table.Basic.Columns.build` function takes an optional `sorts`
 argument, which allows you to specify a `Sort_kind.t option` for every
 `column_id`. A `Sort_kind.t` consists of 2 functions: `forward` for
 "ascending" sorts, and `reverse` for "descending" sorts.
@@ -362,8 +358,9 @@ events:
             match binding with
             | Some b -> Effect.Many [ Effect.Prevent_default; b ]
             | None -> Effect.Ignore)
-          (* Allows browser focus to be set on the table. *)
-        ; Vdom.Attr.tabindex 0 (* Unsets default browser styling for focused elements. *)
+          (* [tabindex=0] allows browser focus to be set on the table.
+             We then remove the default focus ring with [outline: none] css. *)
+        ; Vdom.Attr.tabindex 0
         ; {%css|outline: none;|}
         ]
       [ view ]
@@ -382,11 +379,9 @@ up, or as a `Vdom.Attr.Global_listeners`.
 ### Styling
 
 The PRT accepts a `~styling` argument, which allows configuring its
-appearance. By default, styling config will be pulled from the
-[theme](./theming.mdx).
+appearance.
 
-The "basic", user-friendly API currently only allows configuring colors.
-Here's how you could explicitly pass in config:
+You can configure colors, borders, and fonts explicitly:
 
 ```{=html}
 <!-- $MDX file=../../examples/bonsai_guide_code/prt_examples.ml,part=prt_styling -->
@@ -398,26 +393,34 @@ Here's how you could explicitly pass in config:
         ~styling:
           (This_one
              (Bonsai.return
-                (Bonsai_web_ui_partial_render_table_styling.create
-                   { colors =
-                       { page_bg = `Hex "#f0f4f8"
-                       ; page_fg = `Hex "#333333"
-                       ; header_bg = `Hex "#2c3e50"
-                       ; header_fg = `Hex "#ecf0f1"
-                       ; row_even_bg = `Hex "#ffffff"
-                       ; row_even_fg = `Hex "#333333"
-                       ; row_odd_bg = `Hex "#e8eef2"
-                       ; row_odd_fg = `Hex "#333333"
-                       ; cell_focused_bg = `Hex "#3498db"
-                       ; cell_focused_fg = `Hex "#ffffff"
-                       ; row_focused_bg = `Hex "#d6eaf8"
-                       ; row_focused_fg = `Hex "#2980b9"
-                       ; row_focused_border = `Hex "#2980b9"
-                       ; header_header_border = `Hex "#34495e"
-                       ; body_body_border = `Hex "#bdc3c7"
-                       ; header_body_border = `Hex "#7f8c8d"
-                       }
-                   })))
+                Bonsai_web_ui_partial_render_table_styling.(
+                  create
+                    { colors =
+                        { page_bg = `Hex "#f0f4f8"
+                        ; page_fg = `Hex "#333333"
+                        ; header_bg = `Hex "#2c3e50"
+                        ; header_fg = `Hex "#ecf0f1"
+                        ; header_cell_focused_bg = `Hex "#2c3e50"
+                        ; header_cell_focused_fg = `Hex "#2980b9"
+                        ; row_even_bg = `Hex "#ffffff"
+                        ; row_even_fg = `Hex "#333333"
+                        ; row_odd_bg = `Hex "#e8eef2"
+                        ; row_odd_fg = `Hex "#333333"
+                        ; cell_focused_bg = `Hex "#3498db"
+                        ; cell_focused_fg = `Hex "#ffffff"
+                        ; cell_focused_outline = Some (`Hex "#2980b9")
+                        ; row_focused_bg = `Hex "#d6eaf8"
+                        ; row_focused_fg = `Hex "#2980b9"
+                        ; row_focused_border = `Hex "#2980b9"
+                        ; row_of_focused_cell_fg = None
+                        ; row_of_focused_cell_bg = None
+                        ; header_header_border = `Hex "#34495e"
+                        ; body_body_border = `Hex "#bdc3c7"
+                        ; header_body_border = `Hex "#7f8c8d"
+                        }
+                    ; lengths = Params.Lengths.default
+                    ; fonts = Params.Fonts.default
+                    })))
         ~focus:
           (Table.Focus.By_cell
              { on_change =
@@ -436,6 +439,11 @@ Here's how you could explicitly pass in config:
 ```{=html}
 </iframe>
 ```
+By default, styling config will be pulled from the
+[theme](./theming.mdx). We recommend explicitly passing a `Styling.t`,
+because dynamically scoped theming is implicit, and can be difficult to
+follow.
+
 ## Typed Fields
 
 If your `Row.t` is a record type, you can derive
@@ -485,8 +493,8 @@ and cell rendering logic:
 ``` ocaml
   module Table = Bonsai_web_ui_partial_render_table.Basic
 
-  let columns : (Symbol.t, Row.t, Col_id.t) Table.New_columns.t =
-    Table.New_columns.build
+  let columns : (Symbol.t, Row.t, Col_id.t) Table.Columns.t =
+    Table.Columns.build
       (module Col_id)
       ~sorts
       ~columns:structure
@@ -501,8 +509,7 @@ and cell rendering logic:
               | Last_updated -> Vdom.Node.text (Time_ns.to_string value))))
       ~render_header:(fun col (local_ _graph) ->
         let%arr { f = T field } = col in
-        Table.Columns.Dynamic_columns.Sortable.Header.with_icon
-          (Vdom.Node.text (Row.Typed_field.name field)))
+        Vdom.Node.text (Row.Typed_field.name field))
   ;;
 ```
 
@@ -526,9 +533,33 @@ contains the currently viewed range of data, in addition to some
 metadata about the total number of rows before / after filtering and
 range restriction.
 
-### Changes vs Client-side PRT
+A server-side table requires some additional setup. This is currently
+very boilerplate-heavy, and we hope to improve it in the future.
 
-A server-side table requires some additional configuration.
+### Protocol Changes
+
+With a client-side PRT, we collate on the client. Our RPC to get data
+from the server might just use `unit` for its query type, since we're
+fetching everything.
+
+With server-side collation, we will need to provide:
+
+-   Filtering params, if filtering is supported. The type you'll use
+    here depends on how you implement filtering. For example, you might
+    use a string for matching against one of the fields, a collection of
+    rules for how to filter each column, or some other arbitrary
+    `Filter_params.t` type.
+
+```{=html}
+<!-- -->
+```
+-   Sorting params, if sorting is supported. If your columns support
+    `Asc | Desc | None` sorting, consider using
+    `Bonsai_web_ui_partial_render_table_protocol.Stable.Order.t`
+-   The currently viewed range of rows. This should probably be a
+    `start:int * end:int` tuple or record.
+
+### Client-side Changes
 
 #### Columns
 
@@ -549,13 +580,13 @@ yourself:
 
   module Structure = Bonsai_web_ui_partial_render_table.Column_structure
 
-  let component (local_ graph) ~data =
+  let component (local_ graph) =
     (* We need to create the sortable state outside of the table. *)
     let sortable_state =
-      Table.New_columns.Sortable.state ~equal:[%equal: Col_id.t] () graph
+      Table.Columns.Sortable.state ~equal:[%equal: Col_id.t] () graph
     in
-    let columns : (Symbol.t, Row.t, Col_id.t) Table.New_columns.t =
-      Table.New_columns.build
+    let columns : (Symbol.t, Row.t, Col_id.t) Table.Columns.t =
+      Table.Columns.build
         (module Col_id)
         ~columns:(Structure.flat Col_id.all)
         ~render_cell:
@@ -570,11 +601,11 @@ yourself:
         ~render_header:(fun col (local_ _graph) ->
           let%arr ({ f = T field } as col) = col
           and sortable_state in
-          Table.New_columns.Sortable.Header.Expert.default_click_handler
+          Table.Columns.Sortable.Header.Expert.default_click_handler
             ~sortable:true
             ~column_id:col
             sortable_state
-            (Table.New_columns.Sortable.Header.with_icon
+            (Table.Columns.Sortable.Header.with_icon
                (Vdom.Node.text (Row.Typed_field.name field))))
     in
 ```
@@ -582,7 +613,7 @@ yourself:
 This is because you'll need to send the sort order to the server as part
 of your query, so it can collate.
 
-### Focus
+#### Focus
 
 The `~focus` configuration records for `By_row` and `By_cell` have some
 additional arguments.
@@ -591,9 +622,9 @@ Because the source of truth for the rows is on the server, there's no
 way to tell if a focused row that's off screen still exists on the
 server, or what its index is.
 
-You can supply a `key_rank : ('key -> int option) unit Effect.t`, which
-should ping a server endpoint and get the index corresponding to the
-key, if it exists.
+You can supply a `key_rank : ('key -> int option Effect.t) Bonsai.t`,
+which should ping a server endpoint and get the index corresponding to
+the key, if it exists.
 
 Similarly, the `compute_presence` function allows the user to make
 `Focus.By_row/cell.focused` return \[None\] if a row that's focused but
@@ -601,6 +632,60 @@ off screen doesn't actually exist anymore. Most commonly, `Fn.id` is
 used, so the type of `presence` is `'key option`. Note that
 `compute_presence` does not impact the visually displayed focused
 row/cell.
+
+#### Query + Table Instantiation
+
+Creating the table is a bit tricky. We need to know how many rows fit on
+the screen to build our query, and we need our query to get data, and
+render the table. But the table itself reports how many rows fit on the
+screen.
+
+Here's how we might get around this:
+
+```{=html}
+<!-- $MDX file=../../examples/bonsai_guide_code/prt_examples.ml,part=server_side_query -->
+```
+``` ocaml
+    let copied_range, set_copied_range = Bonsai.state (0, 0) graph in
+    let query =
+      let%arr copied_range and sortable_state and filter_params in
+      { Query.filter_params
+      ; sort_order = Table.Columns.Sortable.order sortable_state
+      ; visible_range = copied_range
+      }
+    in
+    (* In practice, this would probably need some kind of error handling.*)
+    let data = fetch_data_polling_rpc query in
+    let table =
+      Table.component
+        (module Symbol)
+        ~focus
+        ~row_height:(Bonsai.return (`Px 30))
+        ~columns
+        data
+        graph
+    in
+    let%sub { range = table_range; _ } = table in
+    Bonsai.Edge.on_change
+      ~equal:[%equal: int * int]
+      table_range
+      ~callback:
+        (let%arr set_copied_range in
+         fun table_range -> set_copied_range table_range)
+```
+
+It's unfortunate that syncing state like this is necessary. We are
+hoping to improve this in the future.
+
+```{=html}
+```
+## Your Table Might Start Empty
+
+The data displayed in your table is probably loaded via an RPC. If you
+try to run some side effect (e.g. focusing the first row) via a
+`Bonsai.Edge.lifecycle ~on_activate`, this will likely run before the
+server has responded with data. Consider using an `on_change` on the
+data instead.
 
 ## Beware Buttons in Tables
 

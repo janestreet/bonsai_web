@@ -140,7 +140,7 @@ let clock_every_demo (local_ graph) =
   Bonsai.Clock.every
     ~when_to_start_next_effect:`Every_multiple_of_period_blocking
     ~trigger_on_activate:false
-    (Time_ns.Span.of_sec 1.0)
+    (Bonsai.return (Time_ns.Span.of_sec 1.0))
     (let%arr count and set_count in
      set_count (count + 1))
     graph;

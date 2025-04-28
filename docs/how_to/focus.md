@@ -30,6 +30,31 @@ is false or `activeElement` is on some iframe, because that indicates
 that user focus is not in your web app, and you might interrupt the user
 if they are in an iframe, or your app is currently being iframed.
 
+## Getting Focus
+
+It is tempting to try and build a
+`val focused_element : Dom_html.element Js.t Bonsai.t`, so your Bonsai
+code can subscribe to the currently focused element. This is a bad idea!
+
+DOM nodes are mutable, and you [should not put mutable things in
+`Bonsai.t`s](./best_practices_pitfalls.mdx#no-mutable-models): if you
+were to `let%arr` on a `Dom_html.element Js.t`, your code would not
+re-run on changes to that DOM node. This is particularly important
+because the vdom diff/patch algorithm might reuse a DOM node for
+something completely different.
+
+Separately, tracking the active element is finnicky; e.g. the `focus`
+and `blur` events don't bubble, and `blur` won't fire if the active
+element is removed from the DOM.
+
+It's ok to fetch the `Dom_html.document##activeElement` as part of an
+`Effect.t` / in event handlers, but don't try to store it anywhere.
+
+Some Bonsai components implement their own state machines simulating
+focus in terms of some OCaml key, rather than rely on DOM focus. The
+[PRT](./partial_render_table.mdx#focus) has a fairly advanced focus
+state machine.
+
 ## Setting Focus
 
 HTML elements have `focus` method, which can be used to programmatically
@@ -101,43 +126,10 @@ above would not work if `Effect.Focus.on_activate` was instantiated
 outside the `match%sub`.
 
 `Effect.Focus.on_activate` might also fail if the DOM element you want
-to focus isn't created or made visible within one frame after its Bonsai
-code becomes active. For example, it won't autofocus elements in the
-modals and popovers provided by
-[Bonsai_web_ui_toplayer](https://github.com/janestreet/bonsai/tree/master/web_ui/toplayer),
-because they aren't displayed for a few frames after they are created.
+to focus isn't created or made within the same frame that its Bonsai
+code becomes active. This probablt means there's a bug / delayed [state
+synchronization](./organizing_state.mdx) in your UI component.
 
-Instead, you can use the [`Vdom.Attr.autofocus`
-attribute](https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/autofocus):
-
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/focus_examples.ml,part=autofocus -->
-```
-``` ocaml
-module Toplayer = Bonsai_web_ui_toplayer
-
-let autofocus (local_ graph) =
-  let { Toplayer.Controls.open_; _ } =
-    Toplayer.Modal.create
-      ~content:(fun ~close:_ _ ->
-        return (Vdom.Node.input ~attrs:[ Vdom.Attr.autofocus true ] ()))
-      graph
-  in
-  let%arr open_ in
-  Vdom.Node.div
-    [ Vdom.Node.button
-        ~attrs:[ Vdom.Attr.on_click (fun _ -> open_) ]
-        [ Vdom.Node.text "open modal" ]
-    ]
-;;
-```
-
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#autofocus">
-```
-```{=html}
-</iframe>
-```
 ### Focusable Elements
 
 Not all elements are focusable! See [this

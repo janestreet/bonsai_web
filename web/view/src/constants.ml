@@ -79,8 +79,8 @@ module Toplayer = struct
       move their cursor from the anchor to the tooltip.
 
       If [tooltips_have_arrows], [tooltip_offset_px] should be big enough that the arrow
-      doesn't overlap with the anchor.
-      The same applies to [popover_with_arrow_default_offset_px]. *)
+      doesn't overlap with the anchor. The same applies to
+      [popover_with_arrow_default_offset_px]. *)
   type t =
     { tooltips_have_arrows : [ `No | `Yes_with_length_px of float ]
     ; tooltip_offset_px : float

@@ -24,16 +24,16 @@ module Focus : sig
       one [Vdom.Node.t], as only the first element will be focused/blurred when the effect
       runs.
 
-      When [name_for_testing] is provided, the focus and blur effects will print in test mode.
-      They will be a no-op otherwise. *)
+      When [name_for_testing] is provided, the focus and blur effects will print in test
+      mode. They will be a no-op otherwise. *)
   val on_effect : ?name_for_testing:string -> unit -> Bonsai.graph -> t Bonsai.t
 
-  (** [on_activate] will focus the element that the returned attr is attached to when
-      this computation is activated.  See [Bonsai.Edge] for more details on the component
+  (** [on_activate] will focus the element that the returned attr is attached to when this
+      computation is activated. See [Bonsai.Edge] for more details on the component
       lifecycle.
 
-      When [name_for_testing] is provided, the focus will print in test mode.
-      It will be a no-op otherwise. *)
+      When [name_for_testing] is provided, the focus will print in test mode. It will be a
+      no-op otherwise. *)
   val on_activate
     :  ?name_for_testing:string
     -> unit
@@ -47,3 +47,10 @@ val reload_page : unit Effect.t
 
 (** [alert] will cause an alert box to pop up with your provided message. *)
 val alert : string -> unit Effect.t
+
+(** [set_document_title] will set the title of the page to the provided string *)
+val set_document_title : string -> unit Effect.t
+
+(** [on_change_set_document_title] will cause the title of the page to be set to the
+    provided [string Bonsai.t] and updated whenever its value changes *)
+val on_change_set_document_title : string Bonsai.t -> Bonsai.graph -> unit

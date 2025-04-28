@@ -15,13 +15,11 @@ class type global = object
   method bonsaiBugStopProfiling : (unit -> unit) Js.callback Js.prop
   method bonsaiBugPopEvents : (unit -> Js.js_string Js.t) Js.callback Js.prop
   method bonsaiBugLatestGraphInfo : (unit -> Js.js_string Js.t) Js.callback Js.prop
+  method bonsaiBugStartComputationWatcher : (unit -> unit) Js.callback Js.prop
+  method bonsaiBugStopComputationWatcher : (unit -> unit) Js.callback Js.prop
 end
 
 let global : global Js.t = Js.Unsafe.global
-
-type debugging_state =
-  | Not_debugging
-  | Debugging
 
 let should_record_from_beginning () =
   match Js.Optdef.to_option global##.bonsaiBugShouldRecordFromBeginning with
@@ -32,10 +30,15 @@ let should_record_from_beginning () =
 let is_profiling_var =
   Ui_incr.Var.create
     (match should_record_from_beginning () with
-     | true -> Debugging
-     | false -> Not_debugging)
+     | true -> Bonsai.Private.Instrumentation.Profiling.Profiling
+     | false -> Not_profiling)
 ;;
 
+let computation_watcher_status_var =
+  Ui_incr.Var.create Bonsai.Private.Instrumentation.Watching.Not_watching
+;;
+
+let computation_watcher_status = Ui_incr.Var.watch computation_watcher_status_var
 let is_profiling = Ui_incr.Var.watch is_profiling_var
 
 let iter_entries performance_observer_entry_list ~f =
@@ -105,7 +108,7 @@ let latest_graph_info () =
 ;;
 
 let commence_debugger () =
-  Ui_incr.Var.set is_profiling_var Debugging;
+  Ui_incr.Var.set is_profiling_var Profiling;
   let performance_observer =
     let f new_entries observer =
       observer##takeRecords
@@ -114,28 +117,41 @@ let commence_debugger () =
     in
     PerformanceObserver.observe ~entry_types:[ "measure" ] ~f
   in
-  performance_observer_ref := Some performance_observer;
+  performance_observer_ref := Some performance_observer
+;;
+
+let start_computation_watcher () =
+  Ui_incr.Var.set computation_watcher_status_var Watching;
   Ui_incr.Incr.stabilize ();
   (* Clear the watcher queue after the first stabilize so that the initialization
      of the incrementals don't log to console *)
   Queue.clear computation_watcher_queue
 ;;
 
+let stop_computation_watcher () =
+  Ui_incr.Var.set computation_watcher_status_var Not_watching;
+  Ui_incr.Incr.stabilize ()
+;;
+
 let start_profiling () =
-  match Ui_incr.Var.value is_profiling_var with
-  | Debugging -> print_endline "Already debugging."
-  | Not_debugging ->
-    print_endline "Starting the debugger.";
-    commence_debugger ()
+  (match Ui_incr.Var.value is_profiling_var with
+   | Profiling -> print_endline "Already profiling."
+   | Not_profiling ->
+     print_endline "Starting the Bonsai Bug profiler.";
+     commence_debugger ());
+  match Ui_incr.Var.value computation_watcher_status_var with
+  | Watching -> ()
+  | Not_watching -> start_computation_watcher ()
 ;;
 
 let stop_profiling () =
-  Ui_incr.Var.set is_profiling_var Not_debugging;
+  Ui_incr.Var.set is_profiling_var Not_profiling;
   Option.iter !performance_observer_ref ~f:(fun performance_observer ->
     performance_observer##disconnect);
   Javascript_profiling.clear_marks ();
   Javascript_profiling.clear_measures ();
-  Ui_incr.stabilize ()
+  Ui_incr.stabilize ();
+  stop_computation_watcher ()
 ;;
 
 let log_all_computation_watcher_nodes_in_javascript_console () =
@@ -152,8 +168,8 @@ let log_all_computation_watcher_nodes_in_javascript_console () =
 let init_global =
   let is_profiling () =
     match Ui_incr.Var.value is_profiling_var with
-    | Not_debugging -> Js.bool false
-    | Debugging -> Js.bool true
+    | Not_profiling -> Js.bool false
+    | Profiling -> Js.bool true
   in
   fun () ->
     global##.bonsaiBugIntrospectionSupported := Js.bool true;
@@ -162,66 +178,28 @@ let init_global =
     global##.bonsaiBugStopProfiling := Js.wrap_callback stop_profiling;
     global##.bonsaiBugPopEvents := Js.wrap_callback pop_events;
     global##.bonsaiBugLatestGraphInfo := Js.wrap_callback latest_graph_info;
+    global##.bonsaiBugStartComputationWatcher
+    := Js.wrap_callback start_computation_watcher;
+    global##.bonsaiBugStopComputationWatcher := Js.wrap_callback stop_computation_watcher;
     (* We commence the bonsai profiler if we were told to debug upon app startup. *)
     match Ui_incr.Var.value is_profiling_var with
-    | Debugging -> commence_debugger ()
-    | Not_debugging -> ()
-;;
-
-type 'result t = { instrumented_computation : 'result Bonsai.Private.Computation.t }
-
-let instrument component =
-  let component =
-    Bonsai.Private.Graph_info.iter_graph_updates
-      component
-      ~on_update:set_latest_graph_info
-  in
-  let instrumented_computation =
-    Bonsai.Private.Instrumentation.instrument_computation
-      component
-      ~start_timer:(fun s -> s, Javascript_profiling.Timer.start ())
-      ~stop_timer:(fun (s, timer) ->
-        let measurement = Javascript_profiling.Timer.stop timer in
-        Javascript_profiling.measure s measurement)
-  in
-  { instrumented_computation }
-;;
-
-let create_with_computation_watcher
-  (type action_input model action result a)
-  ~(f :
-      (model, action, action_input, result, unit) Bonsai.Private.Computation.eval_fun
-      -> a Ui_incr.Incr.t)
-  ~(recursive_scopes : Bonsai.Private.Computation.Recursive_scopes.t)
-  ~(time_source : Bonsai.Time_source.t)
-  ~(computation : result Bonsai.Private.Computation.t)
-  (info : (model, action, action_input, result, unit) Bonsai.Private.Computation.info)
-  : a Ui_incr.Incr.t
-  =
-  let open Ui_incr.Incr.Let_syntax in
-  match%bind is_profiling with
-  | Debugging ->
-    let { instrumented_computation } = instrument computation in
-    let (T info') =
-      Bonsai.Private.Enable_computation_watcher.run
-        ~watcher_queue:computation_watcher_queue
-        instrumented_computation
-      |> Bonsai.Private.gather ~recursive_scopes ~time_source
-    in
-    (match
-       Bonsai.Private.Meta.(
-         ( Model.Type_id.same_witness info.model.type_id info'.model.type_id
-         , Bonsai.Private.Action.Type_id.same_witness info.action info'.action
-         , Input.same_witness info.input info'.input ))
-     with
-     | Some T, Some T, Some T -> f info'.run
-     | _ ->
-       print_endline
-         "Not starting computation watcher. An error occurred while attempting to \
-          instrument the computation; the resulting computation does not typecheck. \
-          Reusing previously gathered run information to execute";
-       f info.run)
-  | Not_debugging -> f info.run
+    | Profiling -> commence_debugger ()
+    | Not_profiling -> ()
 ;;
 
 let run_top_level_side_effects = lazy (init_global ())
+
+type timer = string * Javascript_profiling.Timer.t
+
+let default_instrumentation_for_incr_dom_start_app =
+  { Bonsai.Private.Instrumentation.Config.instrument_for_profiling = is_profiling
+  ; instrument_for_computation_watcher = computation_watcher_status
+  ; set_latest_graph_info
+  ; computation_watcher_queue
+  ; start_timer = (fun s -> s, Javascript_profiling.Timer.start ())
+  ; stop_timer =
+      (fun (s, timer) ->
+        let measurement = Javascript_profiling.Timer.stop timer in
+        Javascript_profiling.measure s measurement)
+  }
+;;

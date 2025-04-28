@@ -38,7 +38,7 @@ containing code switches between active / inactive as `on_activate` and
 ``` ocaml
 let lifecycle_demo (local_ graph) =
   let log_val, log =
-    Bonsai.state_machine0
+    Bonsai.state_machine
       ~default_model:""
       ~apply_action:(fun _ curr new_ -> curr ^ new_)
       graph

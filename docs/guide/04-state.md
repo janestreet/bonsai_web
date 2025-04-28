@@ -90,11 +90,18 @@ producing function. It takes a default starting value and a
 
 ### `local_ graph` is a Graph Builder
 
-`local graph : Bonsai.graph` is used by Bonsai to build a
-[static](../advanced/why_no_bind.mdx) computation graph. Most nodes in
-the graph come from `let%arr` calls, but many "leaves" of the graph are
-"state" nodes. At startup, Bonsai aggregates the entire state of your
-app.
+`local_ graph : Bonsai.graph` is used by Bonsai to build a
+[static](../advanced/why_no_bind.mdx) computation graph. Because
+Bonsai's computation graph is static, you may not:
+
+-   Have a data structure with nested `Bonsai.t`s. A
+    `'a Bonsai.t Bonsai.t` is illegal, and so are record `Bonsai.t`s
+    where some (possibly deeply nested) field is a `Bonsai.t`.
+-   Call `Bonsai.*` functions, use a `Bonsai.graph`, or write `let%arr`
+    blocks inside the body of a `let%arr` block.
+
+Most nodes in the graph come from `let%arr` calls, but many "leaves" of
+the graph are "state" nodes, which require a `Bonsai.graph` parameter.
 
 The [`local_`
 mode](https://blog.janestreet.com/oxidizing-ocaml-locality/) prevents
@@ -115,12 +122,32 @@ optimizations to make apps faster!
 ```{=html}
 <aside>
 ```
-`let%arr` actually uses `graph` so that we can share the work done by
-one `Bonsai.t` in multiple places! But it wouldn't be ergonomic to pass
-it in every time, so Bonsai's internals cheat and access it implicitly.
+`let%arr` actually uses `graph`, since it builds up the static
+computation graph. But it wouldn't be ergonomic to pass it in every
+time, so Bonsai's internals cheat and access it implicitly.
 ```{=html}
 </aside>
 ```
+### State Lives Outside the Graph
+
+Although `Bonsai.state` might look like a fancy ref, it's actually a
+declaration of the location + initial value of state. At startup, Bonsai
+will traverse the static computation graph to figure out the shape and
+initial value of all the state in your app, then initialize a single
+`Incr.Var.t`, where your app's entire state will live. This `Incr.Var.t`
+powers all the state `Bonsai.t`s.
+
+### Why are Setters `Bonsai.t`s?
+
+The \_value_s of `Bonsai.state`s are exposed as `'a Bonsai.t`s, because
+they change at runtime, and are inputs to incremental computations. But
+if our computation graph is static, why do the `'a -> unit Effect.t`
+setters need to be `Bonsai.t`s?
+
+In short, a Bonsai app's state and queue of pending state updates don't
+get instantiated until startup. Because the setter is a `Bonsai.t`, it
+can only be used at runtime.
+
 ### Back to State
 
 To explore `Bonsai.state`, we'll implement a counter with
@@ -254,13 +281,13 @@ keyboard shortcuts!
 ```
 There are some tools to deal with stale values at the [Effect.t
 level](./02-effects.mdx), but this case is best solved by using
-`Bonsai.state_machine0`:
+`Bonsai.state_machine`:
 
 ```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/bonsai_types.mli,part=state_machine0 -->
+<!-- $MDX file=../../examples/bonsai_guide_code/bonsai_types.mli,part=state_machine -->
 ```
 ``` ocaml
-val state_machine0
+val state_machine
   :  default_model:'model
   -> apply_action:
        (('action, unit) Bonsai.Apply_action_context.t -> 'model -> 'action -> 'model)
@@ -271,9 +298,9 @@ val state_machine0
 ```{=html}
 <aside>
 ```
-`Bonsai.state_machine0` actually has also some optional
-`sexp_of_action`, `sexp_of_model` arguments which you can use to provide
-more information to debugging tools.
+`Bonsai.state_machine` actually has also some optional `sexp_of_action`,
+`sexp_of_model` arguments which you can use to provide more information
+to debugging tools.
 ```{=html}
 </aside>
 ```
@@ -290,7 +317,7 @@ produce a new model." The output also changes: instead of a "setter
 effect" function, we get a function that takes an `Action.t` and
 produces an `unit Effect.t` to "inject" it into our state machine.
 
-So how would we use `state_machine0` to fix the bug in the counter
+So how would we use `state_machine` to fix the bug in the counter
 application?
 
 ```{=html}
@@ -299,7 +326,7 @@ application?
 ``` ocaml
 let counter_state_machine (local_ graph) : Vdom.Node.t Bonsai.t * int Bonsai.t =
   let count, inject =
-    Bonsai.state_machine0
+    Bonsai.state_machine
       ~default_model:0
       ~apply_action:(fun (_ : _ Bonsai.Apply_action_context.t) model action ->
         match action with
@@ -334,7 +361,7 @@ instead of calling `set_state` multiple times with the same value,
 Bonsai will call `inject` multiple times, and they'll be processed by
 `apply_action` in order, producing the correct result.
 
-### State Machines with Inputs
+### State Machines with `Bonsai.t` Dependencies
 
 What if we wanted to increment / decrement our count by some dynamic
 `step : int Bonsai.t`? Our first attempt might look like this:
@@ -342,7 +369,7 @@ What if we wanted to increment / decrement our count by some dynamic
 ``` ocaml
 # let counter_state_machine ~(step : int Bonsai.t) (local_ graph) =
   let count, inject =
-    Bonsai.state_machine0
+    Bonsai.state_machine
       ~default_model:0
       ~apply_action:(fun (_ : _ Bonsai.Apply_action_context.t) model action ->
         let%arr step = step in
@@ -371,16 +398,16 @@ Error: This expression has type int Bonsai.t
 ```
 
 Unfortunately, the compiler doesn't like that. Recall that
-`apply_action` for `Bonsai.state_machine0` produces a `'model`, not a
+`apply_action` for `Bonsai.state_machine` produces a `'model`, not a
 `'model Bonsai.t`. Instead, we'll need some heavier machinery.
 
-`state_machine0` has a "0" at the end to indicate that it takes "0"
-additional inputs. There's also a `state_machine1`, which allows
-`apply_action` to depend on the current value of a `Bonsai.t`:
+There is another version of `state_machine`, called
+`state_machine_with_input`, which allows `apply_action` to depend on the
+current value of a `Bonsai.t`:
 
 ``` diff
--val state_machine0
-+val state_machine1
+-val state_machine
++val state_machine_with_input
    :  default_model:'model
    -> apply_action:
         ('action Apply_action_context.t
@@ -403,15 +430,15 @@ to explicitly handle this.
 </aside>
 ```
 Let's take `step` as an input and update our implementation to use
-`state_machine1`:
+`state_machine_with_input`:
 
 ```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/state_examples.ml,part=counter_state_machine1 -->
+<!-- $MDX file=../../examples/bonsai_guide_code/state_examples.ml,part=counter_state_machine_with_input -->
 ```
 ``` ocaml
-let counter_state_machine1 ~(step : int Bonsai.t) (local_ graph) =
+let counter_state_machine_with_input ~(step : int Bonsai.t) (local_ graph) =
   let count, inject =
-    Bonsai.state_machine1
+    Bonsai.state_machine_with_input
       ~default_model:0
       ~apply_action:(fun (_ : _ Bonsai.Apply_action_context.t) input model action ->
         match input with
@@ -451,9 +478,9 @@ frankencounter:
 ```
 ``` ocaml
 let counter_state_machine_chained (local_ graph) =
-  let counter1, count1 = counter_state_machine1 ~step:(Bonsai.return 1) graph in
-  let counter2, count2 = counter_state_machine1 ~step:count1 graph in
-  let counter3, _ = counter_state_machine1 ~step:count2 graph in
+  let counter1, count1 = counter_state_machine_with_input ~step:(Bonsai.return 1) graph in
+  let counter2, count2 = counter_state_machine_with_input ~step:count1 graph in
+  let counter3, _ = counter_state_machine_with_input ~step:count2 graph in
   let%arr counter1 and counter2 and counter3 in
   Vdom.Node.div [ counter1; counter2; counter3 ]
 ;;
@@ -465,8 +492,8 @@ let counter_state_machine_chained (local_ graph) =
 ```{=html}
 </iframe>
 ```
-There is no `state_machine2` (or n), because multiple inputs could be
-packaged together as a single `Bonsai.t`, and destructured inside
+There is no `state_machine2` (or n), because multiple dependencies could
+be packaged together as a single `Bonsai.t`, and destructured inside
 `apply_action`.
 
 ### State Machines can Schedule Effects

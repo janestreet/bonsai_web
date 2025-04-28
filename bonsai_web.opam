@@ -30,9 +30,9 @@ depends: [
   "versioned_polling_state_rpc"
   "virtual_dom"
   "virtual_dom_toplayer"
-  "dune"                        {>= "3.11.0"}
-  "js_of_ocaml"                 {>= "5.1.1" & < "5.7.0"}
-  "js_of_ocaml-ppx"             {>= "5.1.1" & < "5.7.0"}
+  "dune"                        {>= "3.17.0"}
+  "js_of_ocaml"                 {>= "6.0.0"}
+  "js_of_ocaml-ppx"             {>= "6.0.0"}
   "uri"                         {>= "3.0.0"}
 ]
 available: arch != "arm32" & arch != "x86_32"

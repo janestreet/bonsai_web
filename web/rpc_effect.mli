@@ -7,13 +7,13 @@ module On_conn_failure : sig
   (** Persistent connections reuse a single connection. If there's a failure to connect,
       it will wait a bit, then attempt to re-establish the connection.
 
-      On connection failure, our RPC can either wait until some retry attempt succeeds,
-      or treat the failure as an error.
+      On connection failure, our RPC can either wait until some retry attempt succeeds, or
+      treat the failure as an error.
 
       For almost all polling RPCs, and most one-shot RPCs, [Surface_error_to_rpc] is
-      preferable. However, with one-shot RPCs, you might then want to repeatedly retry
-      the RPC until it succeeds. The [Retry_until_success] option can be useful here,
-      but if the connection never succeeds, the effect will never resolve. *)
+      preferable. However, with one-shot RPCs, you might then want to repeatedly retry the
+      RPC until it succeeds. The [Retry_until_success] option can be useful here, but if
+      the connection never succeeds, the effect will never resolve. *)
   type t =
     | Surface_error_to_rpc
     | Retry_until_success
@@ -29,8 +29,8 @@ module Where_to_connect : sig
   (** [Self] and [Url] open a persistent Websockets connection. [Self] will use the URL
       from which the web app is being accessed. [Url] will use the provided URL.
 
-      [Self] will reuse a single Websockets connection for all callsites.
-      Similarly, [Url] will open one connection per-URL.
+      [Self] will reuse a single Websockets connection for all callsites. Similarly, [Url]
+      will open one connection per-URL.
 
       [Self] and [Url] have the behavior of [On_conn_failure.Retry_until_success]. *)
   type t =
@@ -46,9 +46,9 @@ module Poll_result : sig
       [last_ok_response] contains the most recent query/response pair that completed
       successfully, even if the RPC has returned errors since then.
 
-      [last_error] contains the most recent query that produced an error, alongside
-      the error that was returned.  Unlike [last_ok_response], this field is set to
-      [None] as soon a response completes sucessfully.
+      [last_error] contains the most recent query that produced an error, alongside the
+      error that was returned. Unlike [last_ok_response], this field is set to [None] as
+      soon a response completes sucessfully.
 
       [inflight_query] is [Some] when an a query has been dispatched, but has not
       completed yet.
@@ -65,14 +65,14 @@ module Poll_result : sig
 end
 
 module Shared_poller : sig
-  (** A [Shared_poller] is a handle to a polling-style RPC whose RPCs
-      can be shared between multiple components that might have an interest
-      in polling values with the same types.
+  (** A [Shared_poller] is a handle to a polling-style RPC whose RPCs can be shared
+      between multiple components that might have an interest in polling values with the
+      same types.
 
       To create a [Shared_poller], use either [Rpc_effect.Rpc.shared_poller] or
-      [Rpc_effect.Polling_state_rpc.shared_poller].  With the value returned by
-      those functions, you can call [Shared_poller.lookup] with a query value to
-      get access to the results of the given RPC with the provided query. *)
+      [Rpc_effect.Polling_state_rpc.shared_poller]. With the value returned by those
+      functions, you can call [Shared_poller.lookup] with a query value to get access to
+      the results of the given RPC with the provided query. *)
 
   type ('query, 'response) t
 
@@ -93,7 +93,7 @@ module Shared_poller : sig
       aren't sufficient. *)
   val custom_create
     :  ?here:Stdlib.Lexing.position
-    -> ('query, _) Bonsai.comparator
+    -> ('query, _) Comparator.Module.t
     -> f:('query Bonsai.t -> Bonsai.graph -> ('query, 'response) Poll_result.t Bonsai.t)
     -> Bonsai.graph
     -> ('query, 'response) t Bonsai.t
@@ -143,7 +143,7 @@ module Rpc : sig
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Rpc.Rpc.t
     -> where_to_connect:Where_to_connect.t
-    -> every:Time_ns.Span.t
+    -> every:Time_ns.Span.t Bonsai.t
     -> 'query Bonsai.t
     -> Bonsai.graph
     -> ('query, 'response) Poll_result.t Bonsai.t
@@ -159,7 +159,7 @@ module Rpc : sig
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query -> 'response Or_error.t Deferred.t) Babel.Caller.t
     -> where_to_connect:Where_to_connect.t
-    -> every:Time_ns.Span.t
+    -> every:Time_ns.Span.t Bonsai.t
     -> 'query Bonsai.t
     -> Bonsai.graph
     -> ('query, 'response) Poll_result.t Bonsai.t
@@ -175,28 +175,45 @@ module Rpc : sig
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Streamable.Plain_rpc.t
     -> where_to_connect:Where_to_connect.t
-    -> every:Time_ns.Span.t
+    -> every:Time_ns.Span.t Bonsai.t
+    -> 'query Bonsai.t
+    -> Bonsai.graph
+    -> ('query, 'response) Poll_result.t Bonsai.t
+
+  (** Analagous to [poll_until_ok] for Streamable plain RPCs. See [poll_until_ok] for
+      details. *)
+  val streamable_poll_until_ok
+    :  ?here:Stdlib.Lexing.position
+    -> ?sexp_of_query:('query -> Sexp.t)
+    -> ?sexp_of_response:('response -> Sexp.t)
+    -> equal_query:('query -> 'query -> bool)
+    -> ?equal_response:('response -> 'response -> bool)
+    -> ?clear_when_deactivated:bool
+    -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
+    -> ('query, 'response) Streamable.Plain_rpc.t
+    -> where_to_connect:Where_to_connect.t
+    -> retry_interval:Time_ns.Span.t Bonsai.t
     -> 'query Bonsai.t
     -> Bonsai.graph
     -> ('query, 'response) Poll_result.t Bonsai.t
 
   val shared_poller
     :  ?here:Stdlib.Lexing.position
-    -> ('query, _) Bonsai.comparator
+    -> ('query, _) Comparator.Module.t
     -> ?sexp_of_response:('response -> Sexp.t)
     -> ?equal_response:('response -> 'response -> bool)
     -> ?clear_when_deactivated:bool
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Rpc.Rpc.t
     -> where_to_connect:Where_to_connect.t
-    -> every:Time_ns.Span.t
+    -> every:Time_ns.Span.t Bonsai.t
     -> Bonsai.graph
     -> ('query, 'response) Shared_poller.t Bonsai.t
 
-  (** Like [poll], but stops polling the same input query after an ok response.
-      If the query changes, the computation will resume polling until it
-      receives another ok response. If the computation receives an error
-      response, it will retry sending the RPC after waiting [retry_interval]. *)
+  (** Like [poll], but stops polling the same input query after an ok response. If the
+      query changes, the computation will resume polling until it receives another ok
+      response. If the computation receives an error response, it will retry sending the
+      RPC after waiting [retry_interval]. *)
   val poll_until_ok
     :  ?here:Stdlib.Lexing.position
     -> ?sexp_of_query:('query -> Sexp.t)
@@ -207,7 +224,7 @@ module Rpc : sig
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Rpc.Rpc.t
     -> where_to_connect:Where_to_connect.t
-    -> retry_interval:Time_ns.Span.t
+    -> retry_interval:Time_ns.Span.t Bonsai.t
     -> 'query Bonsai.t
     -> Bonsai.graph
     -> ('query, 'response) Poll_result.t Bonsai.t
@@ -226,7 +243,7 @@ module Rpc : sig
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Rpc.Rpc.t
     -> where_to_connect:Where_to_connect.t
-    -> every:Time_ns.Span.t
+    -> every:Time_ns.Span.t Bonsai.t
     -> condition:('response -> [ `Continue | `Stop_polling ]) Bonsai.t
     -> 'query Bonsai.t
     -> Bonsai.graph
@@ -242,7 +259,7 @@ module Rpc : sig
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query -> 'response Or_error.t Deferred.t) Babel.Caller.t
     -> where_to_connect:Where_to_connect.t
-    -> retry_interval:Time_ns.Span.t
+    -> retry_interval:Time_ns.Span.t Bonsai.t
     -> 'query Bonsai.t
     -> Bonsai.graph
     -> ('query, 'response) Poll_result.t Bonsai.t
@@ -257,7 +274,7 @@ module Rpc : sig
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query -> 'response Or_error.t Deferred.t) Babel.Caller.t
     -> where_to_connect:Where_to_connect.t
-    -> every:Time_ns.Span.t
+    -> every:Time_ns.Span.t Bonsai.t
     -> condition:('response -> [ `Continue | `Stop_polling ]) Bonsai.t
     -> 'query Bonsai.t
     -> Bonsai.graph
@@ -265,10 +282,10 @@ module Rpc : sig
 end
 
 module Polling_state_rpc : sig
-  (** An effect for dispatching on a particular Polling_state_rpc with a
-      particular query. When the computation is deactivated, it asks the server
-      to cleanup any cached data, so that there is no memory leak. If this
-      cleanup fails, then [on_forget_client_error] is called with the error. *)
+  (** An effect for dispatching on a particular Polling_state_rpc with a particular query.
+      When the computation is deactivated, it asks the server to cleanup any cached data,
+      so that there is no memory leak. If this cleanup fails, then
+      [on_forget_client_error] is called with the error. *)
   val dispatcher
     :  ?here:Stdlib.Lexing.position
     -> ?sexp_of_query:('query -> Sexp.t)
@@ -289,10 +306,9 @@ module Polling_state_rpc : sig
     -> Bonsai.graph
     -> ('query -> 'response Or_error.t Effect.t) Bonsai.t
 
-  (** A computation that periodically dispatches on a polling_state_rpc and
-      keeps track of the most recent response. To explicitly re-send the RPC,
-      schedule the [refresh] field of the result. It also keeps track of the current
-      query that is in-flight.*)
+  (** A computation that periodically dispatches on a polling_state_rpc and keeps track of
+      the most recent response. To explicitly re-send the RPC, schedule the [refresh]
+      field of the result. It also keeps track of the current query that is in-flight. *)
   val poll
     :  ?here:Stdlib.Lexing.position
     -> ?sexp_of_query:('query -> Sexp.t)
@@ -309,7 +325,7 @@ module Polling_state_rpc : sig
          | `Every_multiple_of_period_non_blocking
          | `Every_multiple_of_period_blocking
          ]
-    -> every:Time_ns.Span.t
+    -> every:Time_ns.Span.t Bonsai.t
     -> 'query Bonsai.t
     -> Bonsai.graph
     -> ('query, 'response) Poll_result.t Bonsai.t
@@ -330,21 +346,21 @@ module Polling_state_rpc : sig
          | `Every_multiple_of_period_non_blocking
          | `Every_multiple_of_period_blocking
          ]
-    -> every:Time_ns.Span.t
+    -> every:Time_ns.Span.t Bonsai.t
     -> 'query Bonsai.t
     -> Bonsai.graph
     -> ('query, 'response) Poll_result.t Bonsai.t
 
   val shared_poller
     :  ?here:Stdlib.Lexing.position
-    -> ('query, _) Bonsai.comparator
+    -> ('query, _) Comparator.Module.t
     -> ?sexp_of_response:('response -> Sexp.t)
     -> ?equal_response:('response -> 'response -> bool)
     -> ?clear_when_deactivated:bool
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Polling_state_rpc.t
     -> where_to_connect:Where_to_connect.t
-    -> every:Time_ns.Span.t
+    -> every:Time_ns.Span.t Bonsai.t
     -> Bonsai.graph
     -> ('query, 'response) Shared_poller.t Bonsai.t
 end
@@ -355,7 +371,6 @@ module Status : sig
 
         state diagram:
         {v
-
       START
        |       .------------------.
        v       v                   \
@@ -363,8 +378,7 @@ module Status : sig
        |  ^          ^
        v  |          |
       Failed_to_connect
-
-      v} *)
+        v} *)
     type t =
       | Connecting
       | Connected
@@ -384,10 +398,10 @@ module Status : sig
 end
 
 module Connector : sig
-  (** A connector specifies a way of creating a connection. This module is
-      exposed to cover exceptional cases; ordinarily, you should prefer to use
-      the [Self] and [Url] constructors of [Where_to_connect.t], which have a
-      connector backing them that you don't need to explicitly provide.  *)
+  (** A connector specifies a way of creating a connection. This module is exposed to
+      cover exceptional cases; ordinarily, you should prefer to use the [Self] and [Url]
+      constructors of [Where_to_connect.t], which have a connector backing them that you
+      don't need to explicitly provide. *)
 
   module Rpc := Async_rpc_kernel.Rpc
 
@@ -408,23 +422,28 @@ module Connector : sig
     -> connection_state:(Rpc.Connection.t -> 's)
     -> t
 
+  val for_preview
+    :  's Rpc.Implementations.t
+    -> connection_state:(Rpc.Connection.t -> 's)
+    -> t
+
   val test_fallback : t
 end
 
 module Private : sig
-  (** This module contains functions intended for use by Bonsai's internal
-      startup code. Ordinarily, you shouldn't need to call any of them.
+  (** This module contains functions intended for use by Bonsai's internal startup code.
+      Ordinarily, you shouldn't need to call any of them.
 
-      More specifically, in tests, [with_connector] is called when a test
-      handle is created, using an optional, user-provided function to select
-      the connector. Similarly, when an app is actually being run, we take a
-      function of type [Custom.t -> Connector.t] and default the [Self] and
-      [Url] cases to [self_connector] and [url_connector] declared below.  *)
+      More specifically, in tests, [with_connector] is called when a test handle is
+      created, using an optional, user-provided function to select the connector.
+      Similarly, when an app is actually being run, we take a function of type
+      [Custom.t -> Connector.t] and default the [Self] and [Url] cases to [self_connector]
+      and [url_connector] declared below. *)
 
   (** Turns a computation into a new computation that has access to some sort of
-      connection. This is the primitive and most powerful way of providing access
-      to a connection. Since it has access to the [Where_to_connect.t], it can
-      create different kinds of connections based on what is being connected to.  *)
+      connection. This is the primitive and most powerful way of providing access to a
+      connection. Since it has access to the [Where_to_connect.t], it can create different
+      kinds of connections based on what is being connected to. *)
   val with_connector
     :  (Where_to_connect.t -> Connector.t)
     -> (Bonsai.graph -> 'a Bonsai.t)
@@ -437,9 +456,9 @@ module Private : sig
   (** The connector for an arbitrary URL. *)
   val url_connector : on_conn_failure:On_conn_failure.t -> string -> Connector.t
 
-  (** Determines whether the connector is the test fallback connector. This is
-      used by the testing library to swap out the [test_fallback] connector with
-      a different connector controlled by other parameters. *)
+  (** Determines whether the connector is the test fallback connector. This is used by the
+      testing library to swap out the [test_fallback] connector with a different connector
+      controlled by other parameters. *)
   val is_test_fallback : Connector.t -> bool
 
   module For_tests : sig

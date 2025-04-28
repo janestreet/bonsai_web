@@ -16,13 +16,13 @@ Many functions in your Bonsai codebase will look something like:
 let a_typical_function (input : int Bonsai.t) (local_ graph) =
   (* Declare your state *)
   let num_input_changes, incr_num_input_changes =
-    Bonsai.state_machine0
+    Bonsai.state_machine
       ~default_model:0
       ~apply_action:(fun _ model () -> model + 1)
       graph
   in
   let (logs : string Bonsai.t), (write_log_line : (string -> unit Effect.t) Bonsai.t) =
-    Bonsai.state_machine0
+    Bonsai.state_machine
       ~default_model:""
       ~apply_action:(fun _ logs new_log_line ->
         match logs with
@@ -80,15 +80,15 @@ state, business logic, and incremental computation.
 
 A common pattern is declaring a module with
 `type t = A | Variant | Type` for the `'action` and/or `'model` types in
-a `Bonsai.state_machine0` or `Bonsai.state_machine1`. But `'action` and
-`'model` can be anything, including:
+a `Bonsai.state_machine` or `Bonsai.state_machine_with_dep`. But
+`'action` and `'model` can be anything, including:
 
 -   Polymorphic variants, which are often more lightweight and ergonomic
     than full variant types.
 -   `unit`, if your state machine doesn't actually store state, or only
     has one action. The former is another pattern, since you can use a
-    `Bonsai.state_machine1` as a way to centralize logic for dispatching
-    effects.
+    `Bonsai.state_machine_with_dep` as a way to centralize logic for
+    dispatching effects.
 -   A function type, although this is generally an anti-pattern, because
     decentralizing your state machine transition logic out of
     `apply_action` will probably make your code more complicated and
@@ -234,17 +234,34 @@ are workarounds for common scenarios:
     `Bonsai.Clock.approx_now`](./time.mdx#accessing-time) and specify
     the degree of accuracy that you care about.
 
-## Vdom
+## List performance in Vdom
 
-### `Vdom.Node.none` is dangerous
+Vdom's algorithm for [diffing lists is
+naiive](../guide/01-virtual_dom.mdx#diffing-lists): it just compares
+elements at corresponding indices. If an element gets inserted into, or
+removed from, a list, this can cause subsequent DOM nodes to be
+destroyed / recreated unnecessarily.
 
-It can lead to performance and correctness issues when [diffing
-lists](../guide/01-virtual_dom.mdx#diffing-lists).
+### Avoid Variable Length / Order Lists
 
-### `Vdom.Node.Map_children`
+When possible, avoid variable length lists of Vdom nodes, or lists that
+may reorder. Some examples of how this might happen: -
+`List.filter_opt`-ing a list of `Vdom.Node.t option`s - Concatting
+multiple `Vdom.Node.t list`s, each of which might change from frame to
+frame - Using `Vdom.Node.none_deprecated`, if you conditionally want to
+show a dom node
 
-It can lead to performance and correctness issues when [diffing
-lists](../guide/01-virtual_dom.mdx#diffing-lists).
+For DOM elements that are conditionally displayed, consider using
+`Vdom.Node.none` when the element is not shown; this will render an
+empty comment node, keeping the length of the list constant.
+
+### Use `Vdom.Node.Map_children` for key-able lists
+
+What if you want to display a list of data, whose order might change? If
+your list elements can be uniquely identified, using
+`Vdom.Node.Map_children.div map` is much better than
+`Vdom.Node.div (Map.data map)` because it can diff your list elements in
+a smarter way.
 
 ## Libraries to know about
 

@@ -18,7 +18,9 @@ module type Result_spec = sig
   val incoming : t -> incoming -> unit Vdom.Effect.t
 end
 
-module Arrow_deprecated = struct
+(* The [input] and [outgoing] arguments exist for backwards-compatibility with Bonsai's
+   [Arrow_deprecated] API. *)
+module Fully_parametrized = struct
   module Handle = struct
     module Injector = struct
       type 'a t =
@@ -39,13 +41,13 @@ module Arrow_deprecated = struct
     let create ~input_var ~outgoing_pipe =
       let extra =
         Bus.create_exn
-          [%here]
           Arity1
           ~on_subscription_after_first_write:Allow_and_send_last_value
           ~on_callback_raise:(fun error -> eprint_s [%sexp (error : Error.t)])
       in
       let last_extra = Moption.create () in
-      Bus.iter_exn extra [%here] ~f:(fun extra -> Moption.set_some last_extra extra);
+      Bus.subscribe_permanently_exn extra ~f:(fun extra ->
+        Moption.set_some last_extra extra);
       { injector = Before_app_start (Queue.create ())
       ; stop = Ivar.create ()
       ; started = Ivar.create ()
@@ -238,7 +240,8 @@ module Arrow_deprecated = struct
       ;;
 
       let create model ~old_model ~inject =
-        For_profiling.create_with_computation_watcher
+        Bonsai.Private.Instrumentation.create_computation_with_instrumentation
+          For_profiling.default_instrumentation_for_incr_dom_start_app
           ~recursive_scopes
           ~computation:computation_for_instrumentation
           ~time_source
@@ -271,6 +274,7 @@ module Arrow_deprecated = struct
   ;;
 
   let start_generic
+    ?(time_source = Bonsai.Time_source.create ~start:(Time_ns.now ()))
     ~optimize
     ~simulate_body_focus_on_root_element
     ~profile
@@ -278,32 +282,33 @@ module Arrow_deprecated = struct
     ~initial_input
     ~bind_to_element_with_id
     ~component
+    ()
     =
-    let module Profiling =
-      Incr_dom.Start_app.For_profiling.Performance_measure.For_bonsai_web_start_only
-    in
+    let module Profiling = Incr_dom.Start_app.For_profiling.Performance_measure in
     Util.For_bonsai_internal.set_stack_overflow_exception_check ();
     let fresh = Type_equal.Id.create ~name:"" sexp_of_opaque in
     let var =
       Bonsai.Private.Value.named App_input fresh |> Bonsai.Private.conceal_value
     in
-    let time_source = Bonsai.Time_source.create ~start:(Time_ns.now ()) in
     let computation =
-      Profiling.timer_start ~profile Bonsai_graph_application;
-      let graph_applied = Bonsai.Private.top_level_handle (component var) in
-      Profiling.timer_stop ~profile Bonsai_graph_application;
+      let graph_applied =
+        Profiling.time Bonsai_graph_application ~debug:false ~profile ~f:(fun () ->
+          Bonsai.Private.top_level_handle (component var))
+      in
       if optimize
       then (
-        Profiling.timer_start ~profile Bonsai_preprocess;
-        let optimized = Bonsai.Private.pre_process graph_applied in
-        Profiling.timer_stop ~profile Bonsai_preprocess;
+        let optimized =
+          Profiling.time Bonsai_preprocess ~debug:false ~profile ~f:(fun () ->
+            Bonsai.Private.pre_process graph_applied)
+        in
         optimized)
       else graph_applied
     in
     let recursive_scopes = Bonsai.Private.Computation.Recursive_scopes.empty in
-    Profiling.timer_start ~profile Bonsai_gather;
-    let (T info) = Bonsai.Private.gather ~recursive_scopes ~time_source computation in
-    Profiling.timer_stop ~profile Bonsai_gather;
+    let (T info) =
+      Profiling.time Bonsai_gather ~debug:false ~profile ~f:(fun () ->
+        Bonsai.Private.gather ~recursive_scopes ~time_source computation)
+    in
     start_generic_poly
       ~simulate_body_focus_on_root_element
       ~profile
@@ -322,11 +327,13 @@ module Arrow_deprecated = struct
     ?(optimize = true)
     ?(simulate_body_focus_on_root_element = true)
     ?(profile = false)
+    ?time_source
     ~initial_input
     ~bind_to_element_with_id
     component
     =
     start_generic
+      ?time_source
       ~optimize
       ~simulate_body_focus_on_root_element
       ~profile
@@ -336,17 +343,20 @@ module Arrow_deprecated = struct
       ~initial_input
       ~bind_to_element_with_id
       ~component
+      ()
   ;;
 
   let start
     ?(optimize = true)
     ?(simulate_body_focus_on_root_element = true)
     ?(profile = false)
+    ?time_source
     ~initial_input
     ~bind_to_element_with_id
     component
     =
     start_generic
+      ?time_source
       ~optimize
       ~simulate_body_focus_on_root_element
       ~profile
@@ -355,114 +365,127 @@ module Arrow_deprecated = struct
       ~initial_input
       ~bind_to_element_with_id
       ~component
+      ()
   ;;
 end
 
-module Proc = struct
-  module Handle = struct
-    include Arrow_deprecated.Handle
+module Handle = struct
+  include Fully_parametrized.Handle
 
-    type ('extra, 'incoming) t =
-      (unit, 'extra, 'incoming, Nothing.t) Arrow_deprecated.Handle.t
+  type ('extra, 'incoming) t =
+    (unit, 'extra, 'incoming, Nothing.t) Fully_parametrized.Handle.t
+end
+
+module Result_spec = struct
+  module type S = Result_spec
+
+  type ('r, 'extra, 'incoming) t =
+    (module S with type t = 'r and type extra = 'extra and type incoming = 'incoming)
+
+  module No_extra = struct
+    type extra = unit
+
+    let extra _ = ()
   end
 
-  module Result_spec = struct
-    module type S = Result_spec
+  module No_incoming = struct
+    type incoming = Nothing.t
 
-    type ('r, 'extra, 'incoming) t =
-      (module S with type t = 'r and type extra = 'extra and type incoming = 'incoming)
-
-    module No_extra = struct
-      type extra = unit
-
-      let extra _ = ()
-    end
-
-    module No_incoming = struct
-      type incoming = Nothing.t
-
-      let incoming _ = Nothing.unreachable_code
-    end
-
-    let just_the_view =
-      (module struct
-        type t = Vdom.Node.t
-
-        let view = Fn.id
-
-        include No_extra
-        include No_incoming
-      end : S
-        with type t = Vdom.Node.t
-         and type extra = unit
-         and type incoming = Nothing.t)
-    ;;
+    let incoming _ = Nothing.unreachable_code
   end
 
-  let default_custom_connector _connector =
-    raise_s
-      [%message
-        "The Bonsai app used a custom connector, but none was provided when the app was \
-         started. To fix this, use the [~custom_connector] argument when calling \
-         [Bonsai_web.Start.start]"]
-  ;;
+  let just_the_view =
+    (module struct
+      type t = Vdom.Node.t
 
-  let computation_with_rpc_and_result_spec computation ~custom_connector ~result_spec =
-    let computation =
-      Rpc_effect.Private.with_connector
-        (function
-          | Self ->
-            Rpc_effect.Private.self_connector ~on_conn_failure:Retry_until_success ()
-          | Url url ->
-            Rpc_effect.Private.url_connector ~on_conn_failure:Retry_until_success url
-          | Custom custom -> custom_connector custom)
-        computation
-    in
-    let bonsai =
-      Fn.const computation
-      |> Bonsai.Arrow_deprecated.map
-           ~f:(Arrow_deprecated.App_result.of_result_spec result_spec)
-    in
-    bonsai
-  ;;
+      let view = Fn.id
 
-  let start_and_get_handle_impl
-    result_spec
-    ?profile
-    ?(optimize = true)
-    ?(custom_connector = default_custom_connector)
-    ?simulate_body_focus_on_root_element
-    ~bind_to_element_with_id
-    computation
-    =
+      include No_extra
+      include No_incoming
+    end : S
+      with type t = Vdom.Node.t
+       and type extra = unit
+       and type incoming = Nothing.t)
+  ;;
+end
+
+let default_custom_connector _connector =
+  raise_s
+    [%message
+      "The Bonsai app used a custom connector, but none was provided when the app was \
+       started. To fix this, use the [~custom_connector] argument when calling \
+       [Bonsai_web.Start.start]"]
+;;
+
+let computation_with_rpc_and_result_spec computation ~custom_connector ~result_spec =
+  let computation =
+    Rpc_effect.Private.with_connector
+      (function
+        | Self ->
+          Rpc_effect.Private.self_connector ~on_conn_failure:Retry_until_success ()
+        | Url url ->
+          Rpc_effect.Private.url_connector ~on_conn_failure:Retry_until_success url
+        | Custom custom -> custom_connector custom)
+      computation
+  in
+  fun _app_input graph ->
+    Bonsai.arr1
+      graph
+      (computation graph)
+      ~f:(Fully_parametrized.App_result.of_result_spec result_spec)
+;;
+
+let () = ()
+
+let start_and_get_handle
+  result_spec
+  ?(optimize = true)
+  ?(custom_connector = default_custom_connector)
+  ?simulate_body_focus_on_root_element
+  ?time_source
+  ~bind_to_element_with_id
+  computation
+  =
+  let pre_startup = () in
+  let profile = false in
+  let bonsai_handle =
     let bonsai =
       computation_with_rpc_and_result_spec computation ~custom_connector ~result_spec
     in
-    Arrow_deprecated.start
+    Fully_parametrized.start
       ~optimize
       ?simulate_body_focus_on_root_element
-      ?profile
+      ~profile
+      ?time_source
       ~initial_input:()
       ~bind_to_element_with_id
       bonsai
-  ;;
+  in
+  let () = ignore (pre_startup : unit) in
+  bonsai_handle
+;;
 
-  let start_and_get_handle = start_and_get_handle_impl ~profile:false
+let start
+  ?custom_connector
+  ?(bind_to_element_with_id = "app")
+  ?simulate_body_focus_on_root_element
+  ?time_source
+  ?optimize
+  component
+  =
+  let (_ : _ Handle.t) =
+    start_and_get_handle
+      Result_spec.just_the_view
+      ~bind_to_element_with_id
+      ?simulate_body_focus_on_root_element
+      ?custom_connector
+      ?time_source
+      ?optimize
+      component
+  in
+  ()
+;;
 
-  let start
-    ?custom_connector
-    ?(bind_to_element_with_id = "app")
-    ?simulate_body_focus_on_root_element
-    component
-    =
-    let _ : _ Handle.t =
-      start_and_get_handle
-        Result_spec.just_the_view
-        ~bind_to_element_with_id
-        ?simulate_body_focus_on_root_element
-        ?custom_connector
-        component
-    in
-    ()
-  ;;
+module For_arrow_deprecated = struct
+  include Fully_parametrized
 end

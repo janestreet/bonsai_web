@@ -10,7 +10,7 @@ module Style =
         margin: 0;
         padding: 0;
       }
-      |}]
+    |}]
 
 type editable =
   [ `Yes_always
