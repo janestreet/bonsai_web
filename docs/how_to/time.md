@@ -73,7 +73,7 @@ let vdom_time_ago (local_ graph) =
 </iframe>
 ```
 If we want to access the current time in effects without it [becoming
-stale](./effects_and_stale_values.mdx), we can use
+stale](./effects_and_stale_values.md), we can use
 `Bonsai.Clock.get_current_time`:
 
 ```{=html}

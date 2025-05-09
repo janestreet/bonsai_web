@@ -248,7 +248,7 @@ val button'
   -> Vdom.Node.t
 
 module Tooltip_position : sig
-  type t = Floating_positioning_new.Position.t =
+  type t = Tooltip.Position.t =
     | Auto
     | Top
     | Bottom
@@ -258,7 +258,7 @@ module Tooltip_position : sig
 end
 
 module Tooltip_alignment : sig
-  type t = Floating_positioning_new.Alignment.t =
+  type t = Tooltip.Alignment.t =
     | Center
     | Start
     | End

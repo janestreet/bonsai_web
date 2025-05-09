@@ -84,15 +84,15 @@ state safely.
 
 The simplest state tool is `Bonsai.state`, which returns a
 `'model Bonsai.t` tracking the current value, and a
-`('model -> unit Effect.t) Bonsai.t` "setter [effect](./02-effects.mdx)"
+`('model -> unit Effect.t) Bonsai.t` "setter [effect](./02-effects.md)"
 producing function. It takes a default starting value and a
 `local_ graph`.
 
 ### `local_ graph` is a Graph Builder
 
 `local_ graph : Bonsai.graph` is used by Bonsai to build a
-[static](../advanced/why_no_bind.mdx) computation graph. Because
-Bonsai's computation graph is static, you may not:
+[static](../advanced/why_no_bind.md) computation graph. Because Bonsai's
+computation graph is static, you may not:
 
 -   Have a data structure with nested `Bonsai.t`s. A
     `'a Bonsai.t Bonsai.t` is illegal, and so are record `Bonsai.t`s
@@ -280,7 +280,7 @@ keyboard shortcuts!
 </aside>
 ```
 There are some tools to deal with stale values at the [Effect.t
-level](./02-effects.mdx), but this case is best solved by using
+level](./02-effects.md), but this case is best solved by using
 `Bonsai.state_machine`:
 
 ```{=html}
@@ -423,7 +423,7 @@ current value of a `Bonsai.t`:
 ```{=html}
 <aside>
 ```
-If our state machine is [inactive](../how_to/lifecycles.mdx), it cannot
+If our state machine is [inactive](../how_to/lifecycles.md), it cannot
 access the current value of `'input`. `Computation_status.t` forces us
 to explicitly handle this.
 ```{=html}
@@ -523,12 +523,12 @@ to learn more.
 
 All Bonsai state primitives also take an optional `reset` argument,
 which allows you to control what happens when [state is
-reset](../how_to/resetting_state.mdx).
+reset](../how_to/resetting_state.md).
 
 ```{=html}
 ```
 Let's continue to [Bonsai Guide Part 5: Control
-Flow](./05-control_flow.mdx).
+Flow](./05-control_flow.md).
 
 ## The Underlying Machinery
 
@@ -543,6 +543,6 @@ When writing Bonsai code, you're actually doing 2 different things:
 
 Only the contents of `let%arr` blocks (everything after the `in`),
 `apply_action` state transition functions, and functions used to
-construct [effects](./02-effects.mdx) are "runtime" code. Everything
-else only runs *exactly once* at app startup to construct the
-computation graph, before it gets compiled to a `Vdom.Node.t Incr.t`.
+construct [effects](./02-effects.md) are "runtime" code. Everything else
+only runs *exactly once* at app startup to construct the computation
+graph, before it gets compiled to a `Vdom.Node.t Incr.t`.

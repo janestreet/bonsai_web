@@ -80,7 +80,7 @@ let sum_and_display (a : int Bonsai.t) (b : int Bonsai.t) : Vdom.Node.t Bonsai.t
 
 `let%arr` is just pretty syntax for
 `val Bonsai.map : 'a t -> f:('a -> 'b) -> 'b t`, with an incremental
-[cutoff](../how_to/cutoff.mdx) against any ignored patterns. So if you
+[cutoff](../how_to/cutoff.md) against any ignored patterns. So if you
 `let%arr` on a record, but only care about some of the fields,
 `let%arr`s will only recompute when that field changes:
 
@@ -159,7 +159,7 @@ Do not do this! A `let%arr`:
 
 -   might run multiple times per frame
 -   might run as part of some code that starts as
-    [inactive](../how_to/lifecycles.mdx), switches to being active, and
+    [inactive](../how_to/lifecycles.md), switches to being active, and
     then becomes inactive again, all in the same frame.
 -   will only run when its explicit dependencies change
 -   not run at all, if it is not linked into the incremental computation
@@ -188,12 +188,12 @@ This is one reason why side effects should be performed within a
 `Effect.t`s, so you can't accidentially run one within a `let%arr`.
 
 If you need to do something whenever a `'a Bonsai.t` changes, use
-[Edge.on_change](../how_to/edge_triggered_effects.mdx) or [lifeycle
-events](../how_to/lifecycles.mdx).
+[Edge.on_change](../how_to/edge_triggered_effects.md) or [lifeycle
+events](../how_to/lifecycles.md).
 
 ## Don't Do Work While Computing `Effect.t`s
 
-Most [`Effect.t`s](./02-effects.mdx) you'll see are incrementally
+Most [`Effect.t`s](./02-effects.md) you'll see are incrementally
 computed, because most side effects you might want to perform depend on
 some `'a Bonsai.t`.
 
@@ -210,7 +210,7 @@ let copy_to_clipboard_button (data : Big_data.t Bonsai.t) (label : string Bonsai
   let on_click =
     let%arr data in
     let serialized_data = Big_data.sexp_of_t data |> Sexp.to_string in
-    Copy_to_clipboard.text_effect serialized_data
+    Byo_clipboard.copy_text serialized_data
   in
   let%arr on_click and label in
   Vdom.Node.button
@@ -244,7 +244,7 @@ let copy_to_clipboard_button (data : Big_data.t Bonsai.t) (label : string Bonsai
     let%bind.Effect serialized_data =
       Effect.of_thunk (fun () -> Big_data.sexp_of_t data |> Sexp.to_string)
     in
-    Copy_to_clipboard.text_effect serialized_data
+    Byo_clipboard.copy_text serialized_data
   in
   let%arr on_click and label in
   Vdom.Node.button
@@ -263,7 +263,7 @@ Now, we only serialize when the user clicks the button!
 
 There's still a potential bug if the `data` changes after `view` was
 last rendered, but before the user clicks the button. We can solve this
-with a [Bonsai.peek](../how_to/effects_and_stale_values.mdx).
+with a [Bonsai.peek](../how_to/effects_and_stale_values.md).
 
 ## Incremental Structure Matters
 
@@ -334,10 +334,10 @@ let exp_and_divide (a : float Bonsai.t) (b : float Bonsai.t) (c : float Bonsai.t
 ```
 
 That being said, incremental nodes aren't free, and you should [avoid
-over-incrementalizing](../how_to/best_practices_pitfalls.mdx#dont-over-incrementalize).
+over-incrementalizing](../how_to/best_practices_pitfalls.md#dont-over-incrementalize).
 
 For incrementality to be useful, inputs need to actually change. On to
-[Chapter 4: state](./04-state.mdx)!
+[Chapter 4: state](./04-state.md)!
 
 ## The Underlying Machinery
 
@@ -346,6 +346,6 @@ For incrementality to be useful, inputs need to actually change. On to
 biggest user-facing difference is that there is no `Bonsai.bind`, which
 forces the computation graph to have a static shape. This enables some
 [useful features and performance
-optimizations](../advanced/why_no_bind.mdx). We'll learn how to write
+optimizations](../advanced/why_no_bind.md). We'll learn how to write
 control flow code without `bind` in a [later
-chapter](./05-control_flow.mdx).
+chapter](./05-control_flow.md).

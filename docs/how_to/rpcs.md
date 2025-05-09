@@ -278,7 +278,7 @@ frequently than data is updating, reducing load on the server.
 ## Testing RPCs
 
 Let's try to test the "number doubler" from the first example. Using the
-[testing tools](./testing.mdx) we are familiar with, we might write
+[testing tools](./testing.md) we are familiar with, we might write
 something like this:
 
 ```{=html}

@@ -2,7 +2,7 @@
 
 `uri_parsing` is a library that helps generate an unambiguous set of
 routes, and `parse_exn`/`unparse` functions for making a
-[Url_var.t](./url_var.mdx), for any OCaml type.
+[Url_var.t](./url_var.md), for any OCaml type.
 
 Most routers take a list of strings / regexes describing routes, match
 the URL string against them, and extract data/params into a map/list.

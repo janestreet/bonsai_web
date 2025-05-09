@@ -94,6 +94,6 @@ let set_and_run_effect_peek (other_input : string Bonsai.t) (local_ graph) =
 </iframe>
 ```
 If the `peek` backing an effect is in an [inactive code
-branch](./lifecycles.mdx), it will be unable to retrieve a fresh value,
+branch](./lifecycles.md), it will be unable to retrieve a fresh value,
 so it returns values wrapped in a `Computation_status.t`, just like
-[`state_machine_with_input`'s `input`](../guide/04-state.mdx).
+[`state_machine_with_input`'s `input`](../guide/04-state.md).

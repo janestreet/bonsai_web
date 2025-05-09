@@ -1,7 +1,7 @@
 # Lifecycles
 
 The `match%sub` and `Bonsai.assoc` [control flow
-operators](../guide/05-control_flow.mdx) are very similar to regular
+operators](../guide/05-control_flow.md) are very similar to regular
 OCaml `match` statements and `Map.map` calls. But because Bonsai is
 incremental, their code is constantly being rerun whenever some
 dependency changes.
@@ -21,7 +21,7 @@ unactive until/unless the (K) is added back.
 ```{=html}
 <aside>
 ```
-It is possible to [explicitly reset state](./resetting_state.mdx) on
+It is possible to [explicitly reset state](./resetting_state.md) on
 deactivation.
 ```{=html}
 </aside>

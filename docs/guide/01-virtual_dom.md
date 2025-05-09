@@ -136,7 +136,7 @@ let css : Vdom.Node.t =
 ```{=html}
 <aside>
 ```
-We have a how-to guide about [writing CSS in Bonsai](../how_to/css.mdx)!
+We have a how-to guide about [writing CSS in Bonsai](../how_to/css.md)!
 ```{=html}
 </aside>
 ```
@@ -181,7 +181,7 @@ let clicky : Vdom.Node.t =
 </iframe>
 ```
 We'll learn about `Effect.t` --- our abstraction for side effects --- in
-[chapter 2](./02-effects.mdx).
+[chapter 2](./02-effects.md).
 
 ```{=html}
 <aside>

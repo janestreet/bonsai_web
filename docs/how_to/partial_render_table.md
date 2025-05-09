@@ -54,7 +54,7 @@ type.
 Then, we'll need to get a `(Row_key.t, 'data, 'cmp) Map.t Bonsai.t`,
 which is the data that powers the PRT. In most real apps, you'll get
 this data from your server with a
-[`Rpc_effect.Polling_state_rpc.poll`](./rpcs.mdx).
+[`Rpc_effect.Polling_state_rpc.poll`](./rpcs.md).
 
 ### Defining Columns
 
@@ -440,7 +440,7 @@ You can configure colors, borders, and fonts explicitly:
 </iframe>
 ```
 By default, styling config will be pulled from the
-[theme](./theming.mdx). We recommend explicitly passing a `Styling.t`,
+[theme](./theming.md). We recommend explicitly passing a `Styling.t`,
 because dynamically scoped theming is implicit, and can be difficult to
 follow.
 

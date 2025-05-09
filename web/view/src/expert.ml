@@ -314,10 +314,20 @@ let default_theme =
               | `Yes_with_length_px _ -> Some (self#toplayer_tooltip_arrow ~intent)
               | `No -> None
             in
-            Vdom_toplayer.tooltip
+            Byo_toplayer_private_vdom.tooltip
               ~tooltip_attrs:([ self#toplayer_tooltip_styles ~intent ] @ tooltip_attrs)
-              ~position
-              ~alignment
+              ~position:
+                (match position with
+                 | Auto -> Auto
+                 | Top -> Top
+                 | Bottom -> Bottom
+                 | Left -> Left
+                 | Right -> Right)
+              ~alignment:
+                (match alignment with
+                 | Start -> Start
+                 | Center -> Center
+                 | End -> End)
               ~offset:
                 { main_axis = toplayer_constants.tooltip_offset_px; cross_axis = 0. }
               ~hoverable_inside

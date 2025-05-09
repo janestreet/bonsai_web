@@ -18,7 +18,7 @@ outdated with changes to Bonsai's internals.
 # `Computation.t` and `Value.t`
 
 One of Bonsai's invariants is that the computation graph is a static
-DAG. This offers [a lot of benefits](./why_no_bind.mdx).
+DAG. This offers [a lot of benefits](./why_no_bind.md).
 
 Bonsai's internal representation of this graph is based around 2 types.
 

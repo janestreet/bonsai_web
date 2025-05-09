@@ -33,7 +33,7 @@ end
 ```
 # 05 - Control Flow
 
-In [chapter 3](./03-incrementality.mdx), we learned how to build and
+In [chapter 3](./03-incrementality.md), we learned how to build and
 compose a static graph of incremental `Bonsai.t`s using the `let%arr`
 operator. But often, web UIs need to express some dynamic patterns, and
 `let%arr` just isn't enough. In this chapter, we'll:
@@ -47,7 +47,7 @@ operator. But often, web UIs need to express some dynamic patterns, and
 ## `match%sub`
 
 Let's say we want to show the counter we built in [the state
-chapter](./04-state.mdx) only when `show: bool Bonsai.t` is true. With
+chapter](./04-state.md) only when `show: bool Bonsai.t` is true. With
 the functions you've seen so far, you might write:
 
 ```{=html}
@@ -135,13 +135,13 @@ You'll see this if you increment the first counter and then switch to
 the second.
 
 Interestingly, state does not go away when a branch ceases to be active:
-as we noted [last chapter](./04-state.mdx), this is because Bonsai
+as we noted [last chapter](./04-state.md), this is because Bonsai
 maintains a central copy of the entire application state.
 
 ```{=html}
 <aside>
 ```
-Bonsai provides some [lifecycle functions](../how_to/lifecycles.mdx) to
+Bonsai provides some [lifecycle functions](../how_to/lifecycles.md) to
 schedule effects when a code block becomes active or inactive.
 ```{=html}
 </aside>
@@ -195,7 +195,7 @@ let maybe_show_var_guard show (local_ graph) =
 ```
 This particular case is pretty silly: we're not going to write separate
 `match%sub` branches for every potential value of `int`. Instead, we
-could use [`scope_model`](../how_to/state_per_key.mdx), which maintains
+could use [`scope_model`](../how_to/state_per_key.md), which maintains
 separate copies of state for some value of a key:
 
 ```{=html}
@@ -222,7 +222,7 @@ let maybe_show_var_scope_model show (local_ graph) =
 ```
 ## Creating a Dynamic Number of `Bonsai.t`s
 
-In the [last chapter](./04-state.mdx), we created two separate counters
+In the [last chapter](./04-state.md), we created two separate counters
 by calling `counter graph` twice. But what if we want to create `n`
 counters, where `n` is an `int Bonsai.t` that can change at runtime?
 
@@ -281,7 +281,7 @@ large, but only one of the keys has data that is changing frequently,
 only that key's instance will be re-run to recompute the overall output.
 
 Here's an example, which will make multiple copies of the counter we
-implemented [last chapter](./04-state.mdx):
+implemented [last chapter](./04-state.md):
 
 ```{=html}
 <!-- $MDX file=../../examples/bonsai_guide_code/control_flow_examples.ml,part=multiple_counters -->
@@ -340,7 +340,7 @@ state.
 <aside>
 ```
 If your `Bonsai.assoc` produces `Vdom.Node.t`s, you might want to use
-[`Vdom.Node.Map_children`](./01-virtual_dom.mdx#diffing-lists) for more
+[`Vdom.Node.Map_children`](./01-virtual_dom.md#diffing-lists) for more
 efficient and stable diffing.
 ```{=html}
 </aside>
@@ -348,6 +348,6 @@ efficient and stable diffing.
 ## Further Reading
 
 -   `match%sub` and `Bonsai.assoc` are [higher-order
-    functions](../how_to/higher_order_functions.mdx)
+    functions](../how_to/higher_order_functions.md)
 -   The code inside `match%sub` branches or `assoc` can [become
-    inactive](../how_to/lifecycles.mdx).
+    inactive](../how_to/lifecycles.md).

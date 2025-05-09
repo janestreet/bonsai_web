@@ -7,9 +7,9 @@ Context](https://react.dev/learn/passing-data-deeply-with-context). Some
 usecases are:
 
 -   Keyboard shortcuts
--   Getting / setting the current [Url.t](./url_var.mdx)
+-   Getting / setting the current [Url.t](./url_var.md)
 -   Accumumating errors / notifications somewhere central in your UI
--   [Theming](./theming.mdx)
+-   [Theming](./theming.md)
 
 ## Reading `Dynamic_scope.t`s
 

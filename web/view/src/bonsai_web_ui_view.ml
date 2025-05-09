@@ -109,8 +109,8 @@ let themed_textf theme ?attrs ?intent ?style ?size format =
   Printf.ksprintf (themed_text theme ?attrs ?intent ?style ?size) format
 ;;
 
-module Tooltip_position = Floating_positioning_new.Position
-module Tooltip_alignment = Floating_positioning_new.Alignment
+module Tooltip_position = Tooltip.Position
+module Tooltip_alignment = Tooltip.Alignment
 
 let tooltip_attr'
   ((module T) : Theme.t)
