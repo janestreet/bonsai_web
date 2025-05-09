@@ -243,7 +243,16 @@ let start_and_get_handle
     Js.Unsafe.global##.stopBonsaiDebugger := Js.Unsafe.callback stop_bonsai_debugger;
     handle
   in
-  let () = ignore (pre_startup : unit) in
+  (* Note: duplicated between [start_experimental] and [start_via_incr_dom]. *)
+  Deferred.upon (Handle.started bonsai_handle) (fun () ->
+    Js.Unsafe.global##.bonsaiHasStarted := Js.bool true);
+  let () =
+    Deferred.upon (Handle.started bonsai_handle) (fun () ->
+      (* NOTE: We set [bonsaiHasStarted] as a witness that bonsai has started
+         successfully for use in browser testing. *)
+      Js.Unsafe.global##.bonsaiHasStarted := Js.bool true);
+    ignore (pre_startup : unit)
+  in
   bonsai_handle
 ;;
 

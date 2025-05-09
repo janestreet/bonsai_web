@@ -103,7 +103,7 @@ roundtrip correctly.
 
 ## Generating Parsers with `uri_parsing`
 
-The [`uri_parsing` library](./uri_parsing.mdx) allows you to specify a
+The [`uri_parsing` library](./uri_parsing.md) allows you to specify a
 type, and provide rules for *how* it should be parsed. It generates
 `parse_exn`/`unparse` functions that roundtrip, and expect test helper
 functions that verify everything is unambiguous, and list the set of
@@ -176,7 +176,7 @@ Bonsai-friendly API for acccessing and modifying it:
 ```
 
 Once you have your `'a Bonsai.t`, all you need to do is [`match%sub` on
-it](../guide/05-control_flow.mdx), and you have a router!
+it](../guide/05-control_flow.md), and you have a router!
 
 Changing the `Url_var.t` will automatically update the [browser
 history](https://developer.mozilla.org/en-US/docs/Web/API/History_API),

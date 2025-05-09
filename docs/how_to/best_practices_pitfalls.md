@@ -103,7 +103,7 @@ graph, since we don't need to split apart things that we want to use
 separately.
 
 The caveat to this is that [higher-order
-functions](./higher_order_functions.mdx) expect their `~f` parameter to
+functions](./higher_order_functions.md) expect their `~f` parameter to
 return a single `Bonsai.t`. You can combine `Bonsai.t`s with a `let%arr`
 block or a `Bonsai.both`, and split them later with `let%sub`:
 
@@ -145,14 +145,14 @@ their dependencies are no longer `phys_equal`. Using mutable data
 undermines this in fairly fundamental ways.
 
 When you do need to use state, reach for [Bonsai's
-primitives](../guide/04-state.mdx). Likewise, any side effects you need
-to run should be wrapped in an [Effect.t](../guide/02-effects.mdx), and
+primitives](../guide/04-state.md). Likewise, any side effects you need
+to run should be wrapped in an [Effect.t](../guide/02-effects.md), and
 almost always dispatched on one of:
 
 -   User interactions with
-    [vdom](../guide/01-virtual_dom.mdx#event-handlers)
--   A [Bonsai lifecycle activation or deactivation](./lifecycles.mdx)
--   In response to [something changing](./edge_triggered_effects.mdx)
+    [vdom](../guide/01-virtual_dom.md#event-handlers)
+-   A [Bonsai lifecycle activation or deactivation](./lifecycles.md)
+-   In response to [something changing](./edge_triggered_effects.md)
 
 ## Common Bonsai Bugs
 
@@ -160,7 +160,7 @@ almost always dispatched on one of:
 
 Imagine you have a list of users, and you want to show a form for the
 "currently selected" user. You probably want to maintain separate state
-for each user. Use [Bonsai.scope_model](./state_per_key.mdx).
+for each user. Use [Bonsai.scope_model](./state_per_key.md).
 
 ### Stale values in effects
 
@@ -169,18 +169,18 @@ used to calculate some `Effect.t` to change while that effect is already
 enqueued, so the effect will run with a stale input.
 
 This is usually not what you want, and we have [tools to fetch the
-up-to-date value](./effects_and_stale_values.mdx).
+up-to-date value](./effects_and_stale_values.md).
 
 ### `Bonsai.Expert.Var` is for tests, and sometimes global state
 
-Don't use it for anything else; see [this article](./var.mdx).
+Don't use it for anything else; see [this article](./var.md).
 
 ## Bonsai Performance
 
 ### Don't over-incrementalize
 
 As we noted in the
-[guide](../guide/03-incrementality.mdx#incremental-structure-matters),
+[guide](../guide/03-incrementality.md#incremental-structure-matters),
 infrequent and expensive computations can be factored out into
 intermediate `Bonsai.t`s.
 
@@ -231,13 +231,13 @@ are workarounds for common scenarios:
     `Bonsai.Clock.get_current_time`
 -   Otherwise, if you do need the current time, but are ok with the
     returned `Time_ns.t` being *slightly* out of date, you can [use
-    `Bonsai.Clock.approx_now`](./time.mdx#accessing-time) and specify
-    the degree of accuracy that you care about.
+    `Bonsai.Clock.approx_now`](./time.md#accessing-time) and specify the
+    degree of accuracy that you care about.
 
 ## List performance in Vdom
 
 Vdom's algorithm for [diffing lists is
-naiive](../guide/01-virtual_dom.mdx#diffing-lists): it just compares
+naive](../guide/01-virtual_dom.md#diffing-lists): it just compares
 elements at corresponding indices. If an element gets inserted into, or
 removed from, a list, this can cause subsequent DOM nodes to be
 destroyed / recreated unnecessarily.

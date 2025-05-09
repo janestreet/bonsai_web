@@ -6,8 +6,8 @@ defined via multiple `Bonsai.state`s or `Bonsai.state_machine`s, you'll
 have to manually keep them in sync. This is bad, because:
 
 -   It's really easy to make mistakes / forget to set something
--   Setting state in [an `on_change`](./edge_triggered_effects.mdx) or
-    [lifecycle event](./lifecycles.mdx) won't take effect until the next
+-   Setting state in [an `on_change`](./edge_triggered_effects.md) or
+    [lifecycle event](./lifecycles.md) won't take effect until the next
     frame, so you might get flashes of old content, or even behavioral
     bugs
 -   Your code becomes less declarative, more imperative, and therefore
@@ -56,15 +56,15 @@ Some state lives in the browser, or within some other non-Bonsai library
 (e.g. Codemirror), in which case you can't "own" it. We deal with this
 on a case-by-case basis.
 
-Sometimes (e.g. [the URL](./url_var.mdx), [local
-storage](./var.mdx#external-global-data)), we can create a `Bonsai.t`
+Sometimes (e.g. [the URL](./url_var.md), [local
+storage](./var.md#external-global-data)), we can create a `Bonsai.t`
 that tracks the vale, and maybe the setter, of an external state. If
 your components are controllable, you can power them with this external
 state.
 
-In other cases (e.g. [focus](./focus.mdx#getting-focus)), there's no
-safe way to track state as a `Bonsai.t`. Try to design your computation
-so that you don't need to incrementally depend on these values.
+In other cases (e.g. [focus](./focus.md#getting-focus)), there's no safe
+way to track state as a `Bonsai.t`. Try to design your computation so
+that you don't need to incrementally depend on these values.
 
 ## Don't Store Derived Values
 
@@ -162,7 +162,7 @@ only do so if their changes are "valid" - Users expect some latency /
 loading time when fetching / refreshing data, or performing some
 operation.
 
-The [`Rpc_effect` library](./rpcs.mdx) implements tools for polling and
+The [`Rpc_effect` library](./rpcs.md) implements tools for polling and
 dispatching one-shot actions to RPCs. We highly recommend using it
 rather than trying to reimplement client-server communication yourself.
 
@@ -173,7 +173,7 @@ independent `Bonsai.t` states in sync. This is usually because the
 `Bonsai.t`s in question are [external](#dealing-with-external-state), or
 come from [uncontrollable
 components](#lift-state-with-controllable-components) like the [Partial
-Render Table's focus](./partial_render_table.mdx#focus).
+Render Table's focus](./partial_render_table.md#focus).
 
 If we have to synchronize state, the best way to do so is probably with
 `Bonsai_extra.mirror`, which synchronizes the state of an "interactive"
@@ -186,12 +186,12 @@ value" functions for both states into `mirror` and they'll automatically
 be kept up to date. Either of these can be backed by any kind of
 structure, but there are some important differences in their symmetry.
 
-On [activation](./lifecycles.mdx), `store` has priority, so if the
-values are different, `store` wins, and `interactive` has its value
-"set". From that point on, if either incoming value changes, the
-opposite setter is called. In the case that both `store` and
-`interactive` change at the same time, the tie is broken in favor of
-`interactive`, and `store_set` is called.
+On [activation](./lifecycles.md), `store` has priority, so if the values
+are different, `store` wins, and `interactive` has its value "set". From
+that point on, if either incoming value changes, the opposite setter is
+called. In the case that both `store` and `interactive` change at the
+same time, the tie is broken in favor of `interactive`, and `store_set`
+is called.
 
 Here's the type signature of `mirror`:
 
@@ -225,4 +225,4 @@ if a `set` does not take effect within a frame (e.g. setting
 it back, and you'll enter an infinite loop of ping-ponging state between
 your two components. For this reason, do not use `mirror` with async, or
 setters that are delayed via `wait_after_display` or a [time
-delay](./time.mdx#delaying-effects).
+delay](./time.md#delaying-effects).

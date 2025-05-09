@@ -172,7 +172,7 @@ let app (local_ graph) =
 </iframe>
 ```
 `View.Theme.current` is a [dynamically-scoped
-variable](./dynamic_scope.mdx).
+variable](./dynamic_scope.md).
 
 ### Overriding Themes
 
@@ -261,8 +261,8 @@ look should be:
 ## Unstyled Functionality Components
 
 It's common to build general-purpose components that solve hard
-problems, like popovers, [performant
-tables](./partial_render_table.mdx), code editors, form elements, etc.
+problems, like popovers, [performant tables](./partial_render_table.md),
+code editors, form elements, etc.
 
 Ideally, we'd like to use these in any app while preserving the
 look+feel of that app. We could add "appearance" parameters to the

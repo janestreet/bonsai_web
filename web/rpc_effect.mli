@@ -81,8 +81,6 @@ module Shared_poller : sig
       most recent value. *)
   val lookup
     :  here:[%call_pos]
-    -> ?sexp_of_model:('query -> Sexp.t)
-    -> equal:('query -> 'query -> bool)
     -> ('query, 'response) t Bonsai.t
     -> 'query Bonsai.t
     -> local_ Bonsai.graph

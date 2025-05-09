@@ -55,8 +55,8 @@ module C = struct
     method tooltip_attr :
       tooltip_attrs:Vdom.Attr.t list
       -> intent:Constants.Intent.t option
-      -> position:Floating_positioning_new.Position.t
-      -> alignment:Floating_positioning_new.Alignment.t
+      -> position:Tooltip.Position.t
+      -> alignment:Tooltip.Alignment.t
       -> hoverable_inside:bool
       -> Vdom.Node.t list
       -> Vdom.Attr.t

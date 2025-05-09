@@ -34,7 +34,7 @@ let on_change_demo (local_ graph) =
 The `~equal` argument allows us to define what "change" means.
 
 Another category of edge-triggering is the `on_activate` and
-`on_deactivate` [lifecycles](./lifecycles.mdx).
+`on_deactivate` [lifecycles](./lifecycles.md).
 
 ### Downsides to Using `Edge`
 
@@ -44,4 +44,4 @@ general rule, you should try to avoid using `Edge` if other, more
 declarative solutions exist.
 
 Try very hard to [avoid using `Edge` to synchronize Bonsai
-states](./organizing_state.mdx).
+states](./organizing_state.md).

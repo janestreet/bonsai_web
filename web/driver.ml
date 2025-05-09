@@ -178,7 +178,7 @@ let recompute
     ~log_before_action_application:(fun ~action_sexp ->
       Debug_logging.maybe_log_action action_logging ~sexp_of_action:Lazy.force action_sexp)
     ~log_on_skipped_stabilization:(fun ~action_sexp:(_ : Sexp.t Lazy.t) ->
-      Bonsai_metrics.Counters.observe Incr_skipped_stabilizations;
+      Ui_metrics.Counters.observe Incr_skipped_stabilizations;
       if should_debug ()
       then Console.console##debug (Js.string "action applied without stabilizing"))
     bonsai_driver;

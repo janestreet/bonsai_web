@@ -95,7 +95,7 @@ owns its own state.
 ## `Scope_model` and Lifecycles
 
 `scope_model` will run any `on_deactivate` and `on_activate` [lifecycle
-handlers](./lifecycles.mdx) defined inside of `for_` whenever `on`
+handlers](./lifecycles.md) defined inside of `for_` whenever `on`
 changes. `on_deactivate` will run first, and have access to state
 corresponding to the old value of `on`. Then, `on_activate` will run
 with access to state for the new `on`.
@@ -103,13 +103,13 @@ with access to state for the new `on`.
 ```{=html}
 <aside>
 ```
-We also used [Bonsai's form library](./forms.mdx)!
+We also used [Bonsai's form library](./forms.md)!
 ```{=html}
 </aside>
 ```
 ## The Underlying Machinery
 
-Recall from the [state chapter](../guide/04-state.mdx) that Bonsai
+Recall from the [state chapter](../guide/04-state.md) that Bonsai
 aggregates and stores all state centrally. But `Bonsai.assoc`s need a
 dynamic number state copies: one for each key. These states all have the
 same static structure though, so we can just use a big `Map.t`.

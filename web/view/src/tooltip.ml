@@ -1,5 +1,7 @@
 open! Core
 open! Import
+module Position = Byo_toplayer_private_vdom.Position
+module Alignment = Byo_toplayer_private_vdom.Alignment
 
 module Direction = struct
   type t =

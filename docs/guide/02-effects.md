@@ -1,7 +1,7 @@
 # 02 - Effects
 
 In the previous chapter, we built a `clicky` button that used
-`Effect.alert` and an `on_click` listener attr to show browser alerts
+`Effect.alert` and an `on_click` listener s attr to show browser alerts
 whenever a user clicks a button.
 
 This chapter explains the `Effect.t` type.
@@ -20,9 +20,9 @@ A `'a Effect.t` encapsulates some side effect, which may execute
 asynchronously and eventually produce a value of type `'a`. Common
 effects that you'll likely use include:
 
--   Setting/updating [state](./04-state.mdx)
--   Focusing [form elements](../how_to/forms.mdx)
--   Invoking [RPCs](../how_to/rpcs.mdx)
+-   Setting/updating [state](./04-state.md)
+-   Focusing [form elements](../how_to/forms.md)
+-   Invoking [RPCs](../how_to/rpcs.md)
 
 At first glance, `'a Effect.t` looks very similar to [Async's
 `'a Deferred.t`](https://dev.realworldocaml.org/concurrent-programming.html).
@@ -71,13 +71,13 @@ let clickies : Vdom.Node.t =
 Many Bonsai tools and libraries will return some `'a Effect.t`s. For
 example:
 
--   Bonsai's [state primitives](./04-state.mdx) return `Effect.t`s to
+-   Bonsai's [state primitives](./04-state.md) return `Effect.t`s to
     modify the state.
--   [Rpc_effect](../how_to/rpcs.mdx) return a `'response Effect.t` for
+-   [Rpc_effect](../how_to/rpcs.md) return a `'response Effect.t` for
     dispatching an RPC call.
 -   A modal library might return `Effect.t`s that open/close the modal.
 -   The Effect module contains some [commonly used effects for browser
-    APIs](../how_to/effects_for_browser_apis.mdx)
+    APIs](../how_to/effects_for_browser_apis.md)
 
 You can also wrap arbitrary side-effectful OCaml functions in
 `Effect.t`s:
@@ -147,7 +147,7 @@ with the web UI, using `Vdom.Attr.*` event handlers.
 
 But you can also schedule `Effect.t`s:
 
--   When [your code becomes active / inactive](../how_to/lifecycles.mdx)
+-   When [your code becomes active / inactive](../how_to/lifecycles.md)
 -   When an [incremental value
-    changes](../how_to/edge_triggered_effects.mdx)
--   At a [particular time](../how_to/time.mdx)
+    changes](../how_to/edge_triggered_effects.md)
+-   At a [particular time](../how_to/time.md)

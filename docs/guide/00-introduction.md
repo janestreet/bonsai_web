@@ -3,19 +3,19 @@
 This guide will teach you how to build web UIs in OCaml. We'll learn how
 to:
 
--   Write [HTML with `virtual_dom`](./01-virtual_dom.mdx), with
+-   Write [HTML with `virtual_dom`](./01-virtual_dom.md), with
     interactivity powered by side-effects [encapsulated as
-    `Effect.t`s](./02-effects.mdx)
+    `Effect.t`s](./02-effects.md)
 -   Structure our web UI as a graph of composable, [incremental
-    computations with `Bonsai.t`](./03-incrementality.mdx)
--   Instantiate and use [state](./04-state.mdx)
+    computations with `Bonsai.t`](./03-incrementality.md)
+-   Instantiate and use [state](./04-state.md)
 -   Conditionally evaluate Bonsai code, or create a dynamic number of
-    `Bonsai.t`s, with [`match%sub` and `assoc`](./05-control_flow.mdx)
+    `Bonsai.t`s, with [`match%sub` and `assoc`](./05-control_flow.md)
 
 These are the basic tools of writing OCaml web UIs. To learn how to
-[style with ppx_css](../how_to/css.mdx), [send RPCs to a
-server](../how_to/rpcs.mdx), [test your Bonsai
-code](../how_to/testing.mdx), and more, see the [Bonsai
+[style with ppx_css](../how_to/css.md), [send RPCs to a
+server](../how_to/rpcs.md), [test your Bonsai
+code](../how_to/testing.md), and more, see the [Bonsai
 how-tos](../how_to/readme.md).
 
 ```{=html}
@@ -153,8 +153,7 @@ let message_vdom ~name ~new_emails =
 ```{=html}
 </iframe>
 ```
-We'll talk more about `Virtual_dom` in [Chapter
-1](./01-virtual_dom.mdx).
+We'll talk more about `Virtual_dom` in [Chapter 1](./01-virtual_dom.md).
 
 User interactions, state updates, and RPC server calls are just *side
 effects* of an otherwise pure function. We wrap these side effects in an
@@ -186,7 +185,7 @@ let read_email_button ~on_click =
 ```{=html}
 </iframe>
 ```
-We'll talk more about `Effect.t` in [Chapter 2](./02-effects.mdx).
+We'll talk more about `Effect.t` in [Chapter 2](./02-effects.md).
 
 A desirable property is incrementality: when something changes, we only
 recompute stuff that depends on it. We can do so by wrapping our inputs
@@ -234,7 +233,7 @@ In the code above, `message` will not be recomputed if only
 `read_email_effect` changes.
 
 We'll talk more about `Bonsai.t` and incrementality in [Chapter
-3](./03-incrementality.mdx).
+3](./03-incrementality.md).
 
 We can use `Bonsai.state`, which creates a simple getter/setter state,
 to make our app stateful.
@@ -245,7 +244,7 @@ to make our app stateful.
 To use `Bonsai.state` and other `Bonsai.*` primitives, we need a
 `local_ Bonsai.graph` "graph-builder", which Bonsai will pass into your
 top-level `app` function. We'll discuss this more in the [state
-chapter](04-state.mdx).
+chapter](04-state.md).
 ```{=html}
 </aside>
 ```
@@ -288,7 +287,7 @@ produces a `unit Effect.t`. When this effect is scheduled via an event
 handler, the state will update.
 
 We'll talk more about Bonsai's state tools in [Chapter
-4](./04-state.mdx).
+4](./04-state.md).
 
 And since our ultimate goal is to produce a single
 incrementally-computed `Vdom.Node.t`, with state managed by Bonsai, a

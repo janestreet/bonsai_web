@@ -437,8 +437,8 @@ module Shared_poller = struct
   let create = Bonsai.Memo.create
   let custom_create = create
 
-  let lookup ~(here : [%call_pos]) ?sexp_of_model ~equal memo query (local_ graph) =
-    let res = Bonsai.Memo.lookup ~here ?sexp_of_model ~equal memo query graph in
+  let lookup ~(here : [%call_pos]) memo query (local_ graph) =
+    let res = Bonsai.Memo.lookup ~here memo query graph in
     match%arr res with
     | Some x -> x
     | None ->
@@ -957,7 +957,7 @@ module Our_rpc = struct
     let module M = struct
       include Q
 
-      let equal a b = Q.comparator.compare a b = 0
+      let equal a b = (Comparator.compare Q.comparator) a b = 0
     end
     in
     Shared_poller.create
@@ -965,7 +965,7 @@ module Our_rpc = struct
       ~f:(fun query ->
         poll
           ~here
-          ~sexp_of_query:M.comparator.sexp_of_t
+          ~sexp_of_query:(Comparator.sexp_of_t M.comparator)
           ?sexp_of_response
           ~equal_query:M.equal
           ?equal_response
@@ -1550,14 +1550,14 @@ module Polling_state_rpc = struct
     let module M = struct
       include Q
 
-      let equal a b = Q.comparator.compare a b = 0
+      let equal a b = (Comparator.compare Q.comparator) a b = 0
     end
     in
     Shared_poller.create
       (module Q)
       ~f:(fun query ->
         poll
-          ~sexp_of_query:M.comparator.sexp_of_t
+          ~sexp_of_query:(Comparator.sexp_of_t M.comparator)
           ?sexp_of_response
           ~equal_query:[%equal: M.t]
           ?equal_response

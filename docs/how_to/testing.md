@@ -193,9 +193,9 @@ let%expect_test "linter error on duplicate keys" =
     Linting Failures:
 
     <div>
-      <div @key=a/> <- [ERRORS]: Siblings have same vdom key
+      <div @key=a></div> <- [ERRORS]: Siblings have same vdom key
       ...
-      <div @key=a/> <- [ERRORS]: Siblings have same vdom key
+      <div @key=a></div> <- [ERRORS]: Siblings have same vdom key
     </div>
 
     [Fatal] Siblings have same vdom key (failure expected)
@@ -222,7 +222,7 @@ let hello_user (name : string Bonsai.t) : Vdom.Node.t Bonsai.t =
 ;;
 ```
 
-We can use [Bonsai.Var.t](./var.mdx) to get a mutable handle on a
+We can use [Bonsai.Var.t](./var.md) to get a mutable handle on a
 `Bonsai.t`:
 
 ```{=html}
@@ -312,7 +312,7 @@ let%expect_test "shows hello to a specified user" =
   [%expect
     {|
     <div>
-      <input @on_input> </input>
+      <input @on_input/>
       <span> hello  </span>
     </div>
     |}];
@@ -321,7 +321,7 @@ let%expect_test "shows hello to a specified user" =
   [%expect
     {|
       <div>
-        <input @on_input> </input>
+        <input @on_input/>
     -|  <span> hello  </span>
     +|  <span> hello Bob </span>
       </div>
@@ -331,7 +331,7 @@ let%expect_test "shows hello to a specified user" =
   [%expect
     {|
       <div>
-        <input @on_input> </input>
+        <input @on_input/>
     -|  <span> hello Bob </span>
     +|  <span> hello Alice </span>
       </div>
@@ -408,7 +408,7 @@ represents "input events" we can inject.
 
 ## Mocking time in tests
 
-In the [how-to on time](./time.mdx), we wrote a UI that depends on time:
+In the [how-to on time](./time.md), we wrote a UI that depends on time:
 
 ```{=html}
 <!-- $MDX file=../../examples/bonsai_guide_code/lib/time_examples.ml,part=clock_now -->

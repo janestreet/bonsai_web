@@ -461,6 +461,9 @@ let start_and_get_handle
       ~bind_to_element_with_id
       bonsai
   in
+  (* Note: duplicated between [start_experimental] and [start_via_incr_dom]. *)
+  Deferred.upon (Handle.started bonsai_handle) (fun () ->
+    Js.Unsafe.global##.bonsaiHasStarted := Js.bool true);
   let () = ignore (pre_startup : unit) in
   bonsai_handle
 ;;

@@ -37,7 +37,7 @@ It is tempting to try and build a
 code can subscribe to the currently focused element. This is a bad idea!
 
 DOM nodes are mutable, and you [should not put mutable things in
-`Bonsai.t`s](./best_practices_pitfalls.mdx#no-mutable-models): if you
+`Bonsai.t`s](./best_practices_pitfalls.md#no-mutable-models): if you
 were to `let%arr` on a `Dom_html.element Js.t`, your code would not
 re-run on changes to that DOM node. This is particularly important
 because the vdom diff/patch algorithm might reuse a DOM node for
@@ -52,8 +52,8 @@ It's ok to fetch the `Dom_html.document##activeElement` as part of an
 
 Some Bonsai components implement their own state machines simulating
 focus in terms of some OCaml key, rather than rely on DOM focus. The
-[PRT](./partial_render_table.mdx#focus) has a fairly advanced focus
-state machine.
+[PRT](./partial_render_table.md#focus) has a fairly advanced focus state
+machine.
 
 ## Setting Focus
 
@@ -88,7 +88,7 @@ let effect_focus_demo (local_ graph) =
 </iframe>
 ```
 You can also use `Effect.Focus.on_activate` to focus elements on the
-[on_activate lifecycle event](./lifecycles.mdx):
+[on_activate lifecycle event](./lifecycles.md):
 
 ```{=html}
 <!-- $MDX file=../../examples/bonsai_guide_code/focus_examples.ml,part=effect_focus_onactivate -->
@@ -128,7 +128,7 @@ outside the `match%sub`.
 `Effect.Focus.on_activate` might also fail if the DOM element you want
 to focus isn't created or made within the same frame that its Bonsai
 code becomes active. This probablt means there's a bug / delayed [state
-synchronization](./organizing_state.mdx) in your UI component.
+synchronization](./organizing_state.md) in your UI component.
 
 ### Focusable Elements
 

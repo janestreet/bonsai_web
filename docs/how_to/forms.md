@@ -461,7 +461,7 @@ module Record = struct
         (* This type definition is boilerplate and will become unneccessary once OCaml
            gets polymorphic parameters. *)
         type form_of_field_fn =
-          { f : 'a. 'a Typed_field.t -> ('a, field_view) Form.t Bonsai.t }
+          { f : 'a. 'a Typed_field.t @ local -> ('a, field_view) Form.t Bonsai.t }
 
         (* Provide a form computation for each field in the record *)
         let form_for_field

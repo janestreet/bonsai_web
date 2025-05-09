@@ -5,8 +5,8 @@ pipeline operator, and `match` statements enable control flow and
 abstraction.
 
 The `match%sub` and `Bonsai.assoc` [control flow
-primitives](../guide/05-control_flow.mdx) are higher-order functions
-too! And we can use them to build higher-order abstractions like:
+primitives](../guide/05-control_flow.md) are higher-order functions too!
+And we can use them to build higher-order abstractions like:
 
 -   A generic query renderer, which dispatches an RPC to fetch some
     data, and uses `match%sub` to display a loading indicator while the
@@ -120,5 +120,5 @@ let modal_example (local_ graph) =
 ```{=html}
 </iframe>
 ```
-Note that state is retained, and [lifecycle effects](./lifecycles.mdx)
+Note that state is retained, and [lifecycle effects](./lifecycles.md)
 run on every open / close.
