@@ -26,17 +26,51 @@ module Where_to_connect : sig
     type t = ..
   end
 
-  (** [Self] and [Url] open a persistent Websockets connection. [Self] will use the URL
-      from which the web app is being accessed. [Url] will use the provided URL.
+  (** The place that an RPC should be sent.
 
-      [Self] will reuse a single Websockets connection for all callsites. Similarly, [Url]
-      will open one connection per-URL.
-
-      [Self] and [Url] have the behavior of [On_conn_failure.Retry_until_success]. *)
-  type t =
-    | Self
-    | Url of string
+      [t] MUST be private, to ensure that all [Custom] values come through [Register] or
+      [Register1], so we always have a comparison function. *)
+  type t = private
+    | Self of { on_conn_failure : On_conn_failure.t }
+    | Url of
+        { on_conn_failure : On_conn_failure.t
+        ; url : string
+        }
     | Custom of Custom.t
+  [@@deriving compare, sexp_of]
+
+  (** [self] opens a persistent Websockets connection. It will use the URL from which the
+      web app is being accessed. The same connection will be reused for all callsites. *)
+  val self : on_conn_failure:On_conn_failure.t -> unit -> t
+
+  (** [url] opens a persistent Websockets connection. The same connection will be reused
+      for all callsites. *)
+  val url : on_conn_failure:On_conn_failure.t -> string -> t
+
+  module type Registered = sig
+    type Custom.t += T
+
+    val where_to_connect : t
+  end
+
+  (** [Register] allows you to use a custom [Connector.t]. To do so:
+      - Use the resulting [M.where_to_connect] as [~where_to_connect] when dispatching
+        RPCs
+      - Pass a [~custom_connector] arg to [Bonsai_web.Start.start], which, when given your
+        [M.T], returns your custom connector. *)
+  module Register () : Registered
+
+  module type Registered1 = sig
+    type arg
+    type Custom.t += T of arg
+
+    val where_to_connect : arg -> t
+  end
+
+  (** [Register1] is like [Register], but takes an argument. *)
+  module Register1 (Arg : sig
+      type t [@@deriving compare, sexp_of]
+    end) : Registered1 with type arg = Arg.t
 end
 
 module Poll_result : sig
@@ -88,7 +122,8 @@ module Shared_poller : sig
 
   (** You can use [custom_create] to build a shared-poller if the
       [Rpc_effect.Rpc.shared_poller] and [Rpc_effect.Polling_state_rpc.shared_poller]
-      aren't sufficient. *)
+      aren't sufficient. You'll likely want to wrap any shared poller in a
+      [Bonsai.scope_model] on [~where_to_connect]. *)
   val custom_create
     :  here:[%call_pos]
     -> ('query, _) Comparator.Module.t
@@ -101,13 +136,15 @@ module Shared_poller : sig
 end
 
 module Rpc : sig
-  (** An effect for sending a particular RPC to a particular place. *)
+  (** An effect for sending a particular RPC to a particular place.
+
+      [where_to_connect] defaults to [self ~on_conn_failure:Retry_until_success]. *)
   val dispatcher
     :  here:[%call_pos]
     -> ?sexp_of_query:('query -> Sexp.t)
     -> ?sexp_of_response:('response -> Sexp.t)
     -> ('query, 'response) Rpc.Rpc.t
-    -> where_to_connect:Where_to_connect.t
+    -> ?where_to_connect:Where_to_connect.t Bonsai.t
     -> local_ Bonsai.graph
     -> ('query -> 'response Or_error.t Effect.t) Bonsai.t
 
@@ -116,7 +153,7 @@ module Rpc : sig
     -> ?sexp_of_query:('query -> Sexp.t)
     -> ?sexp_of_response:('response -> Sexp.t)
     -> ('query -> 'response Or_error.t Deferred.t) Babel.Caller.t
-    -> where_to_connect:Where_to_connect.t
+    -> ?where_to_connect:Where_to_connect.t Bonsai.t
     -> local_ Bonsai.graph
     -> ('query -> 'response Or_error.t Effect.t) Bonsai.t
 
@@ -125,7 +162,7 @@ module Rpc : sig
     -> ?sexp_of_query:('query -> Sexp.t)
     -> ?sexp_of_response:('response -> Sexp.t)
     -> ('query, 'response) Streamable.Plain_rpc.t
-    -> where_to_connect:Where_to_connect.t
+    -> ?where_to_connect:Where_to_connect.t Bonsai.t
     -> local_ Bonsai.graph
     -> ('query -> 'response Or_error.t Effect.t) Bonsai.t
 
@@ -133,7 +170,9 @@ module Rpc : sig
       recent response. Only one request will be in-flight at any point in time.
 
       [clear_when_deactivated] determines whether the most recent response should be
-      discarded when the component is deactivated. Default is true. *)
+      discarded when the component is deactivated. Default is true.
+
+      [where_to_connect] defaults to [self ~on_conn_failure:Surface_error_to_rpc]. *)
   val poll
     :  here:[%call_pos]
     -> ?sexp_of_query:('query -> Sexp.t)
@@ -143,7 +182,7 @@ module Rpc : sig
     -> ?clear_when_deactivated:bool
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Rpc.Rpc.t
-    -> where_to_connect:Where_to_connect.t
+    -> ?where_to_connect:Where_to_connect.t Bonsai.t
     -> every:Time_ns.Span.t Bonsai.t
     -> 'query Bonsai.t
     -> local_ Bonsai.graph
@@ -159,7 +198,7 @@ module Rpc : sig
     -> ?clear_when_deactivated:bool
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query -> 'response Or_error.t Deferred.t) Babel.Caller.t
-    -> where_to_connect:Where_to_connect.t
+    -> ?where_to_connect:Where_to_connect.t Bonsai.t
     -> every:Time_ns.Span.t Bonsai.t
     -> 'query Bonsai.t
     -> local_ Bonsai.graph
@@ -175,7 +214,7 @@ module Rpc : sig
     -> ?clear_when_deactivated:bool
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Streamable.Plain_rpc.t
-    -> where_to_connect:Where_to_connect.t
+    -> ?where_to_connect:Where_to_connect.t Bonsai.t
     -> every:Time_ns.Span.t Bonsai.t
     -> 'query Bonsai.t
     -> local_ Bonsai.graph
@@ -192,7 +231,7 @@ module Rpc : sig
     -> ?clear_when_deactivated:bool
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Streamable.Plain_rpc.t
-    -> where_to_connect:Where_to_connect.t
+    -> ?where_to_connect:Where_to_connect.t Bonsai.t
     -> retry_interval:Time_ns.Span.t Bonsai.t
     -> 'query Bonsai.t
     -> local_ Bonsai.graph
@@ -206,7 +245,7 @@ module Rpc : sig
     -> ?clear_when_deactivated:bool
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Rpc.Rpc.t
-    -> where_to_connect:Where_to_connect.t
+    -> ?where_to_connect:Where_to_connect.t Bonsai.t
     -> every:Time_ns.Span.t Bonsai.t
     -> local_ Bonsai.graph
     -> ('query, 'response) Shared_poller.t Bonsai.t
@@ -224,7 +263,7 @@ module Rpc : sig
     -> ?clear_when_deactivated:bool
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Rpc.Rpc.t
-    -> where_to_connect:Where_to_connect.t
+    -> ?where_to_connect:Where_to_connect.t Bonsai.t
     -> retry_interval:Time_ns.Span.t Bonsai.t
     -> 'query Bonsai.t
     -> local_ Bonsai.graph
@@ -243,7 +282,7 @@ module Rpc : sig
     -> ?clear_when_deactivated:bool
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Rpc.Rpc.t
-    -> where_to_connect:Where_to_connect.t
+    -> ?where_to_connect:Where_to_connect.t Bonsai.t
     -> every:Time_ns.Span.t Bonsai.t
     -> condition:('response -> [ `Continue | `Stop_polling ]) Bonsai.t
     -> 'query Bonsai.t
@@ -259,7 +298,7 @@ module Rpc : sig
     -> ?clear_when_deactivated:bool
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query -> 'response Or_error.t Deferred.t) Babel.Caller.t
-    -> where_to_connect:Where_to_connect.t
+    -> ?where_to_connect:Where_to_connect.t Bonsai.t
     -> retry_interval:Time_ns.Span.t Bonsai.t
     -> 'query Bonsai.t
     -> local_ Bonsai.graph
@@ -274,7 +313,7 @@ module Rpc : sig
     -> ?clear_when_deactivated:bool
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query -> 'response Or_error.t Deferred.t) Babel.Caller.t
-    -> where_to_connect:Where_to_connect.t
+    -> ?where_to_connect:Where_to_connect.t Bonsai.t
     -> every:Time_ns.Span.t Bonsai.t
     -> condition:('response -> [ `Continue | `Stop_polling ]) Bonsai.t
     -> 'query Bonsai.t
@@ -293,7 +332,7 @@ module Polling_state_rpc : sig
     -> ?sexp_of_response:('response -> Sexp.t)
     -> ?on_forget_client_error:(Error.t -> unit Effect.t)
     -> ('query, 'response) Polling_state_rpc.t
-    -> where_to_connect:Where_to_connect.t
+    -> ?where_to_connect:Where_to_connect.t Bonsai.t
     -> local_ Bonsai.graph
     -> ('query -> 'response Or_error.t Effect.t) Bonsai.t
 
@@ -303,7 +342,7 @@ module Polling_state_rpc : sig
     -> ?sexp_of_response:('response -> Sexp.t)
     -> ?on_forget_client_error:(Error.t -> unit Effect.t)
     -> ('query, 'response) Versioned_polling_state_rpc.Client.caller
-    -> where_to_connect:Where_to_connect.t
+    -> ?where_to_connect:Where_to_connect.t Bonsai.t
     -> local_ Bonsai.graph
     -> ('query -> 'response Or_error.t Effect.t) Bonsai.t
 
@@ -319,7 +358,7 @@ module Polling_state_rpc : sig
     -> ?clear_when_deactivated:bool
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Polling_state_rpc.t
-    -> where_to_connect:Where_to_connect.t
+    -> ?where_to_connect:Where_to_connect.t Bonsai.t
     -> ?when_to_start_next_effect:
          [ `Wait_period_after_previous_effect_starts_blocking
          | `Wait_period_after_previous_effect_finishes_blocking
@@ -340,7 +379,7 @@ module Polling_state_rpc : sig
     -> ?clear_when_deactivated:bool
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Versioned_polling_state_rpc.Client.caller
-    -> where_to_connect:Where_to_connect.t
+    -> ?where_to_connect:Where_to_connect.t Bonsai.t
     -> ?when_to_start_next_effect:
          [ `Wait_period_after_previous_effect_starts_blocking
          | `Wait_period_after_previous_effect_finishes_blocking
@@ -360,7 +399,7 @@ module Polling_state_rpc : sig
     -> ?clear_when_deactivated:bool
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Polling_state_rpc.t
-    -> where_to_connect:Where_to_connect.t
+    -> ?where_to_connect:Where_to_connect.t Bonsai.t
     -> every:Time_ns.Span.t Bonsai.t
     -> local_ Bonsai.graph
     -> ('query, 'response) Shared_poller.t Bonsai.t
@@ -395,7 +434,10 @@ module Status : sig
   [@@deriving sexp_of]
 
   (** A component whose output tracks the state of a connection to a host. *)
-  val state : where_to_connect:Where_to_connect.t -> local_ Bonsai.graph -> t Bonsai.t
+  val state
+    :  where_to_connect:Where_to_connect.t Bonsai.t
+    -> local_ Bonsai.graph
+    -> t Bonsai.t
 end
 
 module Connector : sig

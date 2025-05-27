@@ -7,13 +7,14 @@ have to manually keep them in sync. This is bad, because:
 
 -   It's really easy to make mistakes / forget to set something
 -   Setting state in [an `on_change`](./edge_triggered_effects.md) or
-    [lifecycle event](./lifecycles.md) won't take effect until the next
-    frame, so you might get flashes of old content, or even behavioral
-    bugs
+    [lifecycle event](./lifecycles.md) won't take effect [until the next
+    frame](./bonsai_runtime.md), so you might get flashes of old
+    content, or even behavioral bugs
 -   Your code becomes less declarative, more imperative, and therefore
     harder to understand
-    ``{=html}
 
+```{=html}
+```
 This article provides some suggestions around structuring your state to
 avoid synchronization bugs.
 
@@ -157,10 +158,12 @@ latest data to your users, and you'd like your users changes to reflect
 on the server.
 
 We can't -- and don't want to -- keep server and client state exactly in
-sync: - Users often want to explicitly commit changes to the server, and
-only do so if their changes are "valid" - Users expect some latency /
-loading time when fetching / refreshing data, or performing some
-operation.
+sync:
+
+-   Users often want to explicitly commit changes to the server, and
+    only do so if their changes are "valid"
+-   Users expect some latency / loading time when fetching / refreshing
+    data, or performing some operation.
 
 The [`Rpc_effect` library](./rpcs.md) implements tools for polling and
 dispatching one-shot actions to RPCs. We highly recommend using it

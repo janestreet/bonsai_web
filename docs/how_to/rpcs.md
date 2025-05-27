@@ -66,7 +66,9 @@ server hosting the web page itself.
 <!-- $MDX file=../../examples/bonsai_guide_code/lib/rpc_examples.ml,part=where_to_connect -->
 ```
 ``` ocaml
-let where_to_connect : Rpc_effect.Where_to_connect.t = Self
+let where_to_connect : Rpc_effect.Where_to_connect.t =
+  Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()
+;;
 ```
 
 Finally, we can build the client side of the app.

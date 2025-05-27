@@ -185,15 +185,14 @@ let create (params : Params.t) ~resize_column_widths_to_fit =
   ; header_cell_focused = Stylesheet.header_cell_focused
   ; header_row = Stylesheet.header_row
   ; header = Stylesheet.header
-  ; autosize_table_cell_wrapper =
-      Vdom.Attr.many [ Stylesheet.autosize_table_cell_wrapper ]
+  ; autosize_table_cell_wrapper = Vdom.Attr.empty
   ; autosize_table_cell_wrapper_focused = wrapper_cell_outline
   ; cell = Stylesheet.body_cell
   ; cell_focused = Vdom.Attr.many [ cell_outline; Stylesheet.body_cell_focused ]
   ; row = Stylesheet.body_row
   ; row_focused = Stylesheet.body_row_focused
   ; row_of_focused_cell
-  ; body = Stylesheet.body
+  ; body = Vdom.Attr.empty
   ; table = Stylesheet.table
   ; table_vars = table_vars_attr style_module params
   }

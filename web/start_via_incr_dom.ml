@@ -421,10 +421,10 @@ let computation_with_rpc_and_result_spec computation ~custom_connector ~result_s
   let computation =
     Rpc_effect.Private.with_connector
       (function
-        | Self ->
-          Rpc_effect.Private.self_connector ~on_conn_failure:Retry_until_success ()
-        | Url url ->
-          Rpc_effect.Private.url_connector ~on_conn_failure:Retry_until_success url
+        | Self { on_conn_failure } ->
+          Rpc_effect.Private.self_connector ~on_conn_failure ()
+        | Url { on_conn_failure; url } ->
+          Rpc_effect.Private.url_connector ~on_conn_failure url
         | Custom custom -> custom_connector custom)
       computation
   in
@@ -434,8 +434,6 @@ let computation_with_rpc_and_result_spec computation ~custom_connector ~result_s
       (computation graph)
       ~f:(Fully_parametrized.App_result.of_result_spec result_spec)
 ;;
-
-let () = ()
 
 let start_and_get_handle
   result_spec

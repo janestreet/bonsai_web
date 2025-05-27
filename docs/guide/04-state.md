@@ -527,6 +527,23 @@ reset](../how_to/resetting_state.md).
 
 ```{=html}
 ```
+## Which State To Use?
+
+It might appear that `state_machine` is strictly better than `state`.
+This is not necessarily true! As a general guideline:
+
+-   Use `Bonsai.state` if all updates to state completely replace the
+    old state, and do not depend on the old state.
+-   Use `Bonsai.state'` if all updates to state completely replace the
+    old state, and the new state depends on the old state
+    (e.g. counters). `state'` is like state, but instead of a
+    `'a -> unit Effect.t` setter, you get a
+    `('a -> 'a) -> unit Effect.t`, giving you access to the current
+    state.
+-   Use `Bonsai.state_machine` if state can update in various ways, you
+    need to dispatch other effects / use the time source while updating
+    state, or your state transition function has an input.
+
 Let's continue to [Bonsai Guide Part 5: Control
 Flow](./05-control_flow.md).
 

@@ -233,18 +233,13 @@ computation, extracts the `result Incr.t` and `input Incr.t` from the
 resulting snapshot, and puts these all together in a `Bonsai_driver.t`
 type that provides an API for running the Bonsai computation.
 
-This driver is mostly used for testing.
-
-### Testing??? I want a website!
-
-`Bonsai_web.Start` pretty much does the same thing, except that it does
-some web specific stuff, and expects a `Vdom.Node.t Computation.t`. Once
-it has a `Vdom.Node.t Incr.t`, it uses `virtual_dom` to generate DOM
-from the vdom / attach it to some element, and then run `virtual_dom`'s
-diff-and-patch algorithm when the `Incr.t` changes.
-
-`Bonsai_web.Start` actually mostly does this through
-`Incr_dom.Start_app`.
+`Bonsai_driver.t` is used for the Bonsai test handle, and for
+`Bonsai_web.Driver`, which powers Bonsai runtime apps.
+`Bonsai_web.Driver` expects a `Vdom.Node.t Computation.t`. Once it has a
+`Vdom.Node.t Incr.t`, it uses `virtual_dom` to generate DOM from the
+vdom / attach it to some "root" element. Then, every frame, it applies
+actions, stabilizes the `Vdom.Node.t Incr.t`, runs `virtual_dom`'s
+diff-and-patch algorithm to update the DOM, and runs lifecycle events.
 
 # The `local_ graph` API
 

@@ -6,15 +6,136 @@ open Async_rpc_kernel
    explicitly as a counter-measure of For_instrospection being dead-code eliminated. *)
 let () = For_introspection.run_top_level_side_effects ()
 
+module On_conn_failure = struct
+  type t =
+    | Surface_error_to_rpc
+    | Retry_until_success
+  [@@deriving sexp_of, compare, equal]
+end
+
 module Where_to_connect = struct
   module Custom = struct
     type t = ..
+
+    module Registered = struct
+      type ext = t
+
+      type t =
+        | T :
+            { get : ext -> 'a option
+            ; compare : 'a -> 'a -> int
+            ; sexp_of_arg : 'a -> Sexp.t
+            }
+            -> t
+
+      let table : (extension_constructor, t) Hashtbl.t =
+        Hashtbl.create
+          (module struct
+            type t = extension_constructor
+
+            let sexp_of_t t = Sexp.Atom (Obj.Expert.Extension_constructor.name t)
+
+            let compare =
+              Comparable.lift Int.compare ~f:Obj.Expert.Extension_constructor.id
+            ;;
+
+            let hash = Obj.Expert.Extension_constructor.id
+          end)
+      ;;
+    end
+
+    let compare (t1 : t) (t2 : t) =
+      let ext1 = Obj.Expert.Extension_constructor.of_val t1 in
+      let ext2 = Obj.Expert.Extension_constructor.of_val t2 in
+      match Poly.compare ext1 ext2 with
+      | 0 ->
+        let (T { get; compare; sexp_of_arg = _ }) =
+          Hashtbl.find_exn Registered.table ext1
+        in
+        let payload1 = get t1 |> Option.value_exn in
+        let payload2 = get t2 |> Option.value_exn in
+        compare payload1 payload2
+      | n -> n
+    ;;
+
+    let sexp_of_t (t : t) =
+      let ext = Obj.Expert.Extension_constructor.of_val t in
+      let (T { sexp_of_arg; get; compare = _ }) = Hashtbl.find_exn Registered.table ext in
+      let arg = get t |> Option.value_exn in
+      sexp_of_arg arg
+    ;;
+
+    let equal = Comparable.equal compare
   end
 
   type t =
-    | Self
-    | Url of string
+    | Self of { on_conn_failure : On_conn_failure.t }
+    | Url of
+        { on_conn_failure : On_conn_failure.t
+        ; url : string
+        }
     | Custom of Custom.t
+  [@@deriving compare, equal, sexp_of]
+
+  let self ~on_conn_failure () = Self { on_conn_failure }
+  let url ~on_conn_failure url = Url { on_conn_failure; url }
+
+  module type Registered = sig
+    type Custom.t += T
+
+    val where_to_connect : t
+  end
+
+  module Register () : Registered = struct
+    type Custom.t += T
+
+    let get t =
+      match t with
+      | T -> Some ()
+      | _ -> None
+    ;;
+
+    let () =
+      Hashtbl.add_exn
+        Custom.Registered.table
+        ~key:[%extension_constructor T]
+        ~data:(T { get; compare = Unit.compare; sexp_of_arg = sexp_of_unit })
+    ;;
+
+    let where_to_connect = Custom T
+  end
+
+  module type Registered1 = sig
+    type arg
+    type Custom.t += T of arg
+
+    val where_to_connect : arg -> t
+  end
+
+  module Register1 (Arg : sig
+      type t [@@deriving compare, sexp_of]
+    end) : Registered1 with type arg = Arg.t = struct
+    type arg = Arg.t
+    type Custom.t += T of Arg.t
+
+    let get t =
+      match t with
+      | T arg -> Some arg
+      | _ -> None
+    ;;
+
+    let () =
+      Hashtbl.add_exn
+        Custom.Registered.table
+        ~key:[%extension_constructor T]
+        ~data:(T { get; compare = Arg.compare; sexp_of_arg = Arg.sexp_of_t })
+    ;;
+
+    let where_to_connect arg = Custom (T arg)
+  end
+
+  let default_for_one_shot = self ~on_conn_failure:Retry_until_success () |> Bonsai.return
+  let default_for_polling = self ~on_conn_failure:Surface_error_to_rpc () |> Bonsai.return
 end
 
 module Rvar : sig
@@ -153,13 +274,6 @@ end = struct
       invalidate t;
       on_destroy ()
   ;;
-end
-
-module On_conn_failure = struct
-  type t =
-    | Surface_error_to_rpc
-    | Retry_until_success
-  [@@deriving sexp_of]
 end
 
 (* This is factored out because we want to be able to share a connection between clients
@@ -500,6 +614,7 @@ let generic_poll_or_error
   ~clear_when_deactivated
   ~on_response_received
   dispatcher
+  ~where_to_connect
   ~when_to_start_next_effect
   ~every
   ~poll_behavior
@@ -644,29 +759,45 @@ let generic_poll_or_error
         on_response_received query response
   in
   let effect = time_rpc_effect ~rpc_kind effect in
-  (* Below are three constructs that schedule the effect to run. The tricky part
-     of this is that [Clock.every] and [Edge.on_change] both run effects on
+  (* Below are four constructs that schedule the effect to run:
+
+     * [on_activate]
+     * When the [query] changes
+     * When the [where_to_connect] changes
+     * On an interval
+
+     The tricky part is that[Clock.every] and [Edge.on_change] both run effects on
      activate by default. To avoid the redundancy, we make neither of them
      trigger on activate, and only use [on_activate] for running effects on
      activation. *)
-  let callback =
-    let%arr effect in
-    fun prev query ->
-      match prev with
-      | Some _ -> effect query
-      | None -> Effect.Ignore
-  in
   let () =
     Bonsai.Edge.on_change'
       ~sexp_of_model:[%sexp_of: Query.t]
       ~equal:equal_query
       query
-      ~callback
+      ~callback:
+        (let%arr effect in
+         fun prev query ->
+           match prev with
+           | Some _ -> effect query
+           | None -> Effect.Ignore)
       graph
   in
   let send_rpc_effect =
     let%arr effect and query in
     effect query
+  in
+  let () =
+    Bonsai.Edge.on_change'
+      ~equal:[%equal: Where_to_connect.t]
+      where_to_connect
+      ~callback:
+        (let%arr send_rpc_effect in
+         fun prev _new ->
+           match prev with
+           | None -> Effect.Ignore
+           | Some _ -> send_rpc_effect)
+      graph
   in
   let%sub () =
     let clock =
@@ -721,6 +852,7 @@ let generic_poll_or_error
   ?equal_response
   ?(clear_when_deactivated = true)
   ?(on_response_received = Bonsai.return (fun _ _ -> Effect.Ignore))
+  ~where_to_connect
   ?(when_to_start_next_effect = `Wait_period_after_previous_effect_starts_blocking)
   dispatcher
   ~every
@@ -741,6 +873,7 @@ let generic_poll_or_error
       ~on_response_received
       ~clear_when_deactivated
       dispatcher
+      ~where_to_connect
       ~when_to_start_next_effect
       ~every
       ~poll_behavior
@@ -759,24 +892,24 @@ let generic_poll_or_error
 let sexp_of_polling_state_rpc_underlying_response (_, sexp) = Lazy.force sexp
 
 module Our_rpc = struct
-  let generic_dispatcher (type request response) dispatcher
+  let generic_dispatcher (type request response) dispatcher ~where_to_connect
     : local_ Bonsai.graph -> (request -> response Effect.t) Bonsai.t
     =
     fun (local_ graph) ->
     let open Bonsai.Let_syntax in
     let connector = Bonsai.Dynamic_scope.lookup connector_var graph in
-    let%arr connector in
-    Effect.of_deferred_fun (dispatcher connector)
+    let%arr connector and where_to_connect in
+    Effect.of_deferred_fun (dispatcher connector ~where_to_connect)
   ;;
 
   let dispatcher_internal rpc ~where_to_connect =
-    generic_dispatcher (fun connector query ->
+    generic_dispatcher ~where_to_connect (fun connector ~where_to_connect query ->
       Connector.with_connection connector ~where_to_connect ~callback:(fun connection ->
         Rpc.Rpc.dispatch rpc connection query))
   ;;
 
   let babel_dispatcher_internal rpc ~where_to_connect =
-    generic_dispatcher (fun connector query ->
+    generic_dispatcher ~where_to_connect (fun connector ~where_to_connect query ->
       Connector.with_connection_with_menu
         connector
         ~where_to_connect
@@ -784,7 +917,7 @@ module Our_rpc = struct
   ;;
 
   let streamable_dispatcher_internal rpc ~where_to_connect =
-    generic_dispatcher (fun connector query ->
+    generic_dispatcher ~where_to_connect (fun connector ~where_to_connect query ->
       Connector.with_connection connector ~where_to_connect ~callback:(fun connection ->
         Streamable.Plain_rpc.dispatch rpc connection query))
   ;;
@@ -798,7 +931,7 @@ module Our_rpc = struct
     ?clear_when_deactivated
     ?on_response_received
     rpc
-    ~where_to_connect
+    ?(where_to_connect = Where_to_connect.default_for_polling)
     ~every
     query
     (local_ graph)
@@ -820,6 +953,7 @@ module Our_rpc = struct
       ?equal_response
       ?clear_when_deactivated
       ?on_response_received
+      ~where_to_connect
       dispatcher
       ~every
       ~poll_behavior:Always
@@ -838,7 +972,7 @@ module Our_rpc = struct
     ?clear_when_deactivated
     ?on_response_received
     rpc
-    ~where_to_connect
+    ?(where_to_connect = Where_to_connect.default_for_polling)
     ~every
     query
     (local_ graph)
@@ -857,6 +991,7 @@ module Our_rpc = struct
       ?equal_response
       ?clear_when_deactivated
       ?on_response_received
+      ~where_to_connect
       dispatcher
       ~every
       ~get_response:Fn.id
@@ -875,7 +1010,7 @@ module Our_rpc = struct
     ?clear_when_deactivated
     ?on_response_received
     rpc
-    ~where_to_connect
+    ?(where_to_connect = Where_to_connect.default_for_polling)
     ~every
     query
     (local_ graph)
@@ -895,6 +1030,7 @@ module Our_rpc = struct
       ?equal_response
       ?clear_when_deactivated
       ?on_response_received
+      ~where_to_connect
       dispatcher
       ~every
       ~poll_behavior:Always
@@ -913,7 +1049,7 @@ module Our_rpc = struct
     ?clear_when_deactivated
     ?on_response_received
     rpc
-    ~where_to_connect
+    ?(where_to_connect = Where_to_connect.default_for_polling)
     ~retry_interval
     query
     (local_ graph)
@@ -933,6 +1069,7 @@ module Our_rpc = struct
       ?equal_response
       ?clear_when_deactivated
       ?on_response_received
+      ~where_to_connect
       dispatcher
       ~every:retry_interval
       ~poll_behavior:Until_ok
@@ -951,7 +1088,7 @@ module Our_rpc = struct
     ?clear_when_deactivated
     ?on_response_received
     rpc
-    ~where_to_connect
+    ?(where_to_connect = Where_to_connect.default_for_polling)
     ~every
     =
     let module M = struct
@@ -986,7 +1123,7 @@ module Our_rpc = struct
     ?clear_when_deactivated
     ?on_response_received
     rpc
-    ~where_to_connect
+    ?(where_to_connect = Where_to_connect.default_for_polling)
     ~retry_interval
     query
     (local_ graph)
@@ -1008,6 +1145,7 @@ module Our_rpc = struct
       ?equal_response
       ?clear_when_deactivated
       ?on_response_received
+      ~where_to_connect
       dispatcher
       ~every:retry_interval
       ~poll_behavior:Until_ok
@@ -1026,7 +1164,7 @@ module Our_rpc = struct
     ?clear_when_deactivated
     ?on_response_received
     rpc
-    ~where_to_connect
+    ?(where_to_connect = Where_to_connect.default_for_polling)
     ~every
     ~condition
     query
@@ -1049,6 +1187,7 @@ module Our_rpc = struct
       ?equal_response
       ?clear_when_deactivated
       ?on_response_received
+      ~where_to_connect
       dispatcher
       ~every
       ~poll_behavior:(Until_condition_met condition)
@@ -1067,7 +1206,7 @@ module Our_rpc = struct
     ?clear_when_deactivated
     ?on_response_received
     rpc
-    ~where_to_connect
+    ?(where_to_connect = Where_to_connect.default_for_polling)
     ~retry_interval
     query
     (local_ graph)
@@ -1088,6 +1227,7 @@ module Our_rpc = struct
       ?equal_response
       ?clear_when_deactivated
       ?on_response_received
+      ~where_to_connect
       dispatcher
       ~every:retry_interval
       ~poll_behavior:Until_ok
@@ -1106,7 +1246,7 @@ module Our_rpc = struct
     ?clear_when_deactivated
     ?on_response_received
     rpc
-    ~where_to_connect
+    ?(where_to_connect = Where_to_connect.default_for_polling)
     ~every
     ~condition
     query
@@ -1128,6 +1268,7 @@ module Our_rpc = struct
       ?equal_response
       ?clear_when_deactivated
       ?on_response_received
+      ~where_to_connect
       dispatcher
       ~every
       ~poll_behavior:(Until_condition_met condition)
@@ -1176,7 +1317,7 @@ module Our_rpc = struct
     ?sexp_of_query
     ?sexp_of_response
     rpc
-    ~where_to_connect
+    ?(where_to_connect = Where_to_connect.default_for_one_shot)
     (local_ graph)
     =
     let dispatcher = dispatcher_internal rpc ~where_to_connect graph in
@@ -1201,7 +1342,7 @@ module Our_rpc = struct
     ?sexp_of_query
     ?sexp_of_response
     rpc
-    ~where_to_connect
+    ?(where_to_connect = Where_to_connect.default_for_one_shot)
     (local_ graph)
     =
     let dispatcher = streamable_dispatcher_internal rpc ~where_to_connect graph in
@@ -1224,7 +1365,7 @@ module Our_rpc = struct
     ?sexp_of_query
     ?sexp_of_response
     rpc
-    ~where_to_connect
+    ?(where_to_connect = Where_to_connect.default_for_one_shot)
     (local_ graph)
     =
     let dispatcher = babel_dispatcher_internal rpc ~where_to_connect graph in
@@ -1255,7 +1396,7 @@ module Polling_state_rpc = struct
     let connector = Bonsai.Dynamic_scope.lookup connector_var graph in
     let client_rvar = create_client_rvar ~connector graph in
     let forget_client_on_server =
-      let perform_dispatch (connector, client_rvar) =
+      let perform_dispatch (connector, client_rvar, where_to_connect) =
         Connector.with_connection connector ~where_to_connect ~callback:(fun connection ->
           let%bind.Eager_deferred.Or_error client = Rvar.contents client_rvar in
           match%map.Deferred
@@ -1269,10 +1410,12 @@ module Polling_state_rpc = struct
             Ok ()
           | Error error -> Error error)
       in
-      let%arr connector and client_rvar in
+      let%arr connector and client_rvar and where_to_connect in
       let%bind.Effect () =
         match%bind.Effect
-          Effect.of_deferred_fun perform_dispatch (connector, client_rvar)
+          Effect.of_deferred_fun
+            perform_dispatch
+            (connector, client_rvar, where_to_connect)
         with
         | Ok () -> Effect.Ignore
         | Error error -> on_forget_client_error error
@@ -1282,7 +1425,19 @@ module Polling_state_rpc = struct
       else Effect.Ignore
     in
     let () = Bonsai.Edge.lifecycle ~on_deactivate:forget_client_on_server graph in
-    let perform_query (connector, client) query =
+    let () =
+      Bonsai.Edge.on_change'
+        ~equal:[%equal: Where_to_connect.t]
+        where_to_connect
+        ~callback:
+          (let%arr forget_client_on_server in
+           fun prev _new ->
+             match prev with
+             | None -> Effect.Ignore
+             | Some _ -> forget_client_on_server)
+        graph
+    in
+    let perform_query (connector, client, where_to_connect) query =
       Connector.with_connection connector ~where_to_connect ~callback:(fun connection ->
         let%bind.Eager_deferred.Or_error client = Rvar.contents client in
         match%map.Eager_deferred
@@ -1297,13 +1452,13 @@ module Polling_state_rpc = struct
         | `Raised exn -> Error (Error.of_exn exn)
         | `Aborted -> Ok Bonsai.Effect_throttling.Poll_result.Aborted)
     in
-    let%arr connector and client_rvar in
-    Effect.of_deferred_fun (perform_query (connector, client_rvar))
+    let%arr connector and client_rvar and where_to_connect in
+    Effect.of_deferred_fun (perform_query (connector, client_rvar, where_to_connect))
   ;;
 
   let babel_dispatcher_internal ?on_forget_client_error caller ~where_to_connect =
     let create_client_rvar ~connector (local_ _graph) =
-      let%arr.Bonsai connector in
+      let%arr.Bonsai connector and where_to_connect in
       match Connector.menu_rvar (connector where_to_connect) with
       | None -> raise_s [%message [%here]]
       | Some menu_rvar ->
@@ -1347,6 +1502,7 @@ module Polling_state_rpc = struct
     ?equal_response
     ?clear_when_deactivated
     ?on_response_received
+    ~where_to_connect
     ?when_to_start_next_effect
     ~every
     ~get_response
@@ -1374,6 +1530,7 @@ module Polling_state_rpc = struct
       ?clear_when_deactivated
       ?on_response_received
       dispatcher
+      ~where_to_connect
       ?when_to_start_next_effect
       ~every
       ~poll_behavior:Always
@@ -1391,7 +1548,7 @@ module Polling_state_rpc = struct
     ?clear_when_deactivated
     ?on_response_received
     rpc
-    ~where_to_connect
+    ?(where_to_connect = Where_to_connect.default_for_polling)
     ?when_to_start_next_effect
     ~every
     query
@@ -1414,6 +1571,7 @@ module Polling_state_rpc = struct
       ?equal_response
       ?clear_when_deactivated
       ?on_response_received
+      ~where_to_connect
       ?when_to_start_next_effect
       ~every
       ~get_response:fst
@@ -1431,7 +1589,7 @@ module Polling_state_rpc = struct
     ?clear_when_deactivated
     ?on_response_received
     rpc
-    ~where_to_connect
+    ?(where_to_connect = Where_to_connect.default_for_polling)
     ?when_to_start_next_effect
     ~every
     query
@@ -1452,6 +1610,7 @@ module Polling_state_rpc = struct
       ?equal_response
       ?clear_when_deactivated
       ?on_response_received
+      ~where_to_connect
       ?when_to_start_next_effect
       ~every
       ~here
@@ -1474,7 +1633,7 @@ module Polling_state_rpc = struct
     ?sexp_of_response
     ?on_forget_client_error
     rpc
-    ~where_to_connect
+    ?(where_to_connect = Where_to_connect.default_for_one_shot)
     (local_ graph)
     =
     let open Bonsai.Let_syntax in
@@ -1509,7 +1668,7 @@ module Polling_state_rpc = struct
     ?sexp_of_response
     ?on_forget_client_error
     caller
-    ~where_to_connect
+    ?(where_to_connect = Where_to_connect.default_for_one_shot)
     (local_ graph)
     =
     let open Bonsai.Let_syntax in
@@ -1544,7 +1703,7 @@ module Polling_state_rpc = struct
     ?clear_when_deactivated
     ?on_response_received
     rpc
-    ~where_to_connect
+    ?(where_to_connect = Where_to_connect.default_for_polling)
     ~every
     =
     let module M = struct
@@ -1587,19 +1746,25 @@ module Status = struct
      at all; it only tries to make the connection, making not of all the events
      that occurred in the process. *)
   let dispatcher ~where_to_connect =
-    Our_rpc.generic_dispatcher (fun connector (writeback : State.t -> unit) ->
-      match%map.Deferred
-        Connector.with_connection connector ~where_to_connect ~callback:(fun connection ->
-          writeback Connected;
-          upon (Rpc.Connection.close_reason connection ~on_close:`started) (fun reason ->
-            writeback (Disconnected (Error.of_info reason)));
-          Deferred.Or_error.return ())
-      with
-      | Ok () -> ()
-      | Error error ->
-        (* We know that an error indicates a failure to connect because
+    Our_rpc.generic_dispatcher
+      ~where_to_connect
+      (fun connector ~where_to_connect (writeback : State.t -> unit) ->
+         match%map.Deferred
+           Connector.with_connection
+             connector
+             ~where_to_connect
+             ~callback:(fun connection ->
+               writeback Connected;
+               upon
+                 (Rpc.Connection.close_reason connection ~on_close:`started)
+                 (fun reason -> writeback (Disconnected (Error.of_info reason)));
+               Deferred.Or_error.return ())
+         with
+         | Ok () -> ()
+         | Error error ->
+           (* We know that an error indicates a failure to connect because
            [callback] never returns an error of its own. *)
-        writeback (Failed_to_connect error))
+           writeback (Failed_to_connect error))
   ;;
 
   module Model = struct
@@ -1620,6 +1785,7 @@ module Status = struct
     type nonrec t =
       | Set of State.t
       | Activate of (Bonsai.Time_source.t[@sexp.opaque])
+      | Where_to_connect_changed
     [@@deriving sexp_of]
   end
 
@@ -1631,7 +1797,7 @@ module Status = struct
     [@@deriving sexp_of]
   end
 
-  let state ~where_to_connect (local_ graph) =
+  let state' ~where_to_connect (local_ graph) =
     let dispatcher = dispatcher ~where_to_connect graph in
     let model, inject =
       Bonsai.state_machine_with_input
@@ -1649,6 +1815,10 @@ module Status = struct
           let state = model.state in
           let new_state =
             match action, dispatcher with
+            | Where_to_connect_changed, _ ->
+              (* If we return to the original [where_to_connect], we should behave as if
+                 we were still in the initial state. *)
+              Model.Initial
             | Activate _, Inactive ->
               (* The activate message got to us, but we became inactive in the interim *)
               state
@@ -1672,7 +1842,7 @@ module Status = struct
           let clock =
             match action with
             | Activate clock -> Some clock
-            | Set _ -> model.clock
+            | Set _ | Where_to_connect_changed -> model.clock
           in
           let connecting_since =
             let now () = Option.map ~f:Bonsai.Time_source.now clock in
@@ -1696,7 +1866,8 @@ module Status = struct
       in
       Bonsai.Edge.lifecycle ~on_activate graph
     in
-    let%arr { Model.state; connecting_since; _ } = model in
+    let%arr { Model.state; connecting_since; _ } = model
+    and inject in
     let state =
       match state with
       | State status -> status
@@ -1707,7 +1878,40 @@ module Status = struct
       | Connected -> None
       | Connecting | Disconnected _ | Failed_to_connect _ -> connecting_since
     in
-    { Result.state; connecting_since }
+    { Result.state; connecting_since }, inject
+  ;;
+
+  module Where_to_connect_comparator = struct
+    include Where_to_connect
+    include Comparator.Make (Where_to_connect)
+  end
+
+  let state ~where_to_connect graph =
+    let%sub result, inject =
+      Bonsai.scope_model
+        (module Where_to_connect_comparator)
+        ~on:where_to_connect
+        ~for_:(fun (local_ graph) -> state' ~where_to_connect graph)
+        graph
+    in
+    (* We want connection status to reset immediately, without needing to wait a frame
+       for an [on_change] to take effect. We do so with:
+       * A [scope_model], which swaps out our state immediately.
+       * An on_change, which instructs the old, now-inactive state machine to reset itself
+         back to "initial" state. *)
+    let () =
+      let where_to_connect_with_injector = Bonsai.both where_to_connect inject in
+      Bonsai.Edge.on_change'
+        ~equal:(fun (a, _) (b, _) -> Where_to_connect.equal a b)
+        where_to_connect_with_injector
+        ~callback:
+          (Bonsai.return (fun prev _new ->
+             match prev with
+             | None -> Effect.Ignore
+             | Some (_, prev_inject) -> prev_inject Action.Where_to_connect_changed))
+        graph
+    in
+    result
   ;;
 
   include Result
