@@ -1,8 +1,15 @@
 # State Per Key
 
-`Bonsai.scope_model` allows us to store multiple copies of state for
-some `Bonsai.t`, each keyed by some value, while only displaying one at
-a time.
+`Bonsai.scope_model` allows us to store isolated copies of state for
+some `'a Bonsai.t`, each keyed by a unique `'a`, while only displaying
+one at a time. It is a special case of `Bonsai.assoc` with exactly one
+active branch.
+
+Some cases where `scope_model` is useful: - State needs to be reset so
+that it can be used with a different value (e.g. you were editing User
+A, now you're editing User B) - The lifecycle of the value is important;
+for example, you want to register/remove event listeners that depend on
+your value
 
 ## Multiple copies with assoc
 
@@ -65,16 +72,11 @@ let counters_for_users_scoped (local_ graph) : Vdom.Node.t Bonsai.t =
     let%arr form in
     Form.value_or_default form ~default:"Alice"
   in
-  Bonsai.scope_model
-    (module String)
-    ~on:active_user
-    graph
-    ~for_:(fun graph ->
-      let%arr counter = State_examples.counter_ui graph
-      and name = active_user
-      and form in
-      Vdom.Node.div
-        [ Form.view_as_vdom form; Vdom.Node.p [ Vdom.Node.text name ]; counter ])
+  Bonsai.scope_model (module String) ~on:active_user graph ~for_:(fun graph ->
+    let%arr counter = State_examples.counter_ui graph
+    and name = active_user
+    and form in
+    Vdom.Node.div [ Form.view_as_vdom form; Vdom.Node.p [ Vdom.Node.text name ]; counter ])
 ;;
 ```
 

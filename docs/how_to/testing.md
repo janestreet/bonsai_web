@@ -21,13 +21,12 @@ DOM should look like, not the actual DOM. The HTML you see in expect
 test output is roughly what your DOM will look like, but expect tests
 have some limitations:
 
-```{=html}
-```
 -   Expect tests run in Node, not in a browser. As a result, any APIs
     not provided by Node have to be mocked out.
 -   Events dispatched by `Handle.click_on`, etc. do not propogate.
--   The implementations of Vdom hooks and widgets do not run in tests.
-    This includes global listeners, which are implemented via hooks.
+-   The implementations of [Vdom hooks and widgets](./low_level_vdom.md)
+    do not run in tests. This includes global listeners, which are
+    implemented via hooks.
 -   Some attributes, such as `@key` for vdom keys and `@on_*` for event
     listeners, will not be in the real DOM.
 
@@ -61,33 +60,23 @@ alias for the project.
 
 ## Basics of testing: printing Vdom
 
-Let's say we have some constant Vdom we'd like to test:
+Our main tool for expect-testing Bonsai apps is
+`Bonsai_web_test.Handle`. It wraps a `local_ graph -> 'a Bonsai.t`, and
+provides APIs for:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/testing_examples.ml,part=hello-world -->
-```
-``` ocaml
-let hello_world = Vdom.Node.span [ Vdom.Node.text "hello world" ]
-```
+-   Evaluating it (`Handle.recompute_view`) and printing the result
+    (`Handle.show`).
+-   Injecting some value of type `incoming`, which the `Result_spec.t`
+    will convert into a `unit Effect.t` and run (`Handle.do_actions`).
+-   Simulating interactions with the DOM that trigger event listeners:
+    e.g. `Handle.click_on`, `Handle.input_text`, etc.
 
-There are a few tools we'll use:
+We need to tell our handle how to print our `'a` view, and how to
+convert an `incoming` value into an `Effect.t`. This is contained in a
+first-class module param, of type `Result_spec.t`. `Result_spec.vdom` is
+a helper for generating `Vdom.Node.t Result_spec.t`s.
 
--   `Result_spec.t` is a first class module containing:
-    -   How to turn some `t` into a string "view" we can show in expect
-        tests
-    -   How to convert an "incoming" value (passed in by testing code)
-        into an `Effect.t` how to display it, and any inputs needed.
--   `Handle.t` wraps a `local_ graph -> 'a Bonsai.t`, and provides APIs
-    for:
-    -   Evaluating it and printing the result (`Handle.show`).
-    -   Injecting some value of type `incoming`, which the
-        `Result_spec.t` will convert into a `unit Effect.t` and run
-        (`Handle.do_actions`).
-    -   Triggering event listeners (`Handle.click_on`,
-        `Handle.input_text`, etc.).
-
-`Result_spec.vdom` is a helper for generating
-`Vdom.Node.t Result_spec.t`s:
+Let's write a basic handle testing some constant vdom:
 
 ```{=html}
 <!-- $MDX file=../../examples/bonsai_guide_code/lib/testing_examples.ml,part=hello-world-test -->
@@ -95,6 +84,8 @@ There are a few tools we'll use:
 ``` ocaml
 module Handle = Bonsai_web_test.Handle
 module Result_spec = Bonsai_web_test.Result_spec
+
+let hello_world = Vdom.Node.span [ Vdom.Node.text "hello world" ]
 
 let%expect_test "it shows hello world" =
   let handle = Handle.create (Result_spec.vdom Fn.id) (fun _ -> return hello_world) in
@@ -110,15 +101,19 @@ Some `Bonsai.t`s return a `Vdom.Node.t` *and* something else.
 We'll make our own `Result_spec.t`s for things other than `Vdom.Node.t`
 later.
 
-```{=html}
-<aside>
-```
-Because we have a `Vdom.Node.t`, and not a
-`local_ Bonsai.graph -> Vdom.Node.t Bonsai.t`, we need to wrap
-`hello_world`.
-```{=html}
-</aside>
-```
+### `show` vs `recompute_view` vs `recompute_view_until_stable`
+
+`Handle.recompute_view` will run "one frame" of the [Bonsai runtime
+loop](./bonsai_runtime.md). `Handle.show` runs `Handle.recompute_view`,
+and then prints the computed view.
+
+There's also a `Handle.recompute_view_until_stable` that will re-run
+`Handle.recompute_view` while there are pending [lifecycle
+events](./lifecycles.md) or [on_change](./edge_triggered_effects.md)s.
+This is typically an antipattern, because if it takes more than one
+`recompute_view` to update your view, that's likely caused by [state
+synchronization](./organizing_state.md), which is preferable to avoid.
+
 ### Handlers in vdom tests
 
 You might notice that event handlers are weirdly formatted in vdom
@@ -210,13 +205,14 @@ is useful when using a custom `Result_spec.t`.
 
 ## Testing dynamic inputs
 
-What if we want to test a `'a Bonsai.t -> 'b Bonsai.t`?
+What if we want to test a
+`'a Bonsai.t -> local_ Bonsai.graph ->  'b Bonsai.t`?
 
 ```{=html}
 <!-- $MDX file=../../examples/bonsai_guide_code/lib/testing_examples.ml,part=hello-user -->
 ```
 ``` ocaml
-let hello_user (name : string Bonsai.t) : Vdom.Node.t Bonsai.t =
+let hello_user (name : string Bonsai.t) (local_ _graph) : Vdom.Node.t Bonsai.t =
   let%arr name in
   Vdom.Node.span [ Vdom.Node.textf "hello %s" name ]
 ;;
@@ -232,17 +228,19 @@ We can use [Bonsai.Var.t](./var.md) to get a mutable handle on a
 let%expect_test "shows hello to a user" =
   let user_var = Bonsai.Expert.Var.create "Bob" in
   let user = Bonsai.Expert.Var.value user_var in
-  let handle = Handle.create (Result_spec.vdom Fn.id) (fun _ -> hello_user user) in
+  let handle = Handle.create (Result_spec.vdom Fn.id) (hello_user user) in
   Handle.show handle;
   [%expect {| <span> hello Bob </span> |}];
   Bonsai.Expert.Var.set user_var "Alice";
+  [%expect {| |}];
   Handle.show handle;
   [%expect {| <span> hello Alice </span> |}]
 ;;
 ```
 
-As expected, after changing the `Var.t`, the contents in the DOM are
-updated!
+Note that just setting the `Var.t` doesn't change our view; we need to
+run a cycle of the Bonsai runtime via `Handle.show` or
+`Handle.recompute_view`.
 
 ## Testing with diffs
 
@@ -256,7 +254,7 @@ can use `Handle.show_diff`:
 let%expect_test "shows hello to a user" =
   let user_var = Bonsai.Expert.Var.create "Bob" in
   let user = Bonsai.Expert.Var.value user_var in
-  let handle = Handle.create (Result_spec.vdom Fn.id) (fun _ -> hello_user user) in
+  let handle = Handle.create (Result_spec.vdom Fn.id) (hello_user user) in
   Handle.show handle;
   [%expect {| <span> hello Bob </span> |}];
   Bonsai.Expert.Var.set user_var "Alice";
@@ -286,12 +284,19 @@ by the caller:
 <!-- $MDX file=../../examples/bonsai_guide_code/lib/testing_examples.ml,part=hello-text-box -->
 ```
 ``` ocaml
-let hello_textbox (local_ graph) : Vdom.Node.t Bonsai.t =
+let hello_textbox ?test_selector (local_ graph) : Vdom.Node.t Bonsai.t =
   let state, set = Bonsai.state "" graph in
-  let%arr message = hello_user state
+  let%arr message = hello_user state graph
   and set in
   Vdom.Node.div
-    [ Vdom.Node.input ~attrs:[ Vdom.Attr.on_input (fun _ text -> set text) ] (); message ]
+    [ Vdom.Node.input
+        ~attrs:
+          [ Vdom.Attr.on_input (fun _ text -> set text)
+          ; Test_selector.attr_of_opt test_selector
+          ]
+        ()
+    ; message
+    ]
 ;;
 ```
 
@@ -306,8 +311,14 @@ element:
 <!-- $MDX file=../../examples/bonsai_guide_code/lib/testing_examples.ml,part=hello-text-box-diff-test -->
 ```
 ``` ocaml
+open Bonsai_web_test
+
+let input_selector = Test_selector.make ()
+
 let%expect_test "shows hello to a specified user" =
-  let handle = Handle.create (Result_spec.vdom Fn.id) hello_textbox in
+  let handle =
+    Handle.create (Result_spec.vdom Fn.id) (hello_textbox ~test_selector:input_selector)
+  in
   Handle.show handle;
   [%expect
     {|
@@ -316,7 +327,11 @@ let%expect_test "shows hello to a specified user" =
       <span> hello  </span>
     </div>
     |}];
-  Handle.input_text handle ~get_vdom:Fn.id ~selector:"input" ~text:"Bob";
+  Handle.input_text
+    handle
+    ~get_vdom:Fn.id
+    ~selector:(test_selector input_selector)
+    ~text:"Bob";
   Handle.show_diff handle;
   [%expect
     {|
@@ -326,7 +341,11 @@ let%expect_test "shows hello to a specified user" =
     +|  <span> hello Bob </span>
       </div>
     |}];
-  Handle.input_text handle ~get_vdom:Fn.id ~selector:"input" ~text:"Alice";
+  Handle.input_text
+    handle
+    ~get_vdom:Fn.id
+    ~selector:(test_selector input_selector)
+    ~text:"Alice";
   Handle.show_diff handle;
   [%expect
     {|
@@ -339,8 +358,52 @@ let%expect_test "shows hello to a specified user" =
 ;;
 ```
 
-We just have to provide a valid CSS selector via the `~selector`
-argument.
+Note that rather than using a CSS selector string, we use an opaque
+`Test_selector.t`, which we then turn into a CSS selector string via
+`Bonsai_web_test.test_selector`.
+
+You should always prefer `Test_selector.t` over plain selector strings,
+as they are much less brittle. There's also a `Test_selector.Keyed`
+module, which allows generating a stable test selector for each value of
+some `'a`.
+
+```{=html}
+<!-- $MDX file=../../examples/bonsai_guide_code/lib/testing_examples.ml,part=test_selector_keyed -->
+```
+``` ocaml
+open Bonsai_web_test
+
+let keyed_selector = Test_selector.Keyed.create (module Int) |> Test_selector.Keyed.get
+
+let%expect_test "shows hello to a specified user" =
+  let handle =
+    Handle.create (Result_spec.vdom Fn.id) (fun _ ->
+      let button i =
+        {%html|
+          <button
+            on_click=%{fun _ -> Effect.print_s [%message "Clicked!" (i : int)]}
+            %{keyed_selector i |> Test_selector.attr}
+          >
+            Button %{i#Int}
+          </button>
+        |}
+      in
+      return {%html|<div>%{button 1}%{button 2}%{button 3}%{button 4}</div>|})
+  in
+  Handle.show handle;
+  [%expect
+    {|
+    <div>
+      <button @on_click>  Button  1 </button>
+      <button @on_click>  Button  2 </button>
+      <button @on_click>  Button  3 </button>
+      <button @on_click>  Button  4 </button>
+    </div>
+    |}];
+  Handle.click_on handle ~get_vdom:Fn.id ~selector:(keyed_selector 3 |> test_selector);
+  [%expect {| (Clicked! (i 3)) |}]
+;;
+```
 
 ```{=html}
 <aside>
@@ -441,3 +504,30 @@ let%expect_test "test clock" =
   [%expect {| 1970-01-01 00:00:02.000000000Z |}]
 ;;
 ```
+
+## Avoid Async Testing
+
+Bonsai support running `Async` tests, by opening `Bonsai_web_test_async`
+at the top of your test file. This is necessary for [testing
+RPCs](./rpcs.md#testing-rpcs), which must be asynchronous. Other than
+that, we highly recommend using a synchronous test handle, if possible.
+
+Our expect test architecture assumes that all inline tests can run
+synchronously. Native tests running `async` can be made synchronous by
+flushing the async queue, but `Bonsai_web_test` tests run in Node, where
+we don't own the async implementation.
+
+We currently use a package [called
+`deasync`](https://github.com/abbr/deasync), which hooks [into
+`libuv`](https://github.com/libuv/libuv) to allow synchronously
+advancing the event loop. It's a [bit
+problematic](https://joecreager.com/5-reasons-to-avoid-deasync-for-node-js/#:~:text=Its%20behavior%20is%20not%20stable,and%20v8%20to%20the%20consumer.):
+
+-   The behavior is unstable, and not officially supported
+-   It's extremely slow
+-   The deasync'ed Node event loop has different semantics from the
+    browser event loop
+
+In practice, we haven't ran into major correctness issues, but async
+Bonsai tests will be several magnitudes slower than the synchronous
+equivalent.

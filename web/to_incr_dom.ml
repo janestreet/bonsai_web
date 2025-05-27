@@ -125,10 +125,10 @@ let convert_with_extra
   let component input graph =
     Rpc_effect.Private.with_connector
       (function
-        | Self ->
-          Rpc_effect.Private.self_connector ~on_conn_failure:Retry_until_success ()
-        | Url url ->
-          Rpc_effect.Private.url_connector ~on_conn_failure:Retry_until_success url
+        | Self { on_conn_failure } ->
+          Rpc_effect.Private.self_connector ~on_conn_failure ()
+        | Url { url; on_conn_failure } ->
+          Rpc_effect.Private.url_connector ~on_conn_failure url
         | Custom custom -> custom_connector custom)
       (fun graph -> component input graph)
       graph

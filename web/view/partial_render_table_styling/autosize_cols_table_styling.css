@@ -1,31 +1,14 @@
 .table {
   background-color: var(--bg);
   color: var(--fg);
+  /* Needed so that the header's borders align with our manually-managed borders. */
   border-collapse: separate;
-}
-
-.cell {
-}
-
-.cell_focused {
-}
-
-.row {
-}
-
-.row_focused {
-}
-
-.autosize_table_cell_wrapper {
-  display: table-cell;
+  border-spacing: 0;
 }
 
 .header {
   background-color: var(--header-bg);
   color: var(--header-fg);
-}
-
-.header_row {
 }
 
 .header_cell {
@@ -40,9 +23,6 @@
 .header_cell.header_cell_focused {
   background: var(--header-cell-focused-bg);
   color: var(--header-cell-focused-fg);
-}
-
-.body {
 }
 
 .body_cell {

@@ -1,33 +1,14 @@
 .table {
   background-color: var(--bg);
   color: var(--fg);
-  border-spacing: 0;
-}
-
-.cell {
-}
-
-.cell_focused {
-}
-
-.row {
-}
-
-.row_focused {
-}
-
-/* Unused in this stylesheet but required to keep the types consistent */
-.autosize_table_cell_wrapper {
 }
 
 .header {
   background-color: var(--header-bg);
   color: var(--header-fg);
+  /* Needed so that the header's borders align with our manually-managed borders. */
   border-collapse: separate;
   border-spacing: 0;
-}
-
-.header_row {
 }
 
 .header_cell {
@@ -42,9 +23,6 @@
 .header_cell.header_cell_focused {
   background: var(--header-cell-focused-bg);
   color: var(--header-cell-focused-fg);
-}
-
-.body {
 }
 
 .body_cell {

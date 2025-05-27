@@ -245,11 +245,13 @@ destroyed / recreated unnecessarily.
 ### Avoid Variable Length / Order Lists
 
 When possible, avoid variable length lists of Vdom nodes, or lists that
-may reorder. Some examples of how this might happen: -
-`List.filter_opt`-ing a list of `Vdom.Node.t option`s - Concatting
-multiple `Vdom.Node.t list`s, each of which might change from frame to
-frame - Using `Vdom.Node.none_deprecated`, if you conditionally want to
-show a dom node
+may reorder. Some examples of how this might happen:
+
+-   `List.filter_opt`-ing a list of `Vdom.Node.t option`s
+-   Concatting multiple `Vdom.Node.t list`s, each of which might change
+    from frame to frame
+-   Using `Vdom.Node.none_deprecated`, if you conditionally want to show
+    a dom node
 
 For DOM elements that are conditionally displayed, consider using
 `Vdom.Node.none` when the element is not shown; this will render an
