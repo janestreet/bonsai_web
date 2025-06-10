@@ -322,17 +322,15 @@ module Persistent_connection_packed = struct
   ;;
 
   let url =
-    Memo.of_comparable
-      (module String)
-      (fun url ->
-        create
-          (module Persistent_connection.Rpc)
-          (Persistent_connection.Rpc.create
-             ~server_name:url
-             ~address:(module String)
-             ~connect:(fun url ->
-               Async_js.Rpc.Connection.client ~uri:(Uri.of_string url) ())
-             (fun () -> Deferred.Or_error.return url)))
+    Memo.of_comparable (module String) (fun url ->
+      create
+        (module Persistent_connection.Rpc)
+        (Persistent_connection.Rpc.create
+           ~server_name:url
+           ~address:(module String)
+           ~connect:(fun url ->
+             Async_js.Rpc.Connection.client ~uri:(Uri.of_string url) ())
+           (fun () -> Deferred.Or_error.return url)))
   ;;
 end
 
@@ -1097,21 +1095,19 @@ module Our_rpc = struct
       let equal a b = (Comparator.compare Q.comparator) a b = 0
     end
     in
-    Shared_poller.create
-      (module Q)
-      ~f:(fun query ->
-        poll
-          ~here
-          ~sexp_of_query:(Comparator.sexp_of_t M.comparator)
-          ?sexp_of_response
-          ~equal_query:M.equal
-          ?equal_response
-          ?clear_when_deactivated
-          ?on_response_received
-          rpc
-          ~where_to_connect
-          ~every
-          query)
+    Shared_poller.create (module Q) ~f:(fun query ->
+      poll
+        ~here
+        ~sexp_of_query:(Comparator.sexp_of_t M.comparator)
+        ?sexp_of_response
+        ~equal_query:M.equal
+        ?equal_response
+        ?clear_when_deactivated
+        ?on_response_received
+        rpc
+        ~where_to_connect
+        ~every
+        query)
   ;;
 
   let poll_until_ok
@@ -1712,21 +1708,19 @@ module Polling_state_rpc = struct
       let equal a b = (Comparator.compare Q.comparator) a b = 0
     end
     in
-    Shared_poller.create
-      (module Q)
-      ~f:(fun query ->
-        poll
-          ~sexp_of_query:(Comparator.sexp_of_t M.comparator)
-          ?sexp_of_response
-          ~equal_query:[%equal: M.t]
-          ?equal_response
-          ?clear_when_deactivated
-          ?on_response_received
-          rpc
-          ~where_to_connect
-          ~every
-          ~here
-          query)
+    Shared_poller.create (module Q) ~f:(fun query ->
+      poll
+        ~sexp_of_query:(Comparator.sexp_of_t M.comparator)
+        ?sexp_of_response
+        ~equal_query:[%equal: M.t]
+        ?equal_response
+        ?clear_when_deactivated
+        ?on_response_received
+        rpc
+        ~where_to_connect
+        ~every
+        ~here
+        query)
   ;;
 end
 
