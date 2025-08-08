@@ -1,14 +1,10 @@
 (library
  (name bonsai_web_arrow_deprecated)
  (public_name bonsai_web.arrow_deprecated)
- (libraries am_running_how_js async_durable async_js async_kernel
-   async_rpc_kernel babel bonsai bonsai.arrow_deprecated
-   bonsai.introspection_protocol bonsai.proc bonsai.protocol bonsai_web
-   bonsai_web_ui_view core_kernel.bus core async_kernel.eager_deferred
-   incr_dom incr_dom.javascript_profiling js_of_ocaml core_kernel.moption
-   polling_state_rpc core_kernel.reversed_list streamable
-   virtual_dom.ui_effect virtual_dom.ui_effect_of_deferred
-   bonsai_concrete.ui_incr uri core_kernel.uuid versioned_polling_state_rpc
-   virtual_dom)
+ (libraries async_durable async_kernel async_rpc_kernel babel bonsai
+   bonsai.arrow_deprecated bonsai.proc bonsai_web core_kernel.bus core
+   js_of_ocaml core_kernel.moption polling_state_rpc
+   core_kernel.reversed_list streamable virtual_dom.ui_effect
+   bonsai_concrete.ui_incr uri versioned_polling_state_rpc virtual_dom)
  (preprocess
   (pps ppx_jane js_of_ocaml-ppx bonsai.ppx_bonsai)))

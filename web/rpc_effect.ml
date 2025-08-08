@@ -6,6 +6,15 @@ open Async_rpc_kernel
    explicitly as a counter-measure of For_instrospection being dead-code eliminated. *)
 let () = For_introspection.run_top_level_side_effects ()
 
+let heartbeat_config =
+  (* Even though we expect the server to be heartbeating regularly, we have to set a long
+     timeout here to prevent RPC timeouts in backgrounded tabs. When a throttled tab gets
+     scheduled, the code to check for timeouts runs before the code to process incoming
+     heartbeats, and it will otherwise think the server hasn't been heartbeating when in
+     fact it just hasn't processed them yet. *)
+  Rpc.Connection.Heartbeat_config.create ~timeout:(Time_ns.Span.of_int_min 5) ()
+;;
+
 module On_conn_failure = struct
   type t =
     | Surface_error_to_rpc
@@ -317,22 +326,20 @@ module Persistent_connection_packed = struct
          (Persistent_connection.Rpc.create
             ~server_name:"self-ws-server"
             ~address:(module Unit)
-            ~connect:(fun () -> Async_js.Rpc.Connection.client ())
+            ~connect:(fun () -> Async_js.Rpc.Connection.client ~heartbeat_config ())
             Deferred.Or_error.return))
   ;;
 
   let url =
-    Memo.of_comparable
-      (module String)
-      (fun url ->
-        create
-          (module Persistent_connection.Rpc)
-          (Persistent_connection.Rpc.create
-             ~server_name:url
-             ~address:(module String)
-             ~connect:(fun url ->
-               Async_js.Rpc.Connection.client ~uri:(Uri.of_string url) ())
-             (fun () -> Deferred.Or_error.return url)))
+    Memo.of_comparator (module String) (fun url ->
+      create
+        (module Persistent_connection.Rpc)
+        (Persistent_connection.Rpc.create
+           ~server_name:url
+           ~address:(module String)
+           ~connect:(fun url ->
+             Async_js.Rpc.Connection.client ~heartbeat_config ~uri:(Uri.of_string url) ())
+           (fun () -> Deferred.Or_error.return url)))
   ;;
 end
 
@@ -766,7 +773,7 @@ let generic_poll_or_error
      * When the [where_to_connect] changes
      * On an interval
 
-     The tricky part is that[Clock.every] and [Edge.on_change] both run effects on
+     The tricky part is that [Clock.every] and [Edge.on_change] both run effects on
      activate by default. To avoid the redundancy, we make neither of them
      trigger on activate, and only use [on_activate] for running effects on
      activation. *)
@@ -810,9 +817,9 @@ let generic_poll_or_error
     let poll_until_condition_met condition graph =
       let should_poll =
         let%arr condition
-        and { last_ok_response; last_error; _ } = response in
+        and { last_ok_response; last_error; inflight_queries } = response in
         match last_ok_response, last_error with
-        | None, _ | _, Some _ -> true
+        | None, _ | _, Some _ -> Map.is_empty inflight_queries
         | Some (_, response), None ->
           (match condition response with
            | `Stop_polling -> false
@@ -1097,21 +1104,19 @@ module Our_rpc = struct
       let equal a b = (Comparator.compare Q.comparator) a b = 0
     end
     in
-    Shared_poller.create
-      (module Q)
-      ~f:(fun query ->
-        poll
-          ~here
-          ~sexp_of_query:(Comparator.sexp_of_t M.comparator)
-          ?sexp_of_response
-          ~equal_query:M.equal
-          ?equal_response
-          ?clear_when_deactivated
-          ?on_response_received
-          rpc
-          ~where_to_connect
-          ~every
-          query)
+    Shared_poller.create (module Q) ~f:(fun query ->
+      poll
+        ~here
+        ~sexp_of_query:(Comparator.sexp_of_t M.comparator)
+        ?sexp_of_response
+        ~equal_query:M.equal
+        ?equal_response
+        ?clear_when_deactivated
+        ?on_response_received
+        rpc
+        ~where_to_connect
+        ~every
+        query)
   ;;
 
   let poll_until_ok
@@ -1441,7 +1446,7 @@ module Polling_state_rpc = struct
       Connector.with_connection connector ~where_to_connect ~callback:(fun connection ->
         let%bind.Eager_deferred.Or_error client = Rvar.contents client in
         match%map.Eager_deferred
-          Polling_state_rpc.Client.For_introspection.dispatch_with_underlying_diff
+          Polling_state_rpc.Client.For_introspection.dispatch_with_underlying_diff_as_sexp
             ?sexp_of_response
             client
             connection
@@ -1712,21 +1717,19 @@ module Polling_state_rpc = struct
       let equal a b = (Comparator.compare Q.comparator) a b = 0
     end
     in
-    Shared_poller.create
-      (module Q)
-      ~f:(fun query ->
-        poll
-          ~sexp_of_query:(Comparator.sexp_of_t M.comparator)
-          ?sexp_of_response
-          ~equal_query:[%equal: M.t]
-          ?equal_response
-          ?clear_when_deactivated
-          ?on_response_received
-          rpc
-          ~where_to_connect
-          ~every
-          ~here
-          query)
+    Shared_poller.create (module Q) ~f:(fun query ->
+      poll
+        ~sexp_of_query:(Comparator.sexp_of_t M.comparator)
+        ?sexp_of_response
+        ~equal_query:[%equal: M.t]
+        ?equal_response
+        ?clear_when_deactivated
+        ?on_response_received
+        rpc
+        ~where_to_connect
+        ~every
+        ~here
+        query)
   ;;
 end
 
@@ -1912,6 +1915,11 @@ module Status = struct
         graph
     in
     result
+  ;;
+
+  let on_change ~where_to_connect ~callback graph =
+    let%sub { state; _ } = state ~where_to_connect graph in
+    Bonsai.Edge.on_change state ~equal:State.equal ~callback graph
   ;;
 
   include Result

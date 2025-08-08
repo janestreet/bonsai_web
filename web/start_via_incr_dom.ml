@@ -147,7 +147,7 @@ module Fully_parametrized = struct
           type t = outgoing
         end
 
-        let handle = Pipe.write_without_pushback_if_open pipe_write
+        let handle value ~on_exn:_ = Pipe.write_without_pushback_if_open pipe_write value
       end)
     in
     let input_var = Incr.Var.create initial_input in
@@ -290,6 +290,18 @@ module Fully_parametrized = struct
     let var =
       Bonsai.Private.Value.named App_input fresh |> Bonsai.Private.conceal_value
     in
+    let start_timer event =
+      let event =
+        match event with
+        | `Graph_application -> Profiling.Bonsai_graph_application
+        | `Preprocess -> Bonsai_preprocess
+        | `Gather -> Bonsai_gather
+      in
+      Profiling.timer_start event ~debug:false ~profile
+    in
+    let stop_timer = Profiling.timer_stop in
+    let timer = Bonsai.Private.Timer.create ~start_timer ~stop_timer in
+    Bonsai.Private.Timer.set_timer ~timer;
     let computation =
       let graph_applied =
         Profiling.time Bonsai_graph_application ~debug:false ~profile ~f:(fun () ->

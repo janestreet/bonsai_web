@@ -432,6 +432,13 @@ module Status : sig
 
   (** A component whose output tracks the state of a connection to a host. *)
   val state : where_to_connect:Where_to_connect.t Bonsai.t -> Bonsai.graph -> t Bonsai.t
+
+  (** [on_change] triggers effects when the connection state changes. *)
+  val on_change
+    :  where_to_connect:Where_to_connect.t Bonsai.t
+    -> callback:(State.t -> unit Effect.t) Bonsai.t
+    -> Bonsai.graph
+    -> unit
 end
 
 module Connector : sig

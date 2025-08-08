@@ -11,7 +11,9 @@ let rec view_error (e : Error.Internal_repr.t) : Vdom.Node.t list =
   match e with
   | Could_not_construct sexp -> [ div (view_sexp sexp) ]
   | String s -> [ div (Vdom.Node.text s) ]
-  | Exn { global = e } -> [ div (pre (Exn.to_string e)) ]
+  | Exn { global = e } ->
+    let e = e () in
+    [ div (pre (Exn.to_string e)) ]
   | Sexp s -> [ div (view_sexp s) ]
   | Tag_sexp (string, sexp, Some there) ->
     [ div (bold string)

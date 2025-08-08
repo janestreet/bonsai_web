@@ -12,6 +12,13 @@ module Focus = struct
     ; blur : unit t
     }
 
+  (** The Js_of_ocaml type Dom_html.element doesn't have the correct options for their
+      `focus` method. Cast to this in order to work around this bug. *)
+  type focusable =
+    < focus : < preventScroll : bool Js.t Js.readonly_prop > Js.t -> unit Js.meth >
+
+  let as_focusable : Dom_html.element Js.t -> focusable Js.t = Js.Unsafe.coerce
+
   let on_effect =
     let control_focus ~on_element path =
       let element =
@@ -22,14 +29,23 @@ module Focus = struct
       | None -> ()
       | Some element -> on_element element
     in
-    let focus_effect =
-      of_sync_fun (control_focus ~on_element:(fun element -> element##focus))
+    let focus_effect ~prevent_scroll =
+      of_sync_fun
+        (control_focus ~on_element:(fun element ->
+           Dom_html.CoerceTo.element element
+           |> Js.Opt.to_option
+           |> Option.map ~f:as_focusable
+           |> Option.iter ~f:(fun element ->
+             element##focus
+               (object%js
+                  val preventScroll = Js.bool prevent_scroll
+               end))))
     in
     let blur_effect =
       of_sync_fun (control_focus ~on_element:(fun element -> element##blur))
     in
     let open Bonsai.Let_syntax in
-    fun ?name_for_testing () ->
+    fun ?name_for_testing ?(prevent_scroll = false) () ->
       match Am_running_how_js.am_in_browser_like_api with
       | false ->
         let print_effect_focus, print_effect_blur =
@@ -51,12 +67,14 @@ module Focus = struct
           let path = Bonsai.path_id graph in
           let%arr path in
           let attr = Vdom.Attr.create "data-focus-handle" path in
-          { attr; focus = focus_effect path; blur = blur_effect path }
+          { attr; focus = focus_effect ~prevent_scroll path; blur = blur_effect path }
   ;;
 
-  let on_activate ?name_for_testing () graph =
+  let on_activate ?name_for_testing ?(prevent_scroll = false) () graph =
     let open Bonsai.Let_syntax in
-    let%sub { attr; focus; blur = _ } = on_effect ?name_for_testing () graph in
+    let%sub { attr; focus; blur = _ } =
+      on_effect ?name_for_testing ~prevent_scroll () graph
+    in
     let () = Bonsai.Edge.lifecycle ~on_activate:focus graph in
     attr
   ;;

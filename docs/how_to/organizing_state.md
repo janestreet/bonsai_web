@@ -59,7 +59,7 @@ on a case-by-case basis.
 
 Sometimes (e.g. [the URL](./url_var.md), [local
 storage](./var.md#external-global-data)), we can create a `Bonsai.t`
-that tracks the vale, and maybe the setter, of an external state. If
+that tracks the value, and maybe the setter, of an external state. If
 your components are controllable, you can power them with this external
 state.
 

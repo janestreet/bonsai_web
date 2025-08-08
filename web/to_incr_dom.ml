@@ -119,6 +119,15 @@ let convert_with_extra
   =
   let fresh = Type_equal.Id.create ~name:"" sexp_of_opaque in
   let var = Bonsai.Private.(Value.named App_input fresh |> conceal_value) in
+  let start_timer event =
+    let event = Bonsai.Private.Timer.string_of_event event in
+    For_profiling.default_instrumentation_for_incr_dom_start_app.start_timer event
+  in
+  let stop_timer =
+    For_profiling.default_instrumentation_for_incr_dom_start_app.stop_timer
+  in
+  let timer = Bonsai.Private.Timer.create ~start_timer ~stop_timer in
+  Bonsai.Private.Timer.set_timer ~timer;
   let maybe_optimize = if optimize then Bonsai.Private.pre_process else Fn.id in
   let recursive_scopes = Bonsai.Private.Computation.Recursive_scopes.empty in
   let () = () in
