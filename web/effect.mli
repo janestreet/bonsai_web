@@ -3,27 +3,7 @@ open! Async_kernel
 open! Import
 open Bonsai.For_open
 include module type of Virtual_dom.Vdom.Effect
-
-(** [of_deferred_fun] is a way to convert from a deferred-returning function to an
-    effect-returning function. This function is commonly used to wrap RPC calls. *)
-val of_deferred_fun : ('query -> 'response Deferred.t) -> 'query -> 'response t
-
-(** Like [of_deferred_fun] but with a pre-applied unit query. Side-effects in the function
-    will be run every time that the resulting effect is scheduled *)
-val of_deferred_thunk : (unit -> 'response Deferred.t) -> 'response t
-
-(** Like [of_deferred_fun] but with an extra [on_exn] parameter that can be passed into
-    calls to [Expert.handle]. *)
-val of_deferred_fun'
-  :  ('query -> on_exn:(Exn.t -> unit) -> 'response Deferred.t)
-  -> 'query
-  -> 'response t
-
-(** Like [of_deferred_thunk] but with an extra [on_exn] parameter that can be passed into
-    calls to [Expert.handle]. *)
-val of_deferred_thunk'
-  :  (unit -> on_exn:(Exn.t -> unit) -> 'response Deferred.t)
-  -> 'response t
+include module type of Ui_effect_of_deferred
 
 module Focus : sig
   type nonrec t =

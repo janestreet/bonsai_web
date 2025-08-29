@@ -573,6 +573,15 @@ end
 
 module Inflight_query_key = Unique_id.Int ()
 
+module Poll_accumulator = struct
+  type ('query, 'response) t =
+    { last_ok_response : ('query * 'response) option
+    ; last_error : ('query * Error.t) option
+    ; inflight_query : 'query option
+    }
+  [@@deriving sexp_of]
+end
+
 module Poll_behavior = struct
   type 'response t =
     | Always (* Sends an rpc on every clock tick. *)
@@ -610,24 +619,21 @@ let time_rpc_effect
     response
 ;;
 
-let generic_poll_or_error
+(* This returns ONLY the state machine model and effect that returns the response.
+   No Bonsai.Edge.* APIs are used here - the effect must be manually scheduled. *)
+let generic_polling_state_machine
   (type query response)
   ~(rpc_kind : Bonsai_introspection_protocol.Rpc_kind.t Bonsai.t)
   ~sexp_of_query
   ~sexp_of_underlying
   ~sexp_of_response
   ~equal_query
-  ?(equal_response = phys_equal)
+  ?(equal_response = [%eta2 phys_equal])
   ~clear_when_deactivated
   ~on_response_received
   dispatcher
-  ~where_to_connect
-  ~when_to_start_next_effect
-  ~every
-  ~poll_behavior
   ~get_response
   ~here
-  query
   graph
   =
   let module Query = struct
@@ -760,12 +766,70 @@ let generic_poll_or_error
             ~query
             ~here
       in
+      let%bind () =
+        match response with
+        | Bonsai.Effect_throttling.Poll_result.Aborted -> Effect.Ignore
+        | Bonsai.Effect_throttling.Poll_result.Finished response ->
+          on_response_received query response
+      in
       match response with
-      | Bonsai.Effect_throttling.Poll_result.Aborted -> Effect.Ignore
-      | Bonsai.Effect_throttling.Poll_result.Finished response ->
-        on_response_received query response
+      | Bonsai.Effect_throttling.Poll_result.Aborted ->
+        Effect.return (Error (Error.of_string "Request aborted"))
+      | Bonsai.Effect_throttling.Poll_result.Finished response -> Effect.return response
   in
   let effect = time_rpc_effect ~rpc_kind effect in
+  let%arr { last_ok_response; last_error; inflight_queries } = response
+  and effect in
+  let inflight_query = Option.map ~f:snd (Map.max_elt inflight_queries) in
+  { Poll_accumulator.last_ok_response; last_error; inflight_query }, effect
+;;
+
+(*
+   This adds scheduling (Edge APIs) on top of the accumulator API and returns a Poll_result.t
+*)
+let generic_poll_or_error
+  ~(rpc_kind : Bonsai_introspection_protocol.Rpc_kind.t Bonsai.t)
+  ~sexp_of_query
+  ~sexp_of_underlying
+  ~sexp_of_response
+  ~equal_query
+  ?equal_response
+  ~clear_when_deactivated
+  ~on_response_received
+  dispatcher
+  ~where_to_connect
+  ~when_to_start_next_effect
+  ~every
+  ~poll_behavior
+  ~get_response
+  ~here
+  query
+  graph
+  =
+  let open Bonsai.Let_syntax in
+  let%sub poll_accumulator, effect_with_response =
+    generic_polling_state_machine
+      ~rpc_kind
+      ~sexp_of_query
+      ~sexp_of_underlying
+      ~sexp_of_response
+      ~equal_query
+      ?equal_response
+      ~clear_when_deactivated
+      ~on_response_received
+      dispatcher
+      ~get_response
+      ~here
+      graph
+  in
+  let effect =
+    let%arr effect_with_response in
+    fun query ->
+      let open Effect.Let_syntax in
+      (* Ignore the response. We don't expose it in the [poll] API *)
+      let%map (_ : 'response Or_error.t) = effect_with_response query in
+      ()
+  in
   (* Below are four constructs that schedule the effect to run:
 
      * [on_activate]
@@ -779,7 +843,7 @@ let generic_poll_or_error
      activation. *)
   let () =
     Bonsai.Edge.on_change'
-      ~sexp_of_model:[%sexp_of: Query.t]
+      ~sexp_of_model:(Option.value ~default:sexp_of_opaque sexp_of_query)
       ~equal:equal_query
       query
       ~callback:
@@ -816,10 +880,12 @@ let generic_poll_or_error
     in
     let poll_until_condition_met condition graph =
       let should_poll =
-        let%arr condition
-        and { last_ok_response; last_error; inflight_queries } = response in
+        let%arr condition and poll_accumulator in
+        let { Poll_accumulator.last_ok_response; last_error; inflight_query } =
+          poll_accumulator
+        in
         match last_ok_response, last_error with
-        | None, _ | _, Some _ -> Map.is_empty inflight_queries
+        | None, _ | _, Some _ -> Option.is_none inflight_query
         | Some (_, response), None ->
           (match condition response with
            | `Stop_polling -> false
@@ -839,10 +905,52 @@ let generic_poll_or_error
     | Until_condition_met condition -> poll_until_condition_met condition graph
   in
   let () = Bonsai.Edge.lifecycle ~on_activate:send_rpc_effect graph in
-  let%arr { last_ok_response; last_error; inflight_queries } = response
-  and send_rpc_effect in
-  let inflight_query = Option.map ~f:snd (Map.max_elt inflight_queries) in
+  let send_rpc_effect =
+    let%arr effect and query in
+    effect query
+  in
+  let%arr poll_accumulator and send_rpc_effect in
+  let { Poll_accumulator.last_ok_response; last_error; inflight_query } =
+    poll_accumulator
+  in
   { Poll_result.last_ok_response; last_error; inflight_query; refresh = send_rpc_effect }
+;;
+
+(* This [generic_polling_state_machine] wrapper adds reset-on-deactivate *)
+let generic_polling_state_machine
+  ~rpc_kind
+  ~sexp_of_query
+  ~sexp_of_underlying
+  ~sexp_of_response
+  ~equal_query
+  ?equal_response
+  ?(clear_when_deactivated = true)
+  ?(on_response_received = Bonsai.return (fun _ _ -> Effect.Ignore))
+  dispatcher
+  ~get_response
+  ~here
+  graph
+  =
+  let c =
+    generic_polling_state_machine
+      ~rpc_kind
+      ~sexp_of_query
+      ~sexp_of_underlying
+      ~sexp_of_response
+      ~equal_query
+      ?equal_response
+      ~clear_when_deactivated
+      ~on_response_received
+      dispatcher
+      ~get_response
+      ~here
+  in
+  if clear_when_deactivated
+  then (
+    let result, reset = Bonsai.with_model_resetter ~f:(fun graph -> c graph) graph in
+    let () = Bonsai.Edge.lifecycle ~on_deactivate:reset graph in
+    result)
+  else c graph
 ;;
 
 (* This [generic_poll_or_error] refines the [generic_poll_or_error] above by
@@ -1389,6 +1497,8 @@ module Our_rpc = struct
 end
 
 module Polling_state_rpc = struct
+  module Poll_accumulator = Poll_accumulator
+
   let dispatcher'
     ~sexp_of_response
     ?(on_forget_client_error = fun _ -> Effect.Ignore)
@@ -1730,6 +1840,53 @@ module Polling_state_rpc = struct
         ~every
         ~here
         query)
+  ;;
+
+  let manual_poll
+    ?(here = Stdlib.Lexing.dummy_pos)
+    ?sexp_of_query
+    ?sexp_of_response
+    ~equal_query
+    ?equal_response
+    ?clear_when_deactivated
+    ?on_response_received
+    rpc
+    ?(where_to_connect = Where_to_connect.default_for_polling)
+    graph
+    =
+    let open Bonsai.Let_syntax in
+    let dispatcher = dispatcher_internal ~sexp_of_response rpc ~where_to_connect graph in
+    let dispatcher =
+      let%arr dispatcher in
+      fun query ->
+        match%map.Effect dispatcher query with
+        | Ok (Bonsai.Effect_throttling.Poll_result.Aborted as aborted) -> aborted
+        | Ok (Finished result) -> Finished (Ok result)
+        | Error _ as error -> Finished error
+    in
+    let%sub poll_accumulator, poll_effect_with_response =
+      generic_polling_state_machine
+        ~here
+        ~rpc_kind:
+          (Bonsai.return
+             (Bonsai_introspection_protocol.Rpc_kind.Polling_state_rpc
+                { name = Polling_state_rpc.name rpc
+                ; version = Polling_state_rpc.version rpc
+                ; interval = Dispatch
+                }))
+        ~sexp_of_query
+        ~sexp_of_response
+        ~sexp_of_underlying:(Some sexp_of_polling_state_rpc_underlying_response)
+        ~equal_query
+        ?equal_response
+        ?clear_when_deactivated
+        ?on_response_received
+        dispatcher
+        ~get_response:fst
+        graph
+    in
+    let%arr poll_accumulator and poll_effect_with_response in
+    poll_accumulator, poll_effect_with_response
   ;;
 end
 

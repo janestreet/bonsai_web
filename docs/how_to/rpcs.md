@@ -196,7 +196,7 @@ let current_time_implementation =
     current_time_rpc
     (fun _connection_state zone ->
        Deferred.return
-         (Time_ns.to_string_trimmed ~zone:(Timezone.of_string zone) (Time_ns.now ())))
+         (Time_ns.to_sec_string ~zone:(Timezone.of_string zone) (Time_ns.now ())))
   |> Rpc.Implementation.lift ~f:(fun connection_state ->
     connection_state, connection_state)
 ;;

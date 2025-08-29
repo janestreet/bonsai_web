@@ -343,6 +343,18 @@ module Polling_state_rpc : sig
     -> Bonsai.graph
     -> ('query -> 'response Or_error.t Effect.t) Bonsai.t
 
+  (** Module for the raw state machine accumulator used in polling *)
+  module Poll_accumulator : sig
+    (** The state maintained by the polling state machine. This type represents the raw
+        accumulator without the refresh effect. *)
+    type ('query, 'response) t =
+      { last_ok_response : ('query * 'response) option
+      ; last_error : ('query * Error.t) option
+      ; inflight_query : 'query option
+      }
+    [@@deriving sexp_of]
+  end
+
   (** A computation that periodically dispatches on a polling_state_rpc and keeps track of
       the most recent response. To explicitly re-send the RPC, schedule the [refresh]
       field of the result. It also keeps track of the current query that is in-flight. *)
@@ -387,6 +399,28 @@ module Polling_state_rpc : sig
     -> 'query Bonsai.t
     -> Bonsai.graph
     -> ('query, 'response) Poll_result.t Bonsai.t
+
+  (** Like [poll], but returns the raw state machine accumulator and effect separately.
+      This provides direct access to the polling state machine internals, allowing for
+      more flexible composition and custom handling of the state. The returned effect can
+      be scheduled to send/re-send the RPC.
+
+      Unlike [poll], this function does not automatically schedule the effect - no polling
+      happens unless you explicitly schedule the returned effect yourself. *)
+  val manual_poll
+    :  ?here:Stdlib.Lexing.position
+    -> ?sexp_of_query:('query -> Sexp.t)
+    -> ?sexp_of_response:('response -> Sexp.t)
+    -> equal_query:('query -> 'query -> bool)
+    -> ?equal_response:('response -> 'response -> bool)
+    -> ?clear_when_deactivated:bool
+    -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
+    -> ('query, 'response) Polling_state_rpc.t
+    -> ?where_to_connect:Where_to_connect.t Bonsai.t
+    -> Bonsai.graph
+    -> (('query, 'response) Poll_accumulator.t
+       * ('query -> 'response Or_error.t Effect.t))
+         Bonsai.t
 
   val shared_poller
     :  ?here:Stdlib.Lexing.position
