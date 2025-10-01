@@ -3,8 +3,7 @@ open! Async_kernel
 open! Import
 open Js_of_ocaml
 
-let () = Lazy.force For_profiling.run_top_level_side_effects
-let () = Lazy.force For_incr_node_introspection.run_top_level_side_effects
+let () = Lazy.force For_introspection.run_top_level_side_effects
 
 module type Result_spec_s = sig
   type t
@@ -106,10 +105,12 @@ let computation_with_rpc_and_result_spec computation ~custom_connector ~result_s
   let computation =
     Rpc_effect.Private.with_connector
       (function
-        | Self { on_conn_failure } ->
-          Rpc_effect.Private.self_connector ~on_conn_failure ()
-        | Url { on_conn_failure; url } ->
+        | Custom (Rpc_effect.Where_to_connect.Url_connector.T { on_conn_failure; url }) ->
           Rpc_effect.Private.url_connector ~on_conn_failure url
+        | Custom
+            (Rpc_effect.Where_to_connect.Self_connector.T
+              { Rpc_effect.Where_to_connect.Self.on_conn_failure }) ->
+          Rpc_effect.Private.self_connector ~on_conn_failure ()
         | Custom custom -> custom_connector custom)
       computation
   in
@@ -191,7 +192,7 @@ let start_and_get_handle
       Driver.create
         ?optimize
         ~instrumentation:(fun ~should_debug ~should_profile ->
-          { For_profiling.default_instrumentation_for_incr_dom_start_app with
+          { For_introspection.Profiling.default_instrumentation_for_incr_dom_start_app with
             start_timer =
               Timer.start ~should_debug ~should_profile:(fun () ->
                 force_profile || should_profile ())

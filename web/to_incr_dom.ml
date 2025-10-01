@@ -5,7 +5,7 @@ open Incr.Let_syntax
 include To_incr_dom_intf
 module Bonsai_action = Bonsai.Private.Action
 
-let () = Lazy.force For_profiling.run_top_level_side_effects
+let () = Lazy.force For_introspection.run_top_level_side_effects
 
 module State = struct
   type t = { mutable last_lifecycle : Bonsai.Private.Lifecycle.Collection.t }
@@ -87,14 +87,16 @@ let convert_generic
         Vdom.Effect.Expert.handle_non_dom_event_exn diff;
         Bonsai.Time_source.Private.trigger_after_display
           Incr_dom.Start_app.Private.time_source;
-        For_profiling.log_all_computation_watcher_nodes_in_javascript_console ()
+        For_introspection.Profiling
+        .log_all_computation_watcher_nodes_in_javascript_console
+          ()
       in
       Incr_dom.Component.create_with_extra ~on_display ~extra ~apply_action model view
     ;;
 
     let create ~input ~old_model:_ ~model ~inject =
       Bonsai.Private.Instrumentation.create_computation_with_instrumentation
-        For_profiling.default_instrumentation_for_incr_dom_start_app
+        For_introspection.Profiling.default_instrumentation_for_incr_dom_start_app
         ~computation
         ~time_source
         ~recursive_scopes
@@ -121,10 +123,11 @@ let convert_with_extra
   let var = Bonsai.Private.(Value.named App_input fresh |> conceal_value) in
   let start_timer event =
     let event = Bonsai.Private.Timer.string_of_event event in
-    For_profiling.default_instrumentation_for_incr_dom_start_app.start_timer event
+    For_introspection.Profiling.default_instrumentation_for_incr_dom_start_app.start_timer
+      event
   in
   let stop_timer =
-    For_profiling.default_instrumentation_for_incr_dom_start_app.stop_timer
+    For_introspection.Profiling.default_instrumentation_for_incr_dom_start_app.stop_timer
   in
   let timer = Bonsai.Private.Timer.create ~start_timer ~stop_timer in
   Bonsai.Private.Timer.set_timer ~timer;
@@ -134,10 +137,12 @@ let convert_with_extra
   let component input graph =
     Rpc_effect.Private.with_connector
       (function
-        | Self { on_conn_failure } ->
-          Rpc_effect.Private.self_connector ~on_conn_failure ()
-        | Url { url; on_conn_failure } ->
+        | Custom (Rpc_effect.Where_to_connect.Url_connector.T { url; on_conn_failure }) ->
           Rpc_effect.Private.url_connector ~on_conn_failure url
+        | Custom
+            (Rpc_effect.Where_to_connect.Self_connector.T
+              { Rpc_effect.Where_to_connect.Self.on_conn_failure }) ->
+          Rpc_effect.Private.self_connector ~on_conn_failure ()
         | Custom custom -> custom_connector custom)
       (fun graph -> component input graph)
       graph

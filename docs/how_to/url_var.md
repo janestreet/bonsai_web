@@ -155,6 +155,7 @@ You can use `Url_var.Typed.make`:
       :  ?navigation:[ `Ignore | `Intercept ]
       -> ?on_fallback_raises:'a
       -> ?encoding_behavior:Uri_parsing.Percent_encoding_behavior.t
+      -> ?trailing_slash_behavior:Uri_parsing.Trailing_slash_behavior.t
       -> (module T with type t = 'a)
       -> 'a Uri_parsing.Versioned_parser.t
       -> fallback:(Exn.t -> Components.t -> 'a)

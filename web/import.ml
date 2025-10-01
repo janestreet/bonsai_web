@@ -9,3 +9,4 @@ module Event = struct
 end
 
 module Bonsai = Bonsai
+module For_introspection = Bonsai_web_for_introspection

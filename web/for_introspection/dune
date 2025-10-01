@@ -1,0 +1,8 @@
+(library
+ (name bonsai_web_for_introspection)
+ (public_name bonsai_web.for_introspection)
+ (libraries async_rpc_kernel bonsai bonsai.introspection_protocol
+   core_kernel.bus core incr_dom.javascript_profiling js_of_ocaml
+   rpc_effect_kernel virtual_dom.ui_effect bonsai_concrete.ui_incr)
+ (preprocess
+  (pps ppx_jane js_of_ocaml-ppx bonsai.ppx_bonsai)))

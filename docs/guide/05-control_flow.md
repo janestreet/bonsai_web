@@ -237,8 +237,8 @@ Let's try to build this with the tools we have:
   let%arr counters = Bonsai.all counters in
   Vdom.Node.div counters
 Line 4, characters 53-58:
-Error: The value graph is local, so cannot be used inside a function that might escape.
-Hint: The function might escape because it is an argument to a tail call
+Error: The value graph is local but is expected to be global
+       because it is used inside a function which is expected to be global.
 ```
 
 As you can see above, this won't even compile: the content of `let%arr`
