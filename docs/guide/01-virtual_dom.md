@@ -248,7 +248,7 @@ But consider the following lists of nodes to be diffed:
   B     C
   C     
 
-Instead of producing the producing the obviously minimal diff
+Instead of producing the obviously minimal diff
 `["delete A"]`, it instead computes
 `["diff A and B"; "diff B and C"; "delete C"]`. This can lead to a
 variety of problems:
