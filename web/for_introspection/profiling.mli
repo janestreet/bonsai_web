@@ -6,8 +6,8 @@ open! Core
 (** [run_top_level_side_effects] should run at the very beginning/top level of the app. *)
 val run_top_level_side_effects : unit Lazy.t
 
-(** [is_profiling] is the "source-of-truth" of whether performance is on or off. It can be
-    changed with [start_recording] and [stop_recording]. *)
+(** [is_profiling] reflects whether performance profiling is on or off as indicated by
+    session storage. This is set by the Bonsai chrome devtools extension. *)
 val is_profiling : Bonsai.Private.Instrumentation.Profiling.t Ui_incr.t
 
 (** [set_latest_graph_info] should get called anytime that the graph info changes. *)
@@ -31,3 +31,10 @@ type timer
 
 val default_instrumentation_for_incr_dom_start_app
   : (string, timer) Bonsai.Private.Instrumentation.Config.t
+
+module For_testing : sig
+  val start_profiling : unit -> unit
+  val stop_profiling : unit -> unit
+  val start_computation_watcher : unit -> unit
+  val stop_computation_watcher : unit -> unit
+end

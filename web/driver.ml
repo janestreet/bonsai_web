@@ -206,7 +206,7 @@ let recompute
   timer On_display_handlers ~f:(fun () ->
     on_display_for_marking_started ();
     Bonsai_driver.trigger_lifecycles bonsai_driver);
-  For_profiling.log_all_computation_watcher_nodes_in_javascript_console ();
+  For_introspection.Profiling.log_all_computation_watcher_nodes_in_javascript_console ();
   if should_debug () then Console.console##debug (Js.string "-------");
   (* Restoring focus from the [<body />] to the app root should mostly be handled by
      the [blur] listener above, but we additionally run this check every frame because:

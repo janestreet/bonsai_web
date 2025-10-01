@@ -1,0 +1,6 @@
+(library
+ (name bonsai_web_test_selector)
+ (public_name bonsai_web.test_selector)
+ (libraries bonsai core)
+ (preprocess
+  (pps ppx_jane js_of_ocaml-ppx)))

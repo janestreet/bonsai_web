@@ -27,5 +27,5 @@
   (bash "%{bin:patdiff-for-review} %{bin:patdiff} %{deps} > %{targets}")))
 
 (alias
- (name DEFAULT)
+ (name default)
  (deps autosize_cols_vs_default_table_styling.diff))

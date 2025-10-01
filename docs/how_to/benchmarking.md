@@ -71,19 +71,20 @@ let state_bench : Bonsai_bench.t =
 ;;
 ```
 
-You can run your `Bonsai_bench.t`s via `Bonsai_bench.benchmark`:
+You can run your `Bonsai_bench.t`s via `Bonsai_bench.run_via_command`:
 
 ```{=html}
 <!-- $MDX file=../../examples/bonsai_guide_code/bench/benchmarking_examples.ml,part=running_benchmarks -->
 ```
 ``` ocaml
 let () =
-  let quota = Core_bench_js.Quota.Span (Time_float.Span.of_sec 1.0) in
-  Bonsai_bench.benchmark
-    ~run_config:(Core_bench_js.Run_config.create () ~quota)
+  Bonsai_bench.run_via_command
     ([ app_startup_bench ] @ list_of_things_bench @ [ state_bench ])
 ;;
 ```
+
+Note that you should only use one \[run_via_command\] or
+\[run_sets_via_command\] per file.
 
 There are more examples in the [`example/`
 directory](https://github.com/janestreet/bonsai_bench/tree/master/example).
@@ -97,7 +98,11 @@ with `Bonsai_bench.profile`.
 <!-- $MDX file=../../examples/bonsai_guide_code/bench/benchmarking_examples.ml,part=profile -->
 ```
 ``` ocaml
-let () = Bonsai_bench.profile [ app_startup_bench; state_bench ]
+let profile =
+  Bonsai_bench.profile ~name:"Profiling Benchmarks" [ app_startup_bench; state_bench ]
+;;
+
+let () = Bonsai_bench.run_sets_via_command [ profile ]
 ```
 
 ```{=html}
@@ -113,9 +118,9 @@ the source of truth for timing interactions.
 ```
 ## Comparison Benchmarking
 
-`Bonsai_bench` also offers `benchmark_compare_startup` and
-`benchmark_compare_interactions`, which will run a set of benchmarks
-across multiple implementations of some Bonsai computation.
+`Bonsai_bench` also offers `compare_startup` and `compare_interactions`,
+which will run a set of benchmarks across multiple implementations of
+some Bonsai computation.
 
 Let's say we want to compare the following implementations of "(foo a) +
 (bar b)":
@@ -160,7 +165,10 @@ let computations =
 ;;
 
 let startup_inputs = [ "same", (2, 2); "different", (1, 2) ]
-let () = Bonsai_bench.benchmark_compare_startup ~computations startup_inputs
+
+let startup_set : Bonsai_bench.Benchmark_set.t =
+  Bonsai_bench.compare_startup ~name:"Startup: f1 vs f2" ~computations startup_inputs
+;;
 ```
 
 And to compare recomputation time in response to some interactions, we
@@ -205,11 +213,28 @@ let scenarios =
   ]
 ;;
 
-let () =
-  Bonsai_bench.benchmark_compare_interactions
+let interaction_set : Bonsai_bench.Benchmark_set.t =
+  Bonsai_bench.compare_interactions
+    ~name:"Interactions: f1 vs f2"
     ~get_inject:(fun _ _ -> Effect.Ignore)
     ~computations
     scenarios
+;;
+```
+
+We can then run `Benchmark_set.t`s via
+`Bonsai_bench.run_sets_via_command`:
+
+```{=html}
+<!-- $MDX file=../../examples/bonsai_guide_code/bench/benchmarking_examples.ml,part=running_sets -->
+```
+``` ocaml
+let () =
+  Bonsai_bench.run_sets_via_command
+    [ startup_set
+    ; interaction_set
+    ; Bonsai_bench.set ~name:"list of things" list_of_things_bench
+    ]
 ;;
 ```
 

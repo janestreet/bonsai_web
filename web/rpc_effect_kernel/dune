@@ -1,0 +1,10 @@
+(library
+ (name rpc_effect_kernel)
+ (public_name bonsai_web.rpc_effect_kernel)
+ (libraries async_durable async_kernel async_rpc_kernel babel bonsai
+   bonsai.introspection_protocol core_kernel.bus core
+   async_kernel.eager_deferred pending_or_error polling_state_rpc streamable
+   virtual_dom.ui_effect_of_deferred bonsai_concrete.ui_incr
+   versioned_polling_state_rpc)
+ (preprocess
+  (pps ppx_jane bonsai.ppx_bonsai ppx_diff.ppx_diff)))

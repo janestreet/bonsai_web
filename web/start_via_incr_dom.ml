@@ -5,8 +5,7 @@ open Js_of_ocaml
 module Bonsai_action = Bonsai.Private.Action
 module Tracker = Bonsai.Private.Stabilization_tracker
 
-let () = Lazy.force For_profiling.run_top_level_side_effects
-let () = Lazy.force For_incr_node_introspection.run_top_level_side_effects
+let () = Lazy.force For_introspection.run_top_level_side_effects
 
 module type Result_spec = sig
   type t
@@ -147,7 +146,7 @@ module Fully_parametrized = struct
           type t = outgoing
         end
 
-        let handle = Pipe.write_without_pushback_if_open pipe_write
+        let handle value ~on_exn:_ = Pipe.write_without_pushback_if_open pipe_write value
       end)
     in
     let input_var = Incr.Var.create initial_input in
@@ -232,7 +231,9 @@ module Fully_parametrized = struct
             schedule_event
               (Bonsai.Private.Lifecycle.Collection.diff !prev_lifecycle lifecycle);
             Bonsai.Time_source.Private.trigger_after_display time_source;
-            For_profiling.log_all_computation_watcher_nodes_in_javascript_console ();
+            For_introspection.Profiling
+            .log_all_computation_watcher_nodes_in_javascript_console
+              ();
             prev_lifecycle := lifecycle
         in
         let update_visibility model ~schedule_event:_ = model in
@@ -241,7 +242,7 @@ module Fully_parametrized = struct
 
       let create model ~old_model ~inject =
         Bonsai.Private.Instrumentation.create_computation_with_instrumentation
-          For_profiling.default_instrumentation_for_incr_dom_start_app
+          For_introspection.Profiling.default_instrumentation_for_incr_dom_start_app
           ~recursive_scopes
           ~computation:computation_for_instrumentation
           ~time_source
@@ -290,6 +291,18 @@ module Fully_parametrized = struct
     let var =
       Bonsai.Private.Value.named App_input fresh |> Bonsai.Private.conceal_value
     in
+    let start_timer event =
+      let event =
+        match event with
+        | `Graph_application -> Profiling.Bonsai_graph_application
+        | `Preprocess -> Bonsai_preprocess
+        | `Gather -> Bonsai_gather
+      in
+      Profiling.timer_start event ~debug:false ~profile
+    in
+    let stop_timer = Profiling.timer_stop in
+    let timer = Bonsai.Private.Timer.create ~start_timer ~stop_timer in
+    Bonsai.Private.Timer.set_timer ~timer;
     let computation =
       let graph_applied =
         Profiling.time Bonsai_graph_application ~debug:false ~profile ~f:(fun () ->
@@ -421,10 +434,12 @@ let computation_with_rpc_and_result_spec computation ~custom_connector ~result_s
   let computation =
     Rpc_effect.Private.with_connector
       (function
-        | Self { on_conn_failure } ->
-          Rpc_effect.Private.self_connector ~on_conn_failure ()
-        | Url { on_conn_failure; url } ->
+        | Custom (Rpc_effect.Where_to_connect.Url_connector.T { on_conn_failure; url }) ->
           Rpc_effect.Private.url_connector ~on_conn_failure url
+        | Custom
+            (Rpc_effect.Where_to_connect.Self_connector.T
+              { Rpc_effect.Where_to_connect.Self.on_conn_failure }) ->
+          Rpc_effect.Private.self_connector ~on_conn_failure ()
         | Custom custom -> custom_connector custom)
       computation
   in

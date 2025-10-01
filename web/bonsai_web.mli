@@ -39,7 +39,8 @@ module Start : sig
       parameter is "app".
 
       [custom_connector] is for expessing custom logic for connecting to RPC endpoints.
-      Read more about it in rpc_effect.mli.
+      Read more about it in rpc_effect.mli. Notably, [Self] and [Url] are implemented as
+      custom connectors, but won't be exposed to your [custom_connector] function.
 
       [time_source] should only be passed in tests. *)
   val start

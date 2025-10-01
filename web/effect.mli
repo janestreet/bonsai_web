@@ -3,14 +3,7 @@ open! Async_kernel
 open! Import
 open Bonsai.For_open
 include module type of Virtual_dom.Vdom.Effect
-
-(** [of_deferred_fun] is a way to convert from a deferred-returning function to an
-    effect-returning function. This function is commonly used to wrap RPC calls. *)
-val of_deferred_fun : ('query -> 'response Deferred.t) -> 'query -> 'response t
-
-(** Like [of_deferred_fun] but with a pre-applied unit query. Side-effects in the function
-    will be run every time that the resulting effect is scheduled *)
-val of_deferred_thunk : (unit -> 'response Deferred.t) -> 'response t
+include module type of Ui_effect_of_deferred
 
 module Focus : sig
   type nonrec t =
@@ -25,17 +18,29 @@ module Focus : sig
       runs.
 
       When [name_for_testing] is provided, the focus and blur effects will print in test
-      mode. They will be a no-op otherwise. *)
-  val on_effect : ?name_for_testing:string -> unit -> local_ Bonsai.graph -> t Bonsai.t
+      mode. They will be a no-op otherwise.
+
+      If [prevent_scroll] is true, the browser will not scroll the element into view after
+      focusing it. The default behavior is to scroll into view. *)
+  val on_effect
+    :  ?name_for_testing:string
+    -> ?prevent_scroll:bool
+    -> unit
+    -> local_ Bonsai.graph
+    -> t Bonsai.t
 
   (** [on_activate] will focus the element that the returned attr is attached to when this
       computation is activated. See [Bonsai.Edge] for more details on the component
       lifecycle.
 
       When [name_for_testing] is provided, the focus will print in test mode. It will be a
-      no-op otherwise. *)
+      no-op otherwise.
+
+      If [prevent_scroll] is true, the browser will not scroll the element into view after
+      focusing it. The default behavior is to scroll into view. *)
   val on_activate
     :  ?name_for_testing:string
+    -> ?prevent_scroll:bool
     -> unit
     -> local_ Bonsai.graph
     -> Vdom.Attr.t Bonsai.t

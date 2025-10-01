@@ -196,7 +196,7 @@ let current_time_implementation =
     current_time_rpc
     (fun _connection_state zone ->
        Deferred.return
-         (Time_ns.to_string_trimmed ~zone:(Timezone.of_string zone) (Time_ns.now ())))
+         (Time_ns.to_sec_string ~zone:(Timezone.of_string zone) (Time_ns.now ())))
   |> Rpc.Implementation.lift ~f:(fun connection_state ->
     connection_state, connection_state)
 ;;
@@ -218,9 +218,10 @@ which this example is different from the previous one:
     the poller and allow it to send requests as necessary. It sends
     requests whenever the query (the timezone) changes, and also at
     fixed intervals (every tenth of a second).
--   Instead of a single `'response Or_error.t`, we get `Bonsai.t`s for
-    `last_ok_response` and `last_error`. These are packaged with their
-    corresponding query.
+-   Instead of a `'response Or_error.t`, we get a `Bonsai.t` that can
+    display information about the poller's state, including information
+    about sent queries, received responses, and timestamps for each of
+    these events.
 
 The code omits the implementation of `zone_form`, since that is not our
 focus in this chapter.
@@ -231,35 +232,42 @@ focus in this chapter.
 ``` ocaml
 let current_time_app (local_ graph) =
   let zone, zone_view = zone_form graph in
-  let poll =
+  let response =
     Rpc_effect.Polling_state_rpc.poll
       current_time_rpc
       ~equal_query:[%equal: string]
       ~equal_response:[%equal: Current_time.t]
       ~where_to_connect
       ~every:(Bonsai.return (Time_ns.Span.of_sec 0.1))
+      ~output_type:Response_state_with_details
       zone
       graph
   in
-  let%arr { last_ok_response; last_error; inflight_query = _; refresh = _ } = poll
-  and zone_view in
-  let text =
-    match last_ok_response with
-    | Some (zone, current_time) ->
-      [%string "The current time in the zone '%{zone}' is %{current_time}"]
-    | None -> "Loading..."
-  in
-  let error_view =
-    match last_error with
-    | Some (zone, error) ->
+  let%arr response and zone_view in
+  let response_view =
+    match response with
+    | No_response_yet -> Vdom.Node.div [ Vdom.Node.text "Loading..." ]
+    | Ok { query = zone; response = current_time; _ } ->
+      Vdom.Node.div
+        [ Vdom.Node.text
+            [%string "The current time in the zone '%{zone}' is %{current_time}"]
+        ]
+    | Error { query = zone; error; last_ok_response; _ } ->
+      let last_ok_view =
+        let%map.Option { query = zone; response = current_time; _ } = last_ok_response in
+        Vdom.Node.text
+          [%string
+            "Last successful request: the current time in the zone '%{zone}' is \
+             %{current_time}"]
+      in
       Vdom.Node.div
         ~attrs:[ Css.error_text ]
         [ Vdom.Node.text [%string "Got error when requesting time in zone '%{zone}'"]
+        ; Option.value last_ok_view ~default:Vdom.Node.none
         ; Vdom.Node.pre [ Vdom.Node.text (Error.to_string_hum error) ]
         ]
-    | None -> Vdom.Node.none
   in
-  Vdom.Node.div [ zone_view; Vdom.Node.div [ Vdom.Node.text text ]; error_view ]
+  Vdom.Node.div [ zone_view; response_view ]
 ;;
 ```
 

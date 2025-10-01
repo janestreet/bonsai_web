@@ -133,12 +133,14 @@ val Effect.all_unit : unit Ui_effect.t list -> unit Ui_effect.t
 val Effect.all : 'a Ui_effect.t list -> 'a list Ui_effect.t
 ```
 
-There's also: - `Effect.Many`, which takes a list of `unit Effect.t`s,
-dispatches them in parallel, and does not wait for any of them to
-complete. - `Effect.all_parallel`, which runs a list of `unit Effect.t`s
-in parallel, and returns a list of their results when all complete. -
-`Effect.all_parallel_unit`, which runs a list of `unit Effect.t`s in
-parallel, and returns unit when all complete.
+There's also:
+
+-   `Effect.Many`, which takes a list of `unit Effect.t`s, dispatches
+    them in parallel, and does not wait for any of them to complete.
+-   `Effect.all_parallel`, which runs a list of `'a Effect.t`s in
+    parallel, and returns a list of their results when all complete.
+-   `Effect.all_parallel_unit`, which runs a list of `unit Effect.t`s in
+    parallel, and returns unit when all complete.
 
 ## How to Schedule `Effect.t`s
 
