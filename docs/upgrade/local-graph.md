@@ -1,7 +1,7 @@
 Bonsai's new local\_ graph API is finally here! We recommend looking
 through the[new mli
-file](https://github.com/janestreet/bonsai/blob/master/src/bonsai.mli)
-to see how types have changed.
+file](https://github.com/janestreet/bonsai/blob/master/src/cont.mli) to
+see how types have changed.
 
 ## Moving from `Value`/`Computation` to `local_ Bonsai.graph` and `Bonsai.t`
 

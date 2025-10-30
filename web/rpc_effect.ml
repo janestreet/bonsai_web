@@ -86,7 +86,6 @@ end
 
 module Poll_result = Rpc_effect_kernel.Poll_result
 module Shared_poller = Rpc_effect_kernel.Shared_poller
-module Poll_accumulator = Rpc_effect_kernel.Poll_accumulator
 
 module Rpc = struct
   open Rpc_effect_kernel
@@ -424,6 +423,7 @@ module Rpc = struct
     ?on_response_received
     rpc
     ?(where_to_connect = default_for_polling)
+    ~output_type
     graph
     =
     Rpc.manual_poll
@@ -436,6 +436,7 @@ module Rpc = struct
       ?on_response_received
       rpc
       ~where_to_connect
+      ~output_type
       graph
   ;;
 end
@@ -557,6 +558,7 @@ module Polling_state_rpc = struct
     ?on_response_received
     rpc
     ?(where_to_connect = default_for_polling)
+    ~output_type
     graph
     =
     Polling_state_rpc.manual_poll
@@ -569,6 +571,7 @@ module Polling_state_rpc = struct
       ?on_response_received
       rpc
       ~where_to_connect
+      ~output_type
       graph
   ;;
 

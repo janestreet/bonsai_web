@@ -152,7 +152,7 @@ You can use `Url_var.Typed.make`:
 ``` ocaml
   module Typed : sig
     val make
-      :  ?navigation:[ `Ignore | `Intercept ]
+      :  navigation:[ `Ignore | `Intercept ]
       -> ?on_fallback_raises:'a
       -> ?encoding_behavior:Uri_parsing.Percent_encoding_behavior.t
       -> ?trailing_slash_behavior:Uri_parsing.Trailing_slash_behavior.t

@@ -4,11 +4,10 @@
  (libraries am_running_how_js async_durable async_js async_kernel
    async_rpc_kernel babel bonsai bonsai.driver bonsai.introspection_protocol
    bonsai_web_for_introspection bonsai_web_test_selector bonsai_web_ui_view
-   core_kernel.bus core async_kernel.eager_deferred incr_dom
-   incr_dom.javascript_profiling js_of_ocaml core_kernel.moption
-   polling_state_rpc core_kernel.reversed_list rpc_effect_kernel streamable
+   core_kernel.bus core incr_dom incr_dom.javascript_profiling js_of_ocaml
+   core_kernel.moption polling_state_rpc rpc_effect_kernel streamable
    virtual_dom.ui_effect virtual_dom.ui_effect_of_deferred
-   bonsai_concrete.ui_incr bonsai_concrete.metrics uri core_kernel.uuid
+   bonsai_concrete.ui_incr bonsai_concrete.metrics uri
    versioned_polling_state_rpc virtual_dom)
  (preprocess
   (pps ppx_jane js_of_ocaml-ppx bonsai.ppx_bonsai)))

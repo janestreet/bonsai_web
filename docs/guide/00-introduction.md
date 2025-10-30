@@ -30,7 +30,7 @@ better than we could.
 </aside>
 ```
 This guide is not intended to replace
-[bonsai.mli](https://github.com/janestreet/bonsai/blob/master/src/bonsai.mli),
+[cont.mli](https://github.com/janestreet/bonsai/blob/master/src/cont.mli),
 which lists and documents everything that Bonsai provides.
 
 ## Web Apps at 10,000 Feet

@@ -538,6 +538,12 @@ module Poll_accumulator = struct
     ; inflight_query : ('query * Time_ns.t) option
     }
   [@@deriving sexp_of]
+
+  let to_poll_result t ~equal_query ~refresh =
+    let { last_ok_response; last_error; inflight_query } = t in
+    Poll_result.Private.create
+      { last_ok_response; last_error; inflight_query; refresh; equal_query }
+  ;;
 end
 
 module Poll_behavior = struct
@@ -853,16 +859,8 @@ let generic_poll_or_error
     effect query
   in
   let%arr poll_accumulator and send_rpc_effect in
-  let { Poll_accumulator.last_ok_response; last_error; inflight_query } =
-    poll_accumulator
-  in
-  Poll_result.Private.create
-    { last_ok_response
-    ; last_error
-    ; inflight_query
-    ; refresh = send_rpc_effect
-    ; equal_query
-    }
+  poll_accumulator
+  |> Poll_accumulator.to_poll_result ~equal_query ~refresh:send_rpc_effect
   |> Poll_result.get_output ~output_type
 ;;
 
@@ -1198,6 +1196,40 @@ module Our_rpc = struct
         query)
   ;;
 
+  let shared_babel_poller
+    (type q cmp)
+    ?(here = Stdlib.Lexing.dummy_pos)
+    (module Q : Comparator.S with type t = q and type comparator_witness = cmp)
+    ?sexp_of_response
+    ?equal_response
+    ?clear_when_deactivated
+    ?on_response_received
+    rpc
+    ~where_to_connect
+    ~every
+    =
+    let module M = struct
+      include Q
+
+      let equal a b = (Comparator.compare Q.comparator) a b = 0
+    end
+    in
+    Shared_poller.create (module Q) ~f:(fun query ->
+      babel_poll
+        ~here
+        ~sexp_of_query:(Comparator.sexp_of_t M.comparator)
+        ?sexp_of_response
+        ~equal_query:M.equal
+        ?equal_response
+        ?clear_when_deactivated
+        ?on_response_received
+        rpc
+        ~where_to_connect
+        ~every
+        ~output_type:Abstract
+        query)
+  ;;
+
   let poll_until_ok
     ?(here = Stdlib.Lexing.dummy_pos)
     ?sexp_of_query
@@ -1380,6 +1412,7 @@ module Our_rpc = struct
     ?on_response_received
     rpc
     ~where_to_connect
+    ~output_type
     graph
     =
     let open Bonsai.Let_syntax in
@@ -1391,25 +1424,35 @@ module Our_rpc = struct
         | Ok result -> Bonsai.Effect_throttling.Poll_result.Finished (Ok result)
         | Error _ as error -> Finished error
     in
-    generic_polling_state_machine
-      ~here
-      ~rpc_kind:
-        (Bonsai.return
-           (Rpc_effect_protocol.Rpc_kind.Normal
-              { name = Rpc.Rpc.name rpc
-              ; version = Rpc.Rpc.version rpc
-              ; interval = Dispatch
-              }))
-      ~sexp_of_query
-      ~sexp_of_response
-      ~sexp_of_underlying:sexp_of_response
-      ~equal_query
-      ?equal_response
-      ?clear_when_deactivated
-      ?on_response_received
-      dispatcher
-      ~get_response:Fn.id
-      graph
+    let%arr poll_accumulator, poll_effect_with_response =
+      generic_polling_state_machine
+        ~here
+        ~rpc_kind:
+          (Bonsai.return
+             (Rpc_effect_protocol.Rpc_kind.Normal
+                { name = Rpc.Rpc.name rpc
+                ; version = Rpc.Rpc.version rpc
+                ; interval = Dispatch
+                }))
+        ~sexp_of_query
+        ~sexp_of_response
+        ~sexp_of_underlying:sexp_of_response
+        ~equal_query
+        ?equal_response
+        ?clear_when_deactivated
+        ?on_response_received
+        dispatcher
+        ~get_response:Fn.id
+        graph
+    in
+    let poll_result =
+      poll_accumulator
+      |> Poll_accumulator.to_poll_result
+           ~equal_query
+           ~refresh:(Effect.raise_s [%message "A manual poll cannot be refreshed."])
+      |> Poll_result.get_output ~output_type
+    in
+    poll_result, poll_effect_with_response
   ;;
 
   let maybe_track
@@ -1872,6 +1915,40 @@ module Polling_state_rpc = struct
         query)
   ;;
 
+  let shared_babel_poller
+    (type q cmp)
+    ?(here = Stdlib.Lexing.dummy_pos)
+    (module Q : Comparator.S with type t = q and type comparator_witness = cmp)
+    ?sexp_of_response
+    ?equal_response
+    ?clear_when_deactivated
+    ?on_response_received
+    rpc
+    ~where_to_connect
+    ~every
+    =
+    let module M = struct
+      include Q
+
+      let equal a b = (Comparator.compare Q.comparator) a b = 0
+    end
+    in
+    Shared_poller.create (module Q) ~f:(fun query ->
+      babel_poll
+        ~here
+        ~sexp_of_query:(Comparator.sexp_of_t M.comparator)
+        ?sexp_of_response
+        ~equal_query:M.equal
+        ?equal_response
+        ?clear_when_deactivated
+        ?on_response_received
+        rpc
+        ~where_to_connect
+        ~every
+        ~output_type:Abstract
+        query)
+  ;;
+
   let manual_poll
     ?(here = Stdlib.Lexing.dummy_pos)
     ?sexp_of_query
@@ -1882,6 +1959,7 @@ module Polling_state_rpc = struct
     ?on_response_received
     rpc
     ~where_to_connect
+    ~output_type
     graph
     =
     let open Bonsai.Let_syntax in
@@ -1894,7 +1972,7 @@ module Polling_state_rpc = struct
         | Ok (Finished result) -> Finished (Ok result)
         | Error _ as error -> Finished error
     in
-    let%sub poll_accumulator, poll_effect_with_response =
+    let%arr poll_accumulator, poll_effect_with_response =
       generic_polling_state_machine
         ~here
         ~rpc_kind:
@@ -1915,8 +1993,14 @@ module Polling_state_rpc = struct
         ~get_response:fst
         graph
     in
-    let%arr poll_accumulator and poll_effect_with_response in
-    poll_accumulator, poll_effect_with_response
+    let poll_result =
+      poll_accumulator
+      |> Poll_accumulator.to_poll_result
+           ~equal_query
+           ~refresh:(Effect.raise_s [%message "A manual poll cannot be refreshed."])
+      |> Poll_result.get_output ~output_type
+    in
+    poll_result, poll_effect_with_response
   ;;
 end
 
