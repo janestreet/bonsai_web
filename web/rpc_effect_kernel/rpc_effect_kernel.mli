@@ -100,18 +100,6 @@ module Shared_poller : sig
     -> ('query, 'response) t Bonsai.t
 end
 
-(** Module for the raw state machine accumulator used in polling *)
-module Poll_accumulator : sig
-  (** The state maintained by the polling state machine. This type represents the raw
-      accumulator without the refresh effect. *)
-  type ('query, 'response) t =
-    { last_ok_response : ('query * 'response * Time_ns.t) option
-    ; last_error : ('query * Error.t * Time_ns.t) option
-    ; inflight_query : ('query * Time_ns.t) option
-    }
-  [@@deriving sexp_of]
-end
-
 module Rpc : sig
   (** An effect for sending a particular RPC to a particular place.
 
@@ -231,6 +219,20 @@ module Rpc : sig
     -> local_ Bonsai.graph
     -> ('query, 'response) Shared_poller.t Bonsai.t
 
+  val shared_babel_poller
+    :  here:[%call_pos]
+    -> ('query, _) Comparator.Module.t
+    -> ?sexp_of_response:('response -> Sexp.t)
+    -> ?equal_response:('response -> 'response -> bool)
+    -> ?clear_when_deactivated:bool
+    -> ?on_response_received:
+         ('query -> 'response Or_error.t -> unit Bonsai.Effect.t) Bonsai.t
+    -> ('query -> 'response Or_error.t Deferred.t) Babel.Caller.t
+    -> where_to_connect:Where_to_connect.t Bonsai.t
+    -> every:Time_ns.Span.t Bonsai.t
+    -> local_ Bonsai.graph
+    -> ('query, 'response) Shared_poller.t Bonsai.t
+
   (** Like [poll], but stops polling the same input query after an ok response. If the
       query changes, the computation will resume polling until it receives another ok
       response. If the computation receives an error response, it will retry sending the
@@ -305,10 +307,9 @@ module Rpc : sig
     -> local_ Bonsai.graph
     -> 'output Bonsai.t
 
-  (** Like [poll], but returns the raw state machine accumulator and effect separately.
-      This provides direct access to the polling state machine internals, allowing for
-      more flexible composition and custom handling of the state. The returned effect can
-      be scheduled to send/re-send the RPC.
+  (** Like [poll], but returns the poll result and querying effect separately. This allows
+      for more flexible composition and custom handling of the state. The returned effect
+      can be scheduled to send/re-send the RPC.
 
       Unlike [poll], this function does not automatically schedule the effect - no polling
       happens unless you explicitly schedule the returned effect yourself. *)
@@ -322,10 +323,9 @@ module Rpc : sig
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Rpc.Rpc.t
     -> where_to_connect:Where_to_connect.t Bonsai.t
+    -> output_type:('query, 'response, 'output) Poll_result.Output_type.t
     -> local_ Bonsai.graph
-    -> (('query, 'response) Poll_accumulator.t
-       * ('query -> 'response Or_error.t Effect.t))
-         Bonsai.t
+    -> ('output * ('query -> 'response Or_error.t Effect.t)) Bonsai.t
 end
 
 module Polling_state_rpc : sig
@@ -400,10 +400,9 @@ module Polling_state_rpc : sig
     -> local_ Bonsai.graph
     -> 'output Bonsai.t
 
-  (** Like [poll], but returns the raw state machine accumulator and effect separately.
-      This provides direct access to the polling state machine internals, allowing for
-      more flexible composition and custom handling of the state. The returned effect can
-      be scheduled to send/re-send the RPC.
+  (** Like [poll], but returns the poll result and querying effect separately. This allows
+      for more flexible composition and custom handling of the state. The returned effect
+      can be scheduled to send/re-send the RPC.
 
       Unlike [poll], this function does not automatically schedule the effect - no polling
       happens unless you explicitly schedule the returned effect yourself. *)
@@ -417,10 +416,9 @@ module Polling_state_rpc : sig
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Polling_state_rpc.t
     -> where_to_connect:Where_to_connect.t Bonsai.t
+    -> output_type:('query, 'response, 'output) Poll_result.Output_type.t
     -> local_ Bonsai.graph
-    -> (('query, 'response) Poll_accumulator.t
-       * ('query -> 'response Or_error.t Effect.t))
-         Bonsai.t
+    -> ('output * ('query -> 'response Or_error.t Effect.t)) Bonsai.t
 
   val shared_poller
     :  here:[%call_pos]
@@ -430,6 +428,19 @@ module Polling_state_rpc : sig
     -> ?clear_when_deactivated:bool
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Polling_state_rpc.t
+    -> where_to_connect:Where_to_connect.t Bonsai.t
+    -> every:Time_ns.Span.t Bonsai.t
+    -> local_ Bonsai.graph
+    -> ('query, 'response) Shared_poller.t Bonsai.t
+
+  val shared_babel_poller
+    :  here:[%call_pos]
+    -> ('query, _) Comparator.Module.t
+    -> ?sexp_of_response:('response -> Sexp.t)
+    -> ?equal_response:('response -> 'response -> bool)
+    -> ?clear_when_deactivated:bool
+    -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
+    -> ('query, 'response) Versioned_polling_state_rpc.Client.caller
     -> where_to_connect:Where_to_connect.t Bonsai.t
     -> every:Time_ns.Span.t Bonsai.t
     -> local_ Bonsai.graph

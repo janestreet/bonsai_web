@@ -36,8 +36,8 @@ more scalable to complex types.
 
 Imagine you have a site with the following URLs:
 
+-   `/home`
 -   `/search?q=capybara`
--   `/settings`
 
 We could represent this as an OCaml type:
 

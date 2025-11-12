@@ -33,7 +33,6 @@ end
 
 module Poll_result = Rpc_effect_kernel.Poll_result
 module Shared_poller = Rpc_effect_kernel.Shared_poller
-module Poll_accumulator = Rpc_effect_kernel.Poll_accumulator
 
 module Rpc : sig
   (** An effect for sending a particular RPC to a particular place.
@@ -228,14 +227,12 @@ module Rpc : sig
     -> local_ Bonsai.graph
     -> 'output Bonsai.t
 
-  (** A computation that allows manual control over when an RPC is dispatched. Returns a
-      poll accumulator for tracking the current state and an effect for triggering the RPC
-      dispatch.
+  (** Like [poll], but returns the poll result and querying effect separately. This allows
+      for more flexible composition and custom handling of the state. The returned effect
+      can be scheduled to send/re-send the RPC.
 
-      [clear_when_deactivated] determines whether the most recent response should be
-      discarded when the component is deactivated. Default is true.
-
-      [where_to_connect] defaults to [self ~on_conn_failure:Surface_error_to_rpc]. *)
+      Unlike [poll], this function does not automatically schedule the effect - no RPCs
+      occur unless you explicitly schedule the returned effect yourself. *)
   val manual_poll
     :  here:[%call_pos]
     -> ?sexp_of_query:('query -> Sexp.t)
@@ -246,10 +243,9 @@ module Rpc : sig
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Rpc.Rpc.t
     -> ?where_to_connect:Where_to_connect.t Bonsai.t
+    -> output_type:('query, 'response, 'output) Poll_result.Output_type.t
     -> local_ Bonsai.graph
-    -> (('query, 'response) Poll_accumulator.t
-       * ('query -> 'response Or_error.t Effect.t))
-         Bonsai.t
+    -> ('output * ('query -> 'response Or_error.t Effect.t)) Bonsai.t
 end
 
 module Polling_state_rpc : sig
@@ -324,13 +320,12 @@ module Polling_state_rpc : sig
     -> local_ Bonsai.graph
     -> 'output Bonsai.t
 
-  (** Like [poll], but returns the raw state machine accumulator and effect separately.
-      This provides direct access to the polling state machine internals, allowing for
-      more flexible composition and custom handling of the state. The returned effect can
-      be scheduled to send/re-send the RPC.
+  (** Like [poll], but returns the poll result and querying effect separately. This allows
+      for more flexible composition and custom handling of the state. The returned effect
+      can be scheduled to send/re-send the RPC.
 
-      Unlike [poll], this function does not automatically schedule the effect - no polling
-      happens unless you explicitly schedule the returned effect yourself. *)
+      Unlike [poll], this function does not automatically schedule the effect - no RPCs
+      occur unless you explicitly schedule the returned effect yourself. *)
   val manual_poll
     :  here:[%call_pos]
     -> ?sexp_of_query:('query -> Sexp.t)
@@ -341,10 +336,9 @@ module Polling_state_rpc : sig
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Polling_state_rpc.t
     -> ?where_to_connect:Where_to_connect.t Bonsai.t
+    -> output_type:('query, 'response, 'output) Poll_result.Output_type.t
     -> local_ Bonsai.graph
-    -> (('query, 'response) Poll_accumulator.t
-       * ('query -> 'response Or_error.t Effect.t))
-         Bonsai.t
+    -> ('output * ('query -> 'response Or_error.t Effect.t)) Bonsai.t
 
   val shared_poller
     :  here:[%call_pos]

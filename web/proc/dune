@@ -3,8 +3,8 @@
  (public_name bonsai_web.proc)
  (libraries am_running_how_js async_durable async_kernel async_rpc_kernel
    babel bonsai bonsai.proc bonsai_web bonsai_web_ui_view core_kernel.bus
-   core js_of_ocaml core_kernel.moption polling_state_rpc
-   core_kernel.reversed_list streamable virtual_dom.ui_effect
-   bonsai_concrete.ui_incr uri versioned_polling_state_rpc virtual_dom)
+   core js_of_ocaml core_kernel.moption polling_state_rpc streamable
+   virtual_dom.ui_effect bonsai_concrete.ui_incr uri
+   versioned_polling_state_rpc virtual_dom)
  (preprocess
   (pps ppx_jane js_of_ocaml-ppx bonsai.ppx_bonsai)))

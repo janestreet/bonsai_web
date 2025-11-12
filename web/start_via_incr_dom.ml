@@ -222,6 +222,28 @@ module Fully_parametrized = struct
           in
           fun () ~schedule_event model action ->
             apply_action ~inject ~schedule_event (Some input) model action
+        and before_display =
+          let old_lifecycles = ref Bonsai.Private.Lifecycle.Collection.empty in
+          let%map lifecycle =
+            Bonsai.Private.Snapshot.lifecycle_or_empty ~here:[%here] snapshot
+          in
+          fun () ~schedule_event ~apply_actions_recursor ->
+            match
+              Bonsai.Private.Lifecycle.Collection.get_before_display
+                ~old:!old_lifecycles
+                ~new_:lifecycle
+            with
+            | Some before_displays ->
+              (* While there are before_displays remaining *)
+              schedule_event before_displays;
+              old_lifecycles
+              := Map.merge_skewed !old_lifecycles lifecycle ~combine:(fun ~key:_ l _r ->
+                   l);
+              apply_actions_recursor ()
+            | None ->
+              (* Finally *)
+              old_lifecycles := Bonsai.Private.Lifecycle.Collection.empty;
+              Bonsai.Time_source.Private.trigger_before_display time_source
         and on_display =
           let%map lifecycle =
             Bonsai.Private.Snapshot.lifecycle_or_empty ~here:[%here] snapshot
@@ -229,7 +251,9 @@ module Fully_parametrized = struct
           fun () ~schedule_event ->
             Handle.set_started handle;
             schedule_event
-              (Bonsai.Private.Lifecycle.Collection.diff !prev_lifecycle lifecycle);
+              (Bonsai.Private.Lifecycle.Collection.get_after_display
+                 ~old:!prev_lifecycle
+                 ~new_:lifecycle);
             Bonsai.Time_source.Private.trigger_after_display time_source;
             For_introspection.Profiling
             .log_all_computation_watcher_nodes_in_javascript_console
@@ -237,7 +261,12 @@ module Fully_parametrized = struct
             prev_lifecycle := lifecycle
         in
         let update_visibility model ~schedule_event:_ = model in
-        { Incr_dom.App_intf.Private.view; apply_action; update_visibility; on_display }
+        { Incr_dom.App_intf.Private.view
+        ; apply_action
+        ; update_visibility
+        ; before_display
+        ; on_display
+        }
       ;;
 
       let create model ~old_model ~inject =

@@ -113,6 +113,19 @@ within the next frame.
 After action application, Bonsai does another incremental stabilization
 to compute the latest view.
 
+### Before_display
+
+Before diffing / patching the DOM, Bonsai will run `before_display`
+lifecycle events. After running these effects, Bonsai will apply actions
+and stabilize again. If there are any new `before_display` effects to
+run, the cycle will repeat, until there are no new effects left.
+
+Since `before_display`s can trigger other `before_display`s, there can
+be arbitrarily many of these loops in a single frame. However, since we
+only run each individual effect at most once per frame and there are a
+finite number of `before_display`s in each program, this loop is
+guaranteed to end.
+
 ### Diff + Patch
 
 Virtual_dom diffs the new view against the previous one, and patches the
@@ -124,16 +137,16 @@ run.
 
 ### Lifecycles
 
-After diffing / patching the DOM, Bonsai will run any lifecycle events
-scheduled for that frame. As a result, [lifecycle
-events](./lifecycles.md) (which include
+After diffing / patching the DOM, Bonsai will run any
+(non-`before_display`) lifecycle events scheduled for that frame. As a
+result, these [lifecycle events](./lifecycles.md) (which include
 [on_change](./edge_triggered_effects.md)) will only run once per frame.
 
 Note that we do not stabilize or apply actions after diffing + patching
 or lifecycle scheduling. This means that any state updates scheduled by
-lifecycle events will only be applied in the next frame. This is one
-reason why it's preferable to avoid needing to [synchronize
-states](./organizing_state.md).
+these lifecycle events will only be applied in the next frame. This is
+one reason why it's preferable to avoid needing to [synchronize
+states](./organizing_state.md), or to use `before_display` instead.
 
 ### Scheduling the Next Frame
 

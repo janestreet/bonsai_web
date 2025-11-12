@@ -218,8 +218,7 @@ let recompute
      so we might need to possibly focus-steal after every frame.
 
      We still want [refocus_on_blur], so that we can respond immediately to most blurs
-     without waiting ~16ms for the next frame.
-  *)
+     without waiting ~16ms for the next frame. *)
   Focus_stealer.maybe_refocus_root_element focus_stealer !prev_elt;
   instrumentation.stop_timer animation_frame_loop_timer;
   start_of_frame_to_start_of_next_frame_timer

@@ -518,8 +518,8 @@ other.
 
 Bonsai has some other tools for state, such as `Bonsai.state_opt`,
 `Bonsai.toggle`, and `Bonsai.actor`. You should read the [API
-Docs](https://github.com/janestreet/bonsai/blob/master/src/bonsai.mli)
-to learn more.
+Docs](https://github.com/janestreet/bonsai/blob/master/src/cont.mli) to
+learn more.
 
 All Bonsai state primitives also take an optional `reset` argument,
 which allows you to control what happens when [state is

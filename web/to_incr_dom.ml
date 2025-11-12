@@ -70,6 +70,7 @@ let convert_generic
           ~inject
         |> Bonsai.Private.Trampoline.run
       in
+      let old_lifecycles = ref Bonsai.Private.Lifecycle.Collection.empty in
       let%map view, extra = Bonsai.Private.Snapshot.result snapshot
       and input =
         Bonsai.Private.Input.to_incremental (Bonsai.Private.Snapshot.input snapshot)
@@ -79,19 +80,45 @@ let convert_generic
       let apply_action action _state ~schedule_action:_ =
         apply_action ~inject ~schedule_event (Some input) model action
       in
+      let before_display _ ~schedule_action:_ ~apply_actions_recursor =
+        match
+          Bonsai.Private.Lifecycle.Collection.get_before_display
+            ~old:!old_lifecycles
+            ~new_:lifecycle
+        with
+        | Some before_displays ->
+          (* While there are before_displays remaining *)
+          Vdom.Effect.Expert.handle_non_dom_event_exn before_displays;
+          old_lifecycles
+          := Map.merge_skewed !old_lifecycles lifecycle ~combine:(fun ~key:_ l _r -> l);
+          apply_actions_recursor ()
+        | None ->
+          (* Finally *)
+          old_lifecycles := Bonsai.Private.Lifecycle.Collection.empty;
+          Bonsai.Time_source.Private.trigger_before_display
+            Incr_dom.Start_app.Private.time_source
+      in
       let on_display state ~schedule_action:_ =
-        let diff =
-          Bonsai.Private.Lifecycle.Collection.diff state.State.last_lifecycle lifecycle
+        let after_display =
+          Bonsai.Private.Lifecycle.Collection.get_after_display
+            ~old:state.State.last_lifecycle
+            ~new_:lifecycle
         in
         state.State.last_lifecycle <- lifecycle;
-        Vdom.Effect.Expert.handle_non_dom_event_exn diff;
+        Vdom.Effect.Expert.handle_non_dom_event_exn after_display;
         Bonsai.Time_source.Private.trigger_after_display
           Incr_dom.Start_app.Private.time_source;
         For_introspection.Profiling
         .log_all_computation_watcher_nodes_in_javascript_console
           ()
       in
-      Incr_dom.Component.create_with_extra ~on_display ~extra ~apply_action model view
+      Incr_dom.Component.create_with_extra
+        ~before_display
+        ~on_display
+        ~extra
+        ~apply_action
+        model
+        view
     ;;
 
     let create ~input ~old_model:_ ~model ~inject =

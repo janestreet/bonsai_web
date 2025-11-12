@@ -7,9 +7,12 @@ have to manually keep them in sync. This is bad, because:
 
 -   It's really easy to make mistakes / forget to set something
 -   Setting state in [an `on_change`](./edge_triggered_effects.md) or
-    [lifecycle event](./lifecycles.md) won't take effect [until the next
-    frame](./bonsai_runtime.md), so you might get flashes of old
-    content, or even behavioral bugs
+    [lifecycle event](./lifecycles.md) that uses `after_display` won't
+    take effect [until the next frame](./bonsai_runtime.md), so you
+    might get flashes of old content, or even behavioral bugs. Using
+    `before_display` helps, but each `before_display` can only run once
+    per frame, so if your state is being updated by multiple other
+    `before_display`s, your mirrored state might become stale.
 -   Your code becomes less declarative, more imperative, and therefore
     harder to understand
 
@@ -169,7 +172,7 @@ The [`Rpc_effect` library](./rpcs.md) implements tools for polling and
 dispatching one-shot actions to RPCs. We highly recommend using it
 rather than trying to reimplement client-server communication yourself.
 
-## `Bonsai_extra.mirror`
+## `Bonsai_extra.Mirror`
 
 Sometimes, despite our best attempts, we might just have to keep two
 independent `Bonsai.t` states in sync. This is usually because the
@@ -179,9 +182,9 @@ components](#lift-state-with-controllable-components) like the [Partial
 Render Table's focus](./partial_render_table.md#focus).
 
 If we have to synchronize state, the best way to do so is probably with
-`Bonsai_extra.mirror`, which synchronizes the state of an "interactive"
-component (e.g. PRT focus) and a "backup store" (e.g. the URL, local
-storage).
+`Bonsai_extra.Mirror.mirror`, which synchronizes the state of an
+"interactive" component (e.g. PRT focus) and a "backup store" (e.g. the
+URL, local storage).
 
 The gist of this combinator is that if you have two states that you'd
 like to be synchronized, you can feed the "current value" and "set
