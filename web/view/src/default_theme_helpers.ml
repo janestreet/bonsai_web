@@ -1,8 +1,8 @@
 open! Core
 open Virtual_dom
 
-(* Helper functions used for the default theme. They live here so that components
-   can use them.*)
+(* Helper functions used for the default theme. They live here so that components can use
+   them. *)
 
 let intent_colors intent (constants : Constants.t) =
   let { Constants.Fg_bg.foreground; background } =

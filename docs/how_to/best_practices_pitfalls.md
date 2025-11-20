@@ -46,8 +46,8 @@ let a_typical_function (input : int Bonsai.t) (local_ graph) =
     let%arr incr_num_input_changes in
     fun _new_val -> incr_num_input_changes ()
   in
-  (* Declare lifecycle and edge-triggered effects.
-     Most code won't need these, but they're not uncommon. *)
+  (* Declare lifecycle and edge-triggered effects. Most code won't need these, but they're
+     not uncommon. *)
   Bonsai.Edge.on_change ~equal:[%equal: int] input ~callback:on_change graph;
   (* Compute main output of your function. This could also be a [match%sub]. *)
   let%arr logs and magic_number and log_current_magic_number in
@@ -212,12 +212,12 @@ For input maps with thousands of keys, try to avoid instantiating
 anything with `graph` inside of your `Bonsai.assoc`s, except for
 `Bonsai.path`.
 
-## `Bonsai.Clock.now`
+## `Bonsai.Clock.Expert.now`
 
-`Bonsai.Clock.now` returns a `Bonsai.t` which contains the current time.
-This means that any values that depend on it will be re-evaluated on
-every frame (usually 60 times a second). This can be expensive, so there
-are workarounds for common scenarios:
+`Bonsai.Clock.Expert.now` returns a `Bonsai.t` which contains the
+current time. This means that any values that depend on it will be
+re-evaluated on every frame (usually 60 times a second). This can be
+expensive, so there are workarounds for common scenarios:
 
 -   If you only need the current time in order to compute a delta
     against another instant and display the delta to the user, take a

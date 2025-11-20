@@ -2,8 +2,8 @@ open! Core
 open Virtual_dom
 
 let dynamic_attr ~testing_name s =
-  (* NOTE: This exists so that we do not attach the entire contents of the
-     css on each expect test output. *)
+  (* NOTE: This exists so that we do not attach the entire contents of the css on each
+     expect test output. *)
   match am_running_test with
   | true ->
     (* Creating a dummy class instead of using [Vdom.Attr.create] is used in order to

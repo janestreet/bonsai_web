@@ -60,12 +60,12 @@ the last time that a value changed:
 let with_last_modified_time
   ~equal
   input
-  (* Although [Bonsai.Clock.now] is generally discouraged, the cutoff only pays
-     attention to [input], so [now] shouldn't cause re-firing of this
-     computation's transitive dependencies. *)
+  (* Although [Bonsai.Clock.Expert.now] is generally discouraged, the cutoff only pays
+     attention to [input], so [now] shouldn't cause re-firing of this computation's
+     transitive dependencies. *)
   (local_ graph)
   =
-  let now = Bonsai.Clock.now graph in
+  let now = Bonsai.Clock.Expert.now graph in
   let result = Bonsai.both input now in
   let%sub result, time =
     Bonsai.Incr.value_cutoff result ~equal:(fun (a, _) (b, _) -> equal a b) graph

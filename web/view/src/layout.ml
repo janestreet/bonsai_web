@@ -140,8 +140,8 @@ let box
 ;;
 
 let hbox ?attrs ?gap =
-  (* NOTE: Since display: flex defaults to horizontal layout, [`Default] is picked
-     when a direction is not specified for hboxes. *)
+  (* NOTE: Since display: flex defaults to horizontal layout, [`Default] is picked when a
+     direction is not specified for hboxes. *)
   box
     ~default_direction:None
     ~direction_to_css_gen_direction:to_css_gen_horizontal_direction
@@ -164,8 +164,8 @@ let vbox ?attrs ?gap =
 ;;
 
 let hbox_wrap =
-  (* NOTE: Since display: flex defaults to horizontal layout, [`Default] is picked
-     when a direction is not specified for hboxes. *)
+  (* NOTE: Since display: flex defaults to horizontal layout, [`Default] is picked when a
+     direction is not specified for hboxes. *)
   box
     ~default_direction:None
     ~direction_to_css_gen_direction:to_css_gen_horizontal_direction

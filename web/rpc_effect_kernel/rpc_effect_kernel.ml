@@ -217,13 +217,12 @@ end = struct
           | Ok value ->
             (match t.state with
              | Invalid ->
-               (* If [t] has been invalidated in the middle of computing its
-                  result, try again. This recursive call shouldn't cause an infinite
-                  loop because [t.f] is passed when the [t] is created, which
-                  means it cannot possibly unconditionally call [invalidate]
-                  on itself. Undoubtedly there is a way around this that will cause
-                  an infinite loop, but in that case the infinite loop is not
-                  surprising. *)
+               (* If [t] has been invalidated in the middle of computing its result, try
+                  again. This recursive call shouldn't cause an infinite loop because
+                  [t.f] is passed when the [t] is created, which means it cannot possibly
+                  unconditionally call [invalidate] on itself. Undoubtedly there is a way
+                  around this that will cause an infinite loop, but in that case the
+                  infinite loop is not surprising. *)
                contents self
              | Pending -> return_result self (Ok value)
              | Value value ->
@@ -295,8 +294,9 @@ module Persistent_connection_packed = struct
     let (module Rpc_effect_introspection) = !introspection in
     let menu =
       Rvar.create (fun () ->
-        (* The menu [Rvar.t] is only used once a connection has been established,
-           so we want to bind on [Conn.connected] regardless of [retry_silently_on_conn_failure]. *)
+        (* The menu [Rvar.t] is only used once a connection has been established, so we
+           want to bind on [Conn.connected] regardless of
+           [retry_silently_on_conn_failure]. *)
         let%bind.Async_kernel.Deferred connection = Conn.connected connection in
         Versioned_rpc.Menu.request connection)
     in
@@ -529,7 +529,7 @@ module Shared_poller = struct
   ;;
 end
 
-module Inflight_query_key = Unique_id.Int ()
+module Inflight_query_id = Unique_id.Int ()
 
 module Poll_accumulator = struct
   type ('query, 'response) t =
@@ -550,16 +550,16 @@ module Poll_behavior = struct
   type 'response t =
     | Always (* Sends an rpc on every clock tick. *)
     | Until_ok
-    (* Sends an rpc repeatedly until an ok response arrives. Stops polling
-       once an error occurs.*)
+    (* Sends an rpc repeatedly until an ok response arrives. Stops polling once an error
+       occurs. *)
     | Until_condition_met of
         (* Sends an rpc repeatedly until the user-provided function returns
            [`Stop_polling] on an ok response *)
         ('response -> [ `Continue | `Stop_polling ]) Bonsai.t
 end
 
-(* This returns ONLY the state machine model and effect that returns the response.
-   No Bonsai.Edge.* APIs are used here - the effect must be manually scheduled. *)
+(* This returns ONLY the state machine model and effect that returns the response. No
+   Bonsai.Edge.* APIs are used here - the effect must be manually scheduled. *)
 let generic_polling_state_machine
   (type query response)
   ~(rpc_kind : Rpc_effect_protocol.Rpc_kind.t Bonsai.t)
@@ -569,6 +569,7 @@ let generic_polling_state_machine
   ~equal_query
   ?(equal_response = [%eta2 phys_equal])
   ~clear_when_deactivated
+  ~intercept_query
   ~on_response_received
   dispatcher
   ~get_response
@@ -595,7 +596,7 @@ let generic_polling_state_machine
     type t =
       { last_ok_response : (query * response * Time_ns.t) option
       ; last_error : (query * Error.t * Time_ns.t) option
-      ; inflight_queries : (query * Time_ns.t) Inflight_query_key.Map.t
+      ; inflight_queries : (query * Time_ns.t) Inflight_query_id.Map.t
       }
     [@@deriving sexp_of, equal]
   end
@@ -605,11 +606,11 @@ let generic_polling_state_machine
       | Finish of
           { query : Query.t
           ; response : Response.t Or_error.t Bonsai.Effect_throttling.Poll_result.t
-          ; inflight_query_key : Inflight_query_key.t
+          ; inflight_query_key : Inflight_query_id.t
           }
       | Start of
           { query : Query.t
-          ; inflight_query_key : Inflight_query_key.t
+          ; inflight_query_key : Inflight_query_id.t
           }
     [@@deriving sexp_of]
   end
@@ -617,12 +618,13 @@ let generic_polling_state_machine
   let default_model =
     { Model.last_ok_response = None
     ; last_error = None
-    ; inflight_queries = Inflight_query_key.Map.empty
+    ; inflight_queries = Inflight_query_id.Map.empty
     }
   in
   let response, inject_response =
-    (* using a state_machine1 is important because we need add check the Computation_status
-       to see if we should drop the action (due to [clear_when_responded]) *)
+    (* using a state_machine1 is important because we need add check the
+       Computation_status to see if we should drop the action (due to
+       [clear_when_responded]) *)
     Bonsai.state_machine_with_input
       (* Use a var here to prevent bonsai from optimizing the [state_machine1] down to a
          [state_machine0] *)
@@ -677,13 +679,15 @@ let generic_polling_state_machine
     let get_current_time = Bonsai.Clock.get_current_time graph in
     let%arr dispatcher
     and inject_response
+    and intercept_query
     and on_response_received
     and get_current_time
     and path
     and rpc_kind in
     let open Effect.Let_syntax in
     let actually_send_rpc (query, id) =
-      let%bind inflight_query_key = Effect.of_sync_fun Inflight_query_key.create () in
+      let%bind inflight_query_key = Effect.of_sync_fun Inflight_query_id.create () in
+      let%bind query = intercept_query query inflight_query_key in
       let%bind () = inject_response (Start { query; inflight_query_key }) in
       let%bind response = dispatcher (query, id) in
       let%bind () =
@@ -732,8 +736,8 @@ let generic_polling_state_machine
   { Poll_accumulator.last_ok_response; last_error; inflight_query }, effect
 ;;
 
-(*
-   This adds scheduling (Edge APIs) on top of the accumulator API and returns a Poll_result.t
+(* This adds scheduling (Edge APIs) on top of the accumulator API and returns a
+   Poll_result.t
 *)
 let generic_poll_or_error
   ~(rpc_kind : Rpc_effect_protocol.Rpc_kind.t Bonsai.t)
@@ -743,6 +747,7 @@ let generic_poll_or_error
   ~equal_query
   ?equal_response
   ~clear_when_deactivated
+  ~intercept_query
   ~on_response_received
   dispatcher
   ~where_to_connect
@@ -765,6 +770,7 @@ let generic_poll_or_error
       ~equal_query
       ?equal_response
       ~clear_when_deactivated
+      ~intercept_query
       ~on_response_received
       dispatcher
       ~get_response
@@ -781,15 +787,12 @@ let generic_poll_or_error
   in
   (* Below are four constructs that schedule the effect to run:
 
-     * [on_activate]
-     * When the [query] changes
-     * When the [where_to_connect] changes
-     * On an interval
+     * [on_activate] * When the [query] changes * When the [where_to_connect] changes * On
+     an interval
 
      The tricky part is that [Clock.every] and [Edge.on_change] both run effects on
-     activate by default. To avoid the redundancy, we make neither of them
-     trigger on activate, and only use [on_activate] for running effects on
-     activation. *)
+     activate by default. To avoid the redundancy, we make neither of them trigger on
+     activate, and only use [on_activate] for running effects on activation. *)
   let () =
     Bonsai.Edge.on_change'
       ~sexp_of_model:(Option.value ~default:sexp_of_opaque sexp_of_query)
@@ -873,6 +876,7 @@ let generic_polling_state_machine
   ~equal_query
   ?equal_response
   ?(clear_when_deactivated = true)
+  ?(intercept_query = Bonsai.return (fun query _ -> Effect.return query))
   ?(on_response_received = Bonsai.return (fun _ _ -> Effect.Ignore))
   dispatcher
   ~get_response
@@ -888,6 +892,7 @@ let generic_polling_state_machine
       ~equal_query
       ?equal_response
       ~clear_when_deactivated
+      ~intercept_query
       ~on_response_received
       dispatcher
       ~get_response
@@ -901,11 +906,10 @@ let generic_polling_state_machine
   else c graph
 ;;
 
-(* This [generic_poll_or_error] refines the [generic_poll_or_error] above by
-   resetting on deactivate to avoid leaking memory (after all, an important
-   feature of [Polling_state_rpc.dispatcher] is that doesn't cause a memory
-   leak on the server, so it would be shame if we didn't also defend against
-   memory leaks on the client. *)
+(* This [generic_poll_or_error] refines the [generic_poll_or_error] above by resetting on
+   deactivate to avoid leaking memory (after all, an important feature of
+   [Polling_state_rpc.dispatcher] is that doesn't cause a memory leak on the server, so it
+   would be shame if we didn't also defend against memory leaks on the client. *)
 let generic_poll_or_error
   ~rpc_kind
   ~sexp_of_query
@@ -914,6 +918,7 @@ let generic_poll_or_error
   ~equal_query
   ?equal_response
   ?(clear_when_deactivated = true)
+  ?(intercept_query = Bonsai.return (fun query _ -> Effect.return query))
   ?(on_response_received = Bonsai.return (fun _ _ -> Effect.Ignore))
   ~where_to_connect
   ?(when_to_start_next_effect = `Wait_period_after_previous_effect_starts_blocking)
@@ -934,6 +939,7 @@ let generic_poll_or_error
       ~sexp_of_response
       ~equal_query
       ?equal_response
+      ~intercept_query
       ~on_response_received
       ~clear_when_deactivated
       dispatcher
@@ -1004,6 +1010,7 @@ module Our_rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ~where_to_connect
@@ -1028,6 +1035,7 @@ module Our_rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       ~where_to_connect
       dispatcher
@@ -1047,6 +1055,7 @@ module Our_rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ~where_to_connect
@@ -1068,6 +1077,7 @@ module Our_rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       ~where_to_connect
       dispatcher
@@ -1087,6 +1097,7 @@ module Our_rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ~where_to_connect
@@ -1109,6 +1120,7 @@ module Our_rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       ~where_to_connect
       dispatcher
@@ -1128,6 +1140,7 @@ module Our_rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ~where_to_connect
@@ -1150,6 +1163,7 @@ module Our_rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       ~where_to_connect
       dispatcher
@@ -1169,6 +1183,7 @@ module Our_rpc = struct
     ?sexp_of_response
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ~where_to_connect
@@ -1188,6 +1203,7 @@ module Our_rpc = struct
         ~equal_query:M.equal
         ?equal_response
         ?clear_when_deactivated
+        ?intercept_query
         ?on_response_received
         rpc
         ~where_to_connect
@@ -1203,6 +1219,7 @@ module Our_rpc = struct
     ?sexp_of_response
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ~where_to_connect
@@ -1222,6 +1239,7 @@ module Our_rpc = struct
         ~equal_query:M.equal
         ?equal_response
         ?clear_when_deactivated
+        ?intercept_query
         ?on_response_received
         rpc
         ~where_to_connect
@@ -1237,6 +1255,7 @@ module Our_rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ~where_to_connect
@@ -1261,6 +1280,7 @@ module Our_rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       ~where_to_connect
       dispatcher
@@ -1280,6 +1300,7 @@ module Our_rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ~where_to_connect
@@ -1305,6 +1326,7 @@ module Our_rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       ~where_to_connect
       dispatcher
@@ -1324,6 +1346,7 @@ module Our_rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ~where_to_connect
@@ -1347,6 +1370,7 @@ module Our_rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       ~where_to_connect
       dispatcher
@@ -1366,6 +1390,7 @@ module Our_rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ~where_to_connect
@@ -1390,6 +1415,7 @@ module Our_rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       ~where_to_connect
       dispatcher
@@ -1409,6 +1435,7 @@ module Our_rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ~where_to_connect
@@ -1440,6 +1467,7 @@ module Our_rpc = struct
         ~equal_query
         ?equal_response
         ?clear_when_deactivated
+        ?intercept_query
         ?on_response_received
         dispatcher
         ~get_response:Fn.id
@@ -1583,9 +1611,8 @@ module Polling_state_rpc = struct
           with
           | Ok () -> Ok ()
           | Error _ when Rpc.Connection.is_closed connection ->
-            (* If the connection is closed, then any data for this
-               connection has been forgotten by the server anyway, so
-               the error is moot. *)
+            (* If the connection is closed, then any data for this connection has been
+               forgotten by the server anyway, so the error is moot. *)
             Ok ()
           | Error error -> Error error)
       in
@@ -1682,6 +1709,7 @@ module Polling_state_rpc = struct
     ~rpc_kind
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     ~where_to_connect
     ?when_to_start_next_effect
@@ -1710,6 +1738,7 @@ module Polling_state_rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       dispatcher
       ~where_to_connect
@@ -1729,6 +1758,7 @@ module Polling_state_rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ~where_to_connect
@@ -1754,6 +1784,7 @@ module Polling_state_rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       ~where_to_connect
       ?when_to_start_next_effect
@@ -1772,6 +1803,7 @@ module Polling_state_rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ~where_to_connect
@@ -1795,6 +1827,7 @@ module Polling_state_rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       ~where_to_connect
       ?when_to_start_next_effect
@@ -1888,6 +1921,7 @@ module Polling_state_rpc = struct
     ?sexp_of_response
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ~where_to_connect
@@ -1906,6 +1940,7 @@ module Polling_state_rpc = struct
         ~equal_query:[%equal: M.t]
         ?equal_response
         ?clear_when_deactivated
+        ?intercept_query
         ?on_response_received
         rpc
         ~where_to_connect
@@ -1922,6 +1957,7 @@ module Polling_state_rpc = struct
     ?sexp_of_response
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ~where_to_connect
@@ -1941,6 +1977,7 @@ module Polling_state_rpc = struct
         ~equal_query:M.equal
         ?equal_response
         ?clear_when_deactivated
+        ?intercept_query
         ?on_response_received
         rpc
         ~where_to_connect
@@ -1956,6 +1993,7 @@ module Polling_state_rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ~where_to_connect
@@ -1988,6 +2026,7 @@ module Polling_state_rpc = struct
         ~equal_query
         ?equal_response
         ?clear_when_deactivated
+        ?intercept_query
         ?on_response_received
         dispatcher
         ~get_response:fst
@@ -2016,9 +2055,9 @@ module Status = struct
     [@@deriving sexp, equal]
   end
 
-  (* This is a weird "dispatcher" component because it doesn't try to send an RPC
-     at all; it only tries to make the connection, making not of all the events
-     that occurred in the process. *)
+  (* This is a weird "dispatcher" component because it doesn't try to send an RPC at all;
+     it only tries to make the connection, making not of all the events that occurred in
+     the process. *)
   let dispatcher ~where_to_connect =
     Our_rpc.generic_dispatcher
       ~where_to_connect
@@ -2036,8 +2075,8 @@ module Status = struct
          with
          | Ok () -> ()
          | Error error ->
-           (* We know that an error indicates a failure to connect because
-           [callback] never returns an error of its own. *)
+           (* We know that an error indicates a failure to connect because [callback]
+              never returns an error of its own. *)
            writeback (Failed_to_connect error))
   ;;
 
@@ -2102,7 +2141,8 @@ module Status = struct
                  Bonsai.Apply_action_context.schedule_event context (dispatch writeback);
                  State Connecting
                | State (Connecting | Connected) ->
-                 (* We got activated, but we're still listening to the previous connection. *)
+                 (* We got activated, but we're still listening to the previous
+                    connection. *)
                  state)
             | Set new_state, Active dispatch ->
               (match new_state with
@@ -2168,11 +2208,10 @@ module Status = struct
         ~for_:(fun (local_ graph) -> state' ~where_to_connect graph)
         graph
     in
-    (* We want connection status to reset immediately, without needing to wait a frame
-       for an [on_change] to take effect. We do so with:
-       * A [scope_model], which swaps out our state immediately.
-       * An on_change, which instructs the old, now-inactive state machine to reset itself
-         back to "initial" state. *)
+    (* We want connection status to reset immediately, without needing to wait a frame for
+       an [on_change] to take effect. We do so with: * A [scope_model], which swaps out
+       our state immediately. * An on_change, which instructs the old, now-inactive state
+       machine to reset itself back to "initial" state. *)
     let () =
       let where_to_connect_with_injector = Bonsai.both where_to_connect inject in
       Bonsai.Edge.on_change'

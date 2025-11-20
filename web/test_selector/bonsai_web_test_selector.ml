@@ -4,8 +4,12 @@ let escaping = String.substr_replace_all ~pattern:"\'" ~with_:""
 
 type t = string
 
+let am_running_screenshot_test =
+  lazy (Sys.getenv "AM_RUNNING_SCREENSHOT_TEST" |> Option.is_some)
+;;
+
 let make' ~(here : [%call_pos]) ~name bag_inst =
-  if am_running_test
+  if am_running_test || force am_running_screenshot_test
   then
     [%sexp
       { name : (string option[@sexp.option])

@@ -478,7 +478,7 @@ In the [how-to on time](./time.md), we wrote a UI that depends on time:
 ```
 ``` ocaml
 let current_time (local_ graph) =
-  let%arr now = Bonsai.Clock.now graph in
+  let%arr now = Bonsai.Clock.Expert.now graph in
   Vdom.Node.text (Time_ns.to_string_utc now)
 ;;
 ```

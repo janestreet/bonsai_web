@@ -8,8 +8,8 @@ module Element_type = struct
 end
 
 let arrow ~element_type ~intent (constants : Constants.t) =
-  (* [arrow_len] is the distance from the center of the square to one of the points.
-     The length / width of the square is therefore [(2 * arrow_len) / sqrt(2)], i.e.
+  (* [arrow_len] is the distance from the center of the square to one of the points. The
+     length / width of the square is therefore [(2 * arrow_len) / sqrt(2)], i.e.
      [arrow_len * sqrt(2)]. *)
   let arrow_len =
     match element_type with
@@ -17,8 +17,8 @@ let arrow ~element_type ~intent (constants : Constants.t) =
       (match constants.toplayer.tooltips_have_arrows with
        | `Yes_with_length_px len -> len
        | `No ->
-         (* Should not happen; this functionw won't be called if the tooltip doesn't
-            have an arrow. *)
+         (* Should not happen; this functionw won't be called if the tooltip doesn't have
+            an arrow. *)
          0.)
     | Popover -> constants.toplayer.popover_with_arrow_default_arrow_length_px
   in
@@ -92,8 +92,8 @@ let default_tooltip_anchor_styles =
   Style.anchor
 ;;
 
-(* We must not use [blur] on the backdrop, as that has caused many performance issues
-   with massively increased GPU load. *)
+(* We must not use [blur] on the backdrop, as that has caused many performance issues with
+   massively increased GPU load. *)
 let default_modal_styles constants =
   let module Modal =
     [%css

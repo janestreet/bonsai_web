@@ -8,11 +8,10 @@ let get_id = Effect.of_thunk Rpc_effect_protocol.Rpc_id.create
 let queue : Rpc_effect_protocol.Event.t Queue.t = Queue.create ()
 
 class type global = object
-  (* [ rpcEffectInstrospectionSupported ] is used to distinguish between
-     non-bonsai apps or bonsai apps that have not yet picked up the introspection
-     changes. This is read by the devtool panel to provide a nice error message
-     when attempting to inspect wikipedia/a non-bonsai app/an app that is on an
-     outdated version of bonsai. *)
+  (* [ rpcEffectInstrospectionSupported ] is used to distinguish between non-bonsai apps
+     or bonsai apps that have not yet picked up the introspection changes. This is read by
+     the devtool panel to provide a nice error message when attempting to inspect
+     wikipedia/a non-bonsai app/an app that is on an outdated version of bonsai. *)
   method rpcEffectIntrospectionSupported : Js.number Js.t Js.prop
   method rpcEffectPopEvents : (unit -> Js.js_string Js.t) Js.callback Js.prop
 end
@@ -184,8 +183,8 @@ let handle_tracing_event (event @ local) =
        if payload_bytes = 7
        then
          (* This is the size of abort, forget on server, and cancel current query
-           messages. We probably don't care about this extra message too much, so
-           we can just ignore it/not print anything. *)
+            messages. We probably don't care about this extra message too much, so we can
+            just ignore it/not print anything. *)
          ()
        else
          print_s

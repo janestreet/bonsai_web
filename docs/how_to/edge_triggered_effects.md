@@ -15,7 +15,7 @@ let on_change_demo (local_ graph) =
     ~callback:
       (Bonsai.return (fun (prev_value : int option) (new_value : int) ->
          match prev_value with
-         | None -> (* Do nothing on first render*) Effect.Ignore
+         | None -> (* Do nothing on first render *) Effect.Ignore
          | Some prev_value ->
            Effect.alert
              [%string "prev value: %{prev_value#Int}, new value: %{new_value#Int}"]))

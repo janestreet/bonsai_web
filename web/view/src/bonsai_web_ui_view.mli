@@ -125,9 +125,9 @@ module Font_size : sig
   [@@deriving sexp, equal, compare, enumerate]
 end
 
-(* [themed_text] and [themed_textf] are a higher-level API for styling text.
-   They can be given an intent, as well as specify the font
-   style and size. If you don't need special styling, using [text] and [textf] is simpler.
+(* [themed_text] and [themed_textf] are a higher-level API for styling text. They can be
+   given an intent, as well as specify the font style and size. If you don't need special
+   styling, using [text] and [textf] is simpler.
 *)
 val themed_text
   :  Theme.t
@@ -632,11 +632,11 @@ module Expert : sig
     -> local_ Bonsai.graph
     -> 'a Bonsai.t
 
-  (* An attr that sets the [Bonsai_web_ui_view_tailwind_interop.bonsai_dark_class_for_tailwind]
-     class on the root [<html />] node.
-     This allows Tailwind-styled apps to toggle dark mode using a Bonsai theme.
-     If your custom theme overrides [app_attr], you probably want to include this attr
-     if your theme's [self#constants.is_dark] is [true].
+  (* An attr that sets the
+     [Bonsai_web_ui_view_tailwind_interop.bonsai_dark_class_for_tailwind] class on the
+     root [<html />] node. This allows Tailwind-styled apps to toggle dark mode using a
+     Bonsai theme. If your custom theme overrides [app_attr], you probably want to include
+     this attr if your theme's [self#constants.is_dark] is [true].
 
      Tailwind config should use a "variants" darkMode strategy, where one of the options
      is this value. *)

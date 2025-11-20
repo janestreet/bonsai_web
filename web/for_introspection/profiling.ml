@@ -4,11 +4,10 @@ open Bonsai_introspection_protocol
 
 (* The below variables are read by the devtool panel as global variables. *)
 class type global = object
-  (* [ bonsaiBugInstrospectionSupported ] is used to distinguish between
-     non-bonsai apps or bonsai apps that have not yet picked up the introspection
-     changes. This is read by the devtool panel to provide a nice error message
-     when attempting to inspect wikipedia/a non-bonsai app/an app that is on an
-     outdated version of bonsai. *)
+  (* [ bonsaiBugInstrospectionSupported ] is used to distinguish between non-bonsai apps
+     or bonsai apps that have not yet picked up the introspection changes. This is read by
+     the devtool panel to provide a nice error message when attempting to inspect
+     wikipedia/a non-bonsai app/an app that is on an outdated version of bonsai. *)
   method bonsaiBugIntrospectionSupported : Js.number Js.t Js.prop
   method bonsaiBugPopEvents : (unit -> Js.js_string Js.t) Js.callback Js.prop
   method bonsaiBugLatestGraphInfo : (unit -> Js.js_string Js.t) Js.callback Js.prop
@@ -130,8 +129,8 @@ let update_profiling () =
 let start_computation_watcher () =
   Ui_incr.Var.set computation_watcher_status_var Watching;
   Ui_incr.Incr.stabilize ();
-  (* Clear the watcher queue after the first stabilize so that the initialization
-     of the incrementals don't log to console *)
+  (* Clear the watcher queue after the first stabilize so that the initialization of the
+     incrementals don't log to console *)
   Queue.clear computation_watcher_queue
 ;;
 
