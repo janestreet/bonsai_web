@@ -11,6 +11,7 @@ calculated:
 let on_change_demo (local_ graph) =
   let view, value = State_examples.counter ~step:(Bonsai.return 1) graph in
   Bonsai.Edge.on_change'
+    ~trigger:`Before_display
     ~equal:Int.equal
     ~callback:
       (Bonsai.return (fun (prev_value : int option) (new_value : int) ->

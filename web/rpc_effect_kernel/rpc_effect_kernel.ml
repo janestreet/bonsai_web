@@ -181,9 +181,9 @@ end = struct
   let create_common f =
     let invalidated =
       Bus.create_exn
-        Arity1
         ~on_subscription_after_first_write:Allow
         ~on_callback_raise:Error.raise
+        ()
     in
     { state = Invalid; f; finished = Bvar.create (); invalidated }
   ;;
@@ -795,6 +795,7 @@ let generic_poll_or_error
      activate, and only use [on_activate] for running effects on activation. *)
   let () =
     Bonsai.Edge.on_change'
+      ~trigger:`After_display
       ~sexp_of_model:(Option.value ~default:sexp_of_opaque sexp_of_query)
       ~equal:equal_query
       query
@@ -812,6 +813,7 @@ let generic_poll_or_error
   in
   let () =
     Bonsai.Edge.on_change'
+      ~trigger:`After_display
       ~equal:[%equal: Where_to_connect.t]
       where_to_connect
       ~callback:
@@ -1057,20 +1059,20 @@ module Our_rpc = struct
     ?clear_when_deactivated
     ?intercept_query
     ?on_response_received
-    rpc
+    caller
     ~where_to_connect
     ~every
     ~output_type
     query
     (local_ graph)
     =
-    let dispatcher = babel_dispatcher_internal rpc ~where_to_connect graph in
+    let dispatcher = babel_dispatcher_internal caller ~where_to_connect graph in
     let dispatcher = Bonsai.Effect_throttling.poll dispatcher graph in
     generic_poll_or_error
       ~rpc_kind:
         (let%arr.Bonsai every in
          Rpc_effect_protocol.Rpc_kind.Babel
-           { descriptions = Babel.Caller.descriptions rpc; interval = Poll { every } })
+           { descriptions = Babel.Caller.descriptions caller; interval = Poll { every } })
       ~sexp_of_query
       ~sexp_of_underlying:sexp_of_response
       ~sexp_of_response
@@ -1483,6 +1485,58 @@ module Our_rpc = struct
     poll_result, poll_effect_with_response
   ;;
 
+  let babel_manual_poll
+    ~(here : [%call_pos])
+    ?sexp_of_query
+    ?sexp_of_response
+    ~equal_query
+    ?equal_response
+    ?clear_when_deactivated
+    ?intercept_query
+    ?on_response_received
+    caller
+    ~where_to_connect
+    ~output_type
+    (local_ graph)
+    =
+    let dispatcher = babel_dispatcher_internal caller ~where_to_connect graph in
+    let open Bonsai.Let_syntax in
+    let dispatcher =
+      let%arr dispatcher in
+      fun query ->
+        match%map.Effect dispatcher query with
+        | Ok result -> Bonsai.Effect_throttling.Poll_result.Finished (Ok result)
+        | Error _ as error -> Finished error
+    in
+    let%arr poll_accumulator, poll_effect_with_response =
+      generic_polling_state_machine
+        ~here
+        ~rpc_kind:
+          (Bonsai.return
+             (Rpc_effect_protocol.Rpc_kind.Babel
+                { descriptions = Babel.Caller.descriptions caller; interval = Dispatch }))
+        ~sexp_of_query
+        ~sexp_of_response
+        ~sexp_of_underlying:sexp_of_response
+        ~equal_query
+        ?equal_response
+        ?clear_when_deactivated
+        ?intercept_query
+        ?on_response_received
+        dispatcher
+        ~get_response:Fn.id
+        graph
+    in
+    let poll_result =
+      poll_accumulator
+      |> Poll_accumulator.to_poll_result
+           ~equal_query
+           ~refresh:(Effect.raise_s [%message "A manual poll cannot be refreshed."])
+      |> Poll_result.get_output ~output_type
+    in
+    poll_result, poll_effect_with_response
+  ;;
+
   let maybe_track
     ~here
     ~sexp_of_query
@@ -1633,6 +1687,7 @@ module Polling_state_rpc = struct
     let () = Bonsai.Edge.lifecycle ~on_deactivate:forget_client_on_server graph in
     let () =
       Bonsai.Edge.on_change'
+        ~trigger:`After_display
         ~equal:[%equal: Where_to_connect.t]
         where_to_connect
         ~callback:
@@ -1664,7 +1719,11 @@ module Polling_state_rpc = struct
       (perform_query (connector, client_rvar, where_to_connect))
   ;;
 
-  let babel_dispatcher_internal ?on_forget_client_error caller ~where_to_connect =
+  let multi_version_dispatcher_internal
+    ~on_forget_client_error
+    ~where_to_connect
+    ~connection_menu_callback
+    =
     let create_client_rvar ~connector (local_ _graph) =
       let%arr.Bonsai connector and where_to_connect in
       match Connector.menu_rvar (connector where_to_connect) with
@@ -1674,17 +1733,37 @@ module Polling_state_rpc = struct
           Connector.with_connection_with_menu
             connector
             ~where_to_connect
-            ~callback:(fun connection_with_menu ->
-              Versioned_polling_state_rpc.Client.negotiate_client
-                caller
-                connection_with_menu
-              |> Deferred.return))
+            ~callback:connection_menu_callback)
     in
     dispatcher'
       ?on_forget_client_error
       ~destroy_after_forget:true
       ~where_to_connect
       create_client_rvar
+  ;;
+
+  let babel_dispatcher_internal ?on_forget_client_error caller ~where_to_connect =
+    multi_version_dispatcher_internal
+      ~on_forget_client_error
+      ~where_to_connect
+      ~connection_menu_callback:(fun connection_with_menu ->
+        Polling_state_rpc.Babel.Caller.dispatch_multi_and_negotiate
+          caller
+          connection_with_menu
+        |> Deferred.return)
+  ;;
+
+  let versioned_polling_state_dispatcher_internal
+    ?on_forget_client_error
+    caller
+    ~where_to_connect
+    =
+    multi_version_dispatcher_internal
+      ~on_forget_client_error
+      ~where_to_connect
+      ~connection_menu_callback:(fun connection_with_menu ->
+        Versioned_polling_state_rpc.Client.negotiate_client caller connection_with_menu
+        |> Deferred.return)
   ;;
 
   let dispatcher_internal ?on_forget_client_error rpc ~where_to_connect =
@@ -1840,6 +1919,54 @@ module Polling_state_rpc = struct
       graph
   ;;
 
+  let versioned_polling_state_poll
+    ~(here : [%call_pos])
+    ?sexp_of_query
+    ?sexp_of_response
+    ~equal_query
+    ?equal_response
+    ?clear_when_deactivated
+    ?intercept_query
+    ?on_response_received
+    rpc
+    ~where_to_connect
+    ?when_to_start_next_effect
+    ~every
+    ~output_type
+    query
+    (local_ graph)
+    =
+    let dispatcher =
+      versioned_polling_state_dispatcher_internal
+        ~sexp_of_response
+        rpc
+        ~where_to_connect
+        graph
+    in
+    generic_poll
+      ~rpc_kind:
+        (let%arr.Bonsai every in
+         Rpc_effect_protocol.Rpc_kind.Babel
+           { descriptions = Babel.Caller.descriptions rpc; interval = Poll { every } })
+      ?sexp_of_query
+      ?sexp_of_response
+      ~sexp_of_underlying:(Some sexp_of_polling_state_rpc_underlying_response)
+      ~equal_query
+      ?equal_response
+      ?clear_when_deactivated
+      ?intercept_query
+      ?on_response_received
+      ~where_to_connect
+      ?when_to_start_next_effect
+      ~every
+      ~output_type
+      ~here
+      query
+      ~dispatcher
+      ~get_response:fst
+      graph
+  ;;
+
   let collapse_sequencer_error dispatcher query =
     match%map.Effect dispatcher query with
     | Error _ as error -> error
@@ -1894,6 +2021,38 @@ module Polling_state_rpc = struct
     let open Bonsai.Let_syntax in
     let dispatcher =
       babel_dispatcher_internal
+        ~sexp_of_response
+        ?on_forget_client_error
+        caller
+        ~where_to_connect
+        graph
+      >>| collapse_sequencer_error
+    in
+    Our_rpc.maybe_track
+      ~here
+      ~sexp_of_query
+      ~sexp_of_response:(Some sexp_of_polling_state_rpc_underlying_response)
+      ~rpc_kind:
+        (Bonsai.return
+           (Rpc_effect_protocol.Rpc_kind.Babel_polling_state_rpc
+              { descriptions = Babel.Caller.descriptions caller; interval = Dispatch }))
+      ~get_response:fst
+      dispatcher
+      graph
+  ;;
+
+  let versioned_polling_state_dispatcher
+    ~(here : [%call_pos])
+    ?sexp_of_query
+    ?sexp_of_response
+    ?on_forget_client_error
+    caller
+    ~where_to_connect
+    (local_ graph)
+    =
+    let open Bonsai.Let_syntax in
+    let dispatcher =
+      versioned_polling_state_dispatcher_internal
         ~sexp_of_response
         ?on_forget_client_error
         caller
@@ -1971,6 +2130,42 @@ module Polling_state_rpc = struct
     in
     Shared_poller.create (module Q) ~f:(fun query ->
       babel_poll
+        ~here
+        ~sexp_of_query:(Comparator.sexp_of_t M.comparator)
+        ?sexp_of_response
+        ~equal_query:M.equal
+        ?equal_response
+        ?clear_when_deactivated
+        ?intercept_query
+        ?on_response_received
+        rpc
+        ~where_to_connect
+        ~every
+        ~output_type:Abstract
+        query)
+  ;;
+
+  let shared_versioned_polling_state_poller
+    (type q cmp)
+    ~(here : [%call_pos])
+    (module Q : Comparator.S with type t = q and type comparator_witness = cmp)
+    ?sexp_of_response
+    ?equal_response
+    ?clear_when_deactivated
+    ?intercept_query
+    ?on_response_received
+    rpc
+    ~where_to_connect
+    ~every
+    =
+    let module M = struct
+      include Q
+
+      let equal a b = (Comparator.compare Q.comparator) a b = 0
+    end
+    in
+    Shared_poller.create (module Q) ~f:(fun query ->
+      versioned_polling_state_poll
         ~here
         ~sexp_of_query:(Comparator.sexp_of_t M.comparator)
         ?sexp_of_response
@@ -2215,6 +2410,7 @@ module Status = struct
     let () =
       let where_to_connect_with_injector = Bonsai.both where_to_connect inject in
       Bonsai.Edge.on_change'
+        ~trigger:`After_display
         ~equal:(fun (a, _) (b, _) -> Where_to_connect.equal a b)
         where_to_connect_with_injector
         ~callback:
@@ -2229,7 +2425,7 @@ module Status = struct
 
   let on_change ~where_to_connect ~callback graph =
     let%sub { state; _ } = state ~where_to_connect graph in
-    Bonsai.Edge.on_change state ~equal:State.equal ~callback graph
+    Bonsai.Edge.on_change ~trigger:`After_display state ~equal:State.equal ~callback graph
   ;;
 
   include Result

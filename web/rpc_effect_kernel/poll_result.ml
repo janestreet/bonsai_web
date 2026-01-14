@@ -11,6 +11,14 @@ type ('query, 'response) t =
   }
 [@@deriving sexp_of]
 
+let map_response t ~f =
+  match t with
+  | { last_ok_response = Some (query, response, time); _ } ->
+    let mapped_response = f response in
+    { t with last_ok_response = Some (query, mapped_response, time) }
+  | { last_ok_response = None; _ } as t -> t
+;;
+
 module Fetching_status = struct
   type 'query t =
     | Not_fetching

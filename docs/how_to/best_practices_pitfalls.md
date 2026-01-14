@@ -48,7 +48,12 @@ let a_typical_function (input : int Bonsai.t) (local_ graph) =
   in
   (* Declare lifecycle and edge-triggered effects. Most code won't need these, but they're
      not uncommon. *)
-  Bonsai.Edge.on_change ~equal:[%equal: int] input ~callback:on_change graph;
+  Bonsai.Edge.on_change
+    ~trigger:`Before_display
+    ~equal:[%equal: int]
+    input
+    ~callback:on_change
+    graph;
   (* Compute main output of your function. This could also be a [match%sub]. *)
   let%arr logs and magic_number and log_current_magic_number in
   View.vbox

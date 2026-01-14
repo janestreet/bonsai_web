@@ -460,6 +460,35 @@ module Rpc = struct
       ~output_type
       graph
   ;;
+
+  let babel_manual_poll
+    ~(here : [%call_pos])
+    ?sexp_of_query
+    ?sexp_of_response
+    ~equal_query
+    ?equal_response
+    ?clear_when_deactivated
+    ?intercept_query
+    ?on_response_received
+    caller
+    ?(where_to_connect = default_for_polling)
+    ~output_type
+    (local_ graph)
+    =
+    Rpc.babel_manual_poll
+      ~here
+      ?sexp_of_query
+      ?sexp_of_response
+      ~equal_query
+      ?equal_response
+      ?clear_when_deactivated
+      ?intercept_query
+      ?on_response_received
+      caller
+      ~where_to_connect
+      ~output_type
+      graph
+  ;;
 end
 
 module Polling_state_rpc = struct
@@ -494,6 +523,25 @@ module Polling_state_rpc = struct
     (local_ graph)
     =
     Polling_state_rpc.babel_dispatcher
+      ~here
+      ?sexp_of_query
+      ?sexp_of_response
+      ?on_forget_client_error
+      caller
+      ~where_to_connect
+      graph
+  ;;
+
+  let versioned_polling_state_dispatcher
+    ~(here : [%call_pos])
+    ?sexp_of_query
+    ?sexp_of_response
+    ?on_forget_client_error
+    caller
+    ?(where_to_connect = default_for_one_shot)
+    (local_ graph)
+    =
+    Polling_state_rpc.versioned_polling_state_dispatcher
       ~here
       ?sexp_of_query
       ?sexp_of_response
@@ -556,6 +604,41 @@ module Polling_state_rpc = struct
     (local_ graph)
     =
     Polling_state_rpc.babel_poll
+      ~here
+      ?sexp_of_query
+      ?sexp_of_response
+      ~equal_query
+      ?equal_response
+      ?clear_when_deactivated
+      ?intercept_query
+      ?on_response_received
+      caller
+      ~where_to_connect
+      ?when_to_start_next_effect
+      ~every
+      ~output_type
+      query
+      graph
+  ;;
+
+  let versioned_polling_state_poll
+    ~(here : [%call_pos])
+    ?sexp_of_query
+    ?sexp_of_response
+    ~equal_query
+    ?equal_response
+    ?clear_when_deactivated
+    ?intercept_query
+    ?on_response_received
+    caller
+    ?(where_to_connect = default_for_polling)
+    ?when_to_start_next_effect
+    ~every
+    ~output_type
+    query
+    (local_ graph)
+    =
+    Polling_state_rpc.versioned_polling_state_poll
       ~here
       ?sexp_of_query
       ?sexp_of_response

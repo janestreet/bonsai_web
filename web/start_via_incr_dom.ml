@@ -40,9 +40,9 @@ module Fully_parametrized = struct
     let create ~input_var ~outgoing_pipe =
       let extra =
         Bus.create_exn
-          Arity1
-          ~on_subscription_after_first_write:Allow_and_send_last_value
+          ~on_subscription_after_first_write:Allow_and_send_last_value_if_global
           ~on_callback_raise:(fun error -> eprint_s [%sexp (error : Error.t)])
+          ()
       in
       let last_extra = Moption.create () in
       Bus.subscribe_permanently_exn extra ~f:(fun extra ->
