@@ -3,9 +3,8 @@ open Js_of_ocaml
 open Bonsai_introspection_protocol
 
 class type global = object
-  (* [ bonsaiNodeIntrospectionSupported ] is used to distinguish between
-     non-bonsai apps vs bonsai apps that have not yet picked up the introspection changes
-   yet. *)
+  (* [ bonsaiNodeIntrospectionSupported ] is used to distinguish between non-bonsai apps
+     vs bonsai apps that have not yet picked up the introspection changes yet. *)
   method bonsaiIncrNodeIntrospectionSupported : Js.number Js.t Js.prop
 
   method bonsaiIncrNodeIntrospectionPopEvents :

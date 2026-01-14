@@ -33,6 +33,7 @@ end
 
 module Poll_result = Rpc_effect_kernel.Poll_result
 module Shared_poller = Rpc_effect_kernel.Shared_poller
+module Inflight_query_id = Rpc_effect_kernel.Inflight_query_id
 
 module Rpc : sig
   (** An effect for sending a particular RPC to a particular place.
@@ -79,6 +80,7 @@ module Rpc : sig
     -> equal_query:('query -> 'query -> bool)
     -> ?equal_response:('response -> 'response -> bool)
     -> ?clear_when_deactivated:bool
+    -> ?intercept_query:('query -> Inflight_query_id.t -> 'query Effect.t) Bonsai.t
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Rpc.Rpc.t
     -> ?where_to_connect:Where_to_connect.t Bonsai.t
@@ -96,6 +98,7 @@ module Rpc : sig
     -> equal_query:('query -> 'query -> bool)
     -> ?equal_response:('response -> 'response -> bool)
     -> ?clear_when_deactivated:bool
+    -> ?intercept_query:('query -> Inflight_query_id.t -> 'query Effect.t) Bonsai.t
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query -> 'response Or_error.t Deferred.t) Babel.Caller.t
     -> ?where_to_connect:Where_to_connect.t Bonsai.t
@@ -113,6 +116,7 @@ module Rpc : sig
     -> equal_query:('query -> 'query -> bool)
     -> ?equal_response:('response -> 'response -> bool)
     -> ?clear_when_deactivated:bool
+    -> ?intercept_query:('query -> Inflight_query_id.t -> 'query Effect.t) Bonsai.t
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Streamable.Plain_rpc.t
     -> ?where_to_connect:Where_to_connect.t Bonsai.t
@@ -131,6 +135,7 @@ module Rpc : sig
     -> equal_query:('query -> 'query -> bool)
     -> ?equal_response:('response -> 'response -> bool)
     -> ?clear_when_deactivated:bool
+    -> ?intercept_query:('query -> Inflight_query_id.t -> 'query Effect.t) Bonsai.t
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Streamable.Plain_rpc.t
     -> ?where_to_connect:Where_to_connect.t Bonsai.t
@@ -146,6 +151,7 @@ module Rpc : sig
     -> ?sexp_of_response:('response -> Sexp.t)
     -> ?equal_response:('response -> 'response -> bool)
     -> ?clear_when_deactivated:bool
+    -> ?intercept_query:('query -> Inflight_query_id.t -> 'query Effect.t) Bonsai.t
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Rpc.Rpc.t
     -> ?where_to_connect:Where_to_connect.t Bonsai.t
@@ -164,6 +170,7 @@ module Rpc : sig
     -> equal_query:('query -> 'query -> bool)
     -> ?equal_response:('response -> 'response -> bool)
     -> ?clear_when_deactivated:bool
+    -> ?intercept_query:('query -> Inflight_query_id.t -> 'query Effect.t) Bonsai.t
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Rpc.Rpc.t
     -> ?where_to_connect:Where_to_connect.t Bonsai.t
@@ -184,6 +191,7 @@ module Rpc : sig
     -> equal_query:('query -> 'query -> bool)
     -> ?equal_response:('response -> 'response -> bool)
     -> ?clear_when_deactivated:bool
+    -> ?intercept_query:('query -> Inflight_query_id.t -> 'query Effect.t) Bonsai.t
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Rpc.Rpc.t
     -> ?where_to_connect:Where_to_connect.t Bonsai.t
@@ -201,6 +209,7 @@ module Rpc : sig
     -> equal_query:('query -> 'query -> bool)
     -> ?equal_response:('response -> 'response -> bool)
     -> ?clear_when_deactivated:bool
+    -> ?intercept_query:('query -> Inflight_query_id.t -> 'query Effect.t) Bonsai.t
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query -> 'response Or_error.t Deferred.t) Babel.Caller.t
     -> ?where_to_connect:Where_to_connect.t Bonsai.t
@@ -217,6 +226,7 @@ module Rpc : sig
     -> equal_query:('query -> 'query -> bool)
     -> ?equal_response:('response -> 'response -> bool)
     -> ?clear_when_deactivated:bool
+    -> ?intercept_query:('query -> Inflight_query_id.t -> 'query Effect.t) Bonsai.t
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query -> 'response Or_error.t Deferred.t) Babel.Caller.t
     -> ?where_to_connect:Where_to_connect.t Bonsai.t
@@ -240,8 +250,25 @@ module Rpc : sig
     -> equal_query:('query -> 'query -> bool)
     -> ?equal_response:('response -> 'response -> bool)
     -> ?clear_when_deactivated:bool
+    -> ?intercept_query:('query -> Inflight_query_id.t -> 'query Effect.t) Bonsai.t
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Rpc.Rpc.t
+    -> ?where_to_connect:Where_to_connect.t Bonsai.t
+    -> output_type:('query, 'response, 'output) Poll_result.Output_type.t
+    -> Bonsai.graph
+    -> ('output * ('query -> 'response Or_error.t Effect.t)) Bonsai.t
+
+  (** Analagous to [manual_poll] for babel RPCs. See [manual_poll] for details. *)
+  val babel_manual_poll
+    :  ?here:Stdlib.Lexing.position
+    -> ?sexp_of_query:('query -> Sexp.t)
+    -> ?sexp_of_response:('response -> Sexp.t)
+    -> equal_query:('query -> 'query -> bool)
+    -> ?equal_response:('response -> 'response -> bool)
+    -> ?clear_when_deactivated:bool
+    -> ?intercept_query:('query -> Inflight_query_id.t -> 'query Effect.t) Bonsai.t
+    -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
+    -> ('query -> 'response Or_error.t Deferred.t) Babel.Caller.t
     -> ?where_to_connect:Where_to_connect.t Bonsai.t
     -> output_type:('query, 'response, 'output) Poll_result.Output_type.t
     -> Bonsai.graph
@@ -268,6 +295,16 @@ module Polling_state_rpc : sig
     -> ?sexp_of_query:('query -> Sexp.t)
     -> ?sexp_of_response:('response -> Sexp.t)
     -> ?on_forget_client_error:(Error.t -> unit Effect.t)
+    -> ('query, 'response, _) Polling_state_rpc.Expert.Client_resolver.t Babel.Caller.t
+    -> ?where_to_connect:Where_to_connect.t Bonsai.t
+    -> Bonsai.graph
+    -> ('query -> 'response Or_error.t Effect.t) Bonsai.t
+
+  val versioned_polling_state_dispatcher
+    :  ?here:Stdlib.Lexing.position
+    -> ?sexp_of_query:('query -> Sexp.t)
+    -> ?sexp_of_response:('response -> Sexp.t)
+    -> ?on_forget_client_error:(Error.t -> unit Effect.t)
     -> ('query, 'response) Versioned_polling_state_rpc.Client.caller
     -> ?where_to_connect:Where_to_connect.t Bonsai.t
     -> Bonsai.graph
@@ -283,6 +320,7 @@ module Polling_state_rpc : sig
     -> equal_query:('query -> 'query -> bool)
     -> ?equal_response:('response -> 'response -> bool)
     -> ?clear_when_deactivated:bool
+    -> ?intercept_query:('query -> Inflight_query_id.t -> 'query Effect.t) Bonsai.t
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Polling_state_rpc.t
     -> ?where_to_connect:Where_to_connect.t Bonsai.t
@@ -305,6 +343,30 @@ module Polling_state_rpc : sig
     -> equal_query:('query -> 'query -> bool)
     -> ?equal_response:('response -> 'response -> bool)
     -> ?clear_when_deactivated:bool
+    -> ?intercept_query:('query -> Inflight_query_id.t -> 'query Effect.t) Bonsai.t
+    -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
+    -> ('query, 'response, _) Polling_state_rpc.Expert.Client_resolver.t Babel.Caller.t
+    -> ?where_to_connect:Where_to_connect.t Bonsai.t
+    -> ?when_to_start_next_effect:
+         [ `Wait_period_after_previous_effect_starts_blocking
+         | `Wait_period_after_previous_effect_finishes_blocking
+         | `Every_multiple_of_period_non_blocking
+         | `Every_multiple_of_period_blocking
+         ]
+    -> every:Time_ns.Span.t Bonsai.t
+    -> output_type:('query, 'response, 'output) Poll_result.Output_type.t
+    -> 'query Bonsai.t
+    -> Bonsai.graph
+    -> 'output Bonsai.t
+
+  val versioned_polling_state_poll
+    :  ?here:Stdlib.Lexing.position
+    -> ?sexp_of_query:('query -> Sexp.t)
+    -> ?sexp_of_response:('response -> Sexp.t)
+    -> equal_query:('query -> 'query -> bool)
+    -> ?equal_response:('response -> 'response -> bool)
+    -> ?clear_when_deactivated:bool
+    -> ?intercept_query:('query -> Inflight_query_id.t -> 'query Effect.t) Bonsai.t
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Versioned_polling_state_rpc.Client.caller
     -> ?where_to_connect:Where_to_connect.t Bonsai.t
@@ -333,6 +395,7 @@ module Polling_state_rpc : sig
     -> equal_query:('query -> 'query -> bool)
     -> ?equal_response:('response -> 'response -> bool)
     -> ?clear_when_deactivated:bool
+    -> ?intercept_query:('query -> Inflight_query_id.t -> 'query Effect.t) Bonsai.t
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Polling_state_rpc.t
     -> ?where_to_connect:Where_to_connect.t Bonsai.t
@@ -346,6 +409,7 @@ module Polling_state_rpc : sig
     -> ?sexp_of_response:('response -> Sexp.t)
     -> ?equal_response:('response -> 'response -> bool)
     -> ?clear_when_deactivated:bool
+    -> ?intercept_query:('query -> Inflight_query_id.t -> 'query Effect.t) Bonsai.t
     -> ?on_response_received:('query -> 'response Or_error.t -> unit Effect.t) Bonsai.t
     -> ('query, 'response) Polling_state_rpc.t
     -> ?where_to_connect:Where_to_connect.t Bonsai.t

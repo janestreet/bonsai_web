@@ -193,7 +193,7 @@ let default_theme =
               @ [ Default_theme_helpers.intent_colors intent self#constants
                 ; Default_theme_helpers.intent_border intent self#constants
                   (* The large, constant border-radius is a hack to make the badge border
-                   round without turning it into an ellipse (which using 50% would do). *)
+                     round without turning it into an ellipse (which using 50% would do). *)
                 ; [%css
                     {|
                       border-radius: 100px;

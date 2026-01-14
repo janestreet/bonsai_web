@@ -105,6 +105,7 @@ let set_document_title =
 
 let on_change_set_document_title title =
   Bonsai.Edge.on_change
+    ~trigger:`After_display
     ~equal:String.equal
     title
     ~callback:(Bonsai.return set_document_title)

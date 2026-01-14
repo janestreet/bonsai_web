@@ -236,9 +236,8 @@ Let's try to build this with the tools we have:
   in
   let%arr counters = Bonsai.all counters in
   Vdom.Node.div counters
-Line 4, characters 53-58:
-Error: The value graph is local but is expected to be global
-       because it is used inside a function which is expected to be global.
+Line 6, characters 7-10:
+Error: Nested let%arr is not allowed. You cannot use %arr or %sub extensions inside the body of another let%arr.
 ```
 
 As you can see above, this won't even compile: the content of `let%arr`

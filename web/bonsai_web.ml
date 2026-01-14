@@ -2,7 +2,7 @@ open! Core
 open! Js_of_ocaml
 
 (* [Bonsai.For_open] provides an [Effect] module, but we want to export the [Effect]
-   module from this library.  This [open struct] allows us to rename [Effect] to
+   module from this library. This [open struct] allows us to rename [Effect] to
    [Bonsai_web_effect] and restore it after opening [Bonsai.For_open], without exposing
    [Bonsai_web_effect] to users of [Bonsai_web]. *)
 open struct

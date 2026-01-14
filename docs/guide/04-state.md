@@ -443,8 +443,8 @@ let counter_state_machine_with_input ~(step : int Bonsai.t) (local_ graph) =
       ~apply_action:(fun (_ : _ Bonsai.Apply_action_context.t) input model action ->
         match input with
         | Bonsai.Computation_status.Inactive ->
-          (* This state machine is inactive, so it can't access the current value of [input].
-             Just keep the original model *)
+          (* This state machine is inactive, so it can't access the current value of
+             [input]. Just keep the original model *)
           model
         | Active step ->
           (match action with

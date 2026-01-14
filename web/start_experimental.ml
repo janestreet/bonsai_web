@@ -53,9 +53,9 @@ module Handle = struct
   let create () =
     let extra =
       Bus.create_exn
-        Arity1
-        ~on_subscription_after_first_write:Allow_and_send_last_value
+        ~on_subscription_after_first_write:Allow_and_send_last_value_if_global
         ~on_callback_raise:(fun error -> eprint_s [%sexp (error : Error.t)])
+        ()
     in
     let last_extra = Moption.create () in
     Bus.subscribe_permanently_exn extra ~f:(fun extra ->
@@ -216,8 +216,8 @@ let start_and_get_handle
        Incr_dom.Start_app.Private.Frame_loop.start_looping
          ~is_stopped:(fun () -> Deferred.is_determined stop)
          ~perform_update:(fun () ->
-           (* The clock is set only once per call to perform_update, so that all actions that
-       occur before each display update occur "at the same time." *)
+           (* The clock is set only once per call to perform_update, so that all actions
+              that occur before each display update occur "at the same time." *)
            let now =
              let date = new%js Js.date_now in
              Time_ns.Span.of_ms (Js.to_float date##getTime) |> Time_ns.of_span_since_epoch
@@ -247,8 +247,8 @@ let start_and_get_handle
     Js.Unsafe.global##.bonsaiHasStarted := Js.bool true);
   let () =
     Deferred.upon (Handle.started bonsai_handle) (fun () ->
-      (* NOTE: We set [bonsaiHasStarted] as a witness that bonsai has started
-         successfully for use in browser testing. *)
+      (* NOTE: We set [bonsaiHasStarted] as a witness that bonsai has started successfully
+         for use in browser testing. *)
       Js.Unsafe.global##.bonsaiHasStarted := Js.bool true);
     ignore (pre_startup : unit)
   in

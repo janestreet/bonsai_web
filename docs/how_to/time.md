@@ -24,14 +24,15 @@ let approx_current_time (local_ graph) =
 ```{=html}
 </iframe>
 ```
-There's also a `Bonsai.Clock.now`, which will update once every frame:
+There's also a `Bonsai.Clock.Expert.now`, which will update once every
+frame:
 
 ```{=html}
 <!-- $MDX file=../../examples/bonsai_guide_code/lib/time_examples.ml,part=clock_now -->
 ```
 ``` ocaml
 let current_time (local_ graph) =
-  let%arr now = Bonsai.Clock.now graph in
+  let%arr now = Bonsai.Clock.Expert.now graph in
   Vdom.Node.text (Time_ns.to_string_utc now)
 ;;
 ```
@@ -42,9 +43,9 @@ let current_time (local_ graph) =
 ```{=html}
 </iframe>
 ```
-You should be very careful with `Clock.now`, because any computations
-depending on it will have to recompute, and possibly re-patch the DOM,
-every frame.
+You should be very careful with `Clock.Expert.now`, because any
+computations depending on it will have to recompute, and possibly
+re-patch the DOM, every frame.
 
 If you just want to display how long has passed since some time, you can
 also use \[vdom_time_ago\], which is implemented entirely in vdom, and

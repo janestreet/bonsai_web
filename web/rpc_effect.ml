@@ -86,6 +86,7 @@ end
 
 module Poll_result = Rpc_effect_kernel.Poll_result
 module Shared_poller = Rpc_effect_kernel.Shared_poller
+module Inflight_query_id = Rpc_effect_kernel.Inflight_query_id
 
 module Rpc = struct
   open Rpc_effect_kernel
@@ -142,6 +143,7 @@ module Rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ?(where_to_connect = default_for_polling)
@@ -157,6 +159,7 @@ module Rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       rpc
       ~where_to_connect
@@ -173,6 +176,7 @@ module Rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     caller
     ?(where_to_connect = default_for_polling)
@@ -188,6 +192,7 @@ module Rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       caller
       ~where_to_connect
@@ -204,6 +209,7 @@ module Rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ?(where_to_connect = default_for_polling)
@@ -219,6 +225,7 @@ module Rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       rpc
       ~where_to_connect
@@ -235,6 +242,7 @@ module Rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ?(where_to_connect = default_for_polling)
@@ -250,6 +258,7 @@ module Rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       rpc
       ~where_to_connect
@@ -266,6 +275,7 @@ module Rpc = struct
     ?sexp_of_response
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ?(where_to_connect = default_for_polling)
@@ -278,6 +288,7 @@ module Rpc = struct
       ?sexp_of_response
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       rpc
       ~where_to_connect
@@ -292,6 +303,7 @@ module Rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ?(where_to_connect = default_for_polling)
@@ -307,6 +319,7 @@ module Rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       rpc
       ~where_to_connect
@@ -323,6 +336,7 @@ module Rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ?(where_to_connect = default_for_polling)
@@ -339,6 +353,7 @@ module Rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       rpc
       ~where_to_connect
@@ -356,6 +371,7 @@ module Rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     caller
     ?(where_to_connect = default_for_polling)
@@ -371,6 +387,7 @@ module Rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       caller
       ~where_to_connect
@@ -387,6 +404,7 @@ module Rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     caller
     ?(where_to_connect = default_for_polling)
@@ -403,6 +421,7 @@ module Rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       caller
       ~where_to_connect
@@ -420,6 +439,7 @@ module Rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ?(where_to_connect = default_for_polling)
@@ -433,8 +453,38 @@ module Rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       rpc
+      ~where_to_connect
+      ~output_type
+      graph
+  ;;
+
+  let babel_manual_poll
+    ?(here = Stdlib.Lexing.dummy_pos)
+    ?sexp_of_query
+    ?sexp_of_response
+    ~equal_query
+    ?equal_response
+    ?clear_when_deactivated
+    ?intercept_query
+    ?on_response_received
+    caller
+    ?(where_to_connect = default_for_polling)
+    ~output_type
+    graph
+    =
+    Rpc.babel_manual_poll
+      ~here
+      ?sexp_of_query
+      ?sexp_of_response
+      ~equal_query
+      ?equal_response
+      ?clear_when_deactivated
+      ?intercept_query
+      ?on_response_received
+      caller
       ~where_to_connect
       ~output_type
       graph
@@ -482,6 +532,25 @@ module Polling_state_rpc = struct
       graph
   ;;
 
+  let versioned_polling_state_dispatcher
+    ?(here = Stdlib.Lexing.dummy_pos)
+    ?sexp_of_query
+    ?sexp_of_response
+    ?on_forget_client_error
+    caller
+    ?(where_to_connect = default_for_one_shot)
+    graph
+    =
+    Polling_state_rpc.versioned_polling_state_dispatcher
+      ~here
+      ?sexp_of_query
+      ?sexp_of_response
+      ?on_forget_client_error
+      caller
+      ~where_to_connect
+      graph
+  ;;
+
   let poll
     ?(here = Stdlib.Lexing.dummy_pos)
     ?sexp_of_query
@@ -489,6 +558,7 @@ module Polling_state_rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ?(where_to_connect = default_for_polling)
@@ -505,6 +575,7 @@ module Polling_state_rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       rpc
       ~where_to_connect
@@ -522,6 +593,7 @@ module Polling_state_rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     caller
     ?(where_to_connect = default_for_polling)
@@ -538,6 +610,42 @@ module Polling_state_rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
+      ?on_response_received
+      caller
+      ~where_to_connect
+      ?when_to_start_next_effect
+      ~every
+      ~output_type
+      query
+      graph
+  ;;
+
+  let versioned_polling_state_poll
+    ?(here = Stdlib.Lexing.dummy_pos)
+    ?sexp_of_query
+    ?sexp_of_response
+    ~equal_query
+    ?equal_response
+    ?clear_when_deactivated
+    ?intercept_query
+    ?on_response_received
+    caller
+    ?(where_to_connect = default_for_polling)
+    ?when_to_start_next_effect
+    ~every
+    ~output_type
+    query
+    graph
+    =
+    Polling_state_rpc.versioned_polling_state_poll
+      ~here
+      ?sexp_of_query
+      ?sexp_of_response
+      ~equal_query
+      ?equal_response
+      ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       caller
       ~where_to_connect
@@ -555,6 +663,7 @@ module Polling_state_rpc = struct
     ~equal_query
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ?(where_to_connect = default_for_polling)
@@ -568,6 +677,7 @@ module Polling_state_rpc = struct
       ~equal_query
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       rpc
       ~where_to_connect
@@ -581,6 +691,7 @@ module Polling_state_rpc = struct
     ?sexp_of_response
     ?equal_response
     ?clear_when_deactivated
+    ?intercept_query
     ?on_response_received
     rpc
     ?(where_to_connect = default_for_polling)
@@ -593,6 +704,7 @@ module Polling_state_rpc = struct
       ?sexp_of_response
       ?equal_response
       ?clear_when_deactivated
+      ?intercept_query
       ?on_response_received
       rpc
       ~where_to_connect

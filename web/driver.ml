@@ -194,10 +194,10 @@ let recompute
   timer Patch_vdom ~f:(fun () ->
     Vdom.Node.For_changing_dom.with_on_mount_at_end (fun () ->
       let elt = Vdom.Node.Patch.apply patch !prev_elt in
-      (* [!prev_elt] should almost always refer to the current app root element, and
-         be connected. The exceptions are if something external has mutated DOM,
-         which we can't control, and if a patch changes the tag of the root element,
-         forcing it to be replaced rather than updated.
+      (* [!prev_elt] should almost always refer to the current app root element, and be
+         connected. The exceptions are if something external has mutated DOM, which we
+         can't control, and if a patch changes the tag of the root element, forcing it to
+         be replaced rather than updated.
 
          To protect against the latter case, we update the [prev_elt] ref immediately
          after patching, before any [on_mount] handlers or lifecycles run. *)
@@ -208,14 +208,13 @@ let recompute
     Bonsai_driver.trigger_lifecycles bonsai_driver);
   For_introspection.Profiling.log_all_computation_watcher_nodes_in_javascript_console ();
   if should_debug () then Console.console##debug (Js.string "-------");
-  (* Restoring focus from the [<body />] to the app root should mostly be handled by
-     the [blur] listener above, but we additionally run this check every frame because:
+  (* Restoring focus from the [<body />] to the app root should mostly be handled by the
+     [blur] listener above, but we additionally run this check every frame because:
 
-     - We want the root element to start out focused, so perform an initial
-     update/render, then immediately focus the root (unless a non-body element
-     already has focus).
-     - [blur] doesn't run if the currently focused element is removed from the DOM,
-     so we might need to possibly focus-steal after every frame.
+     - We want the root element to start out focused, so perform an initial update/render,
+       then immediately focus the root (unless a non-body element already has focus).
+     - [blur] doesn't run if the currently focused element is removed from the DOM, so we
+       might need to possibly focus-steal after every frame.
 
      We still want [refocus_on_blur], so that we can respond immediately to most blurs
      without waiting ~16ms for the next frame. *)

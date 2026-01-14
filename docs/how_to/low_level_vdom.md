@@ -47,17 +47,17 @@ module Noop_hook = struct
          the input name, and a sexp of the input value. *)
       type t = unit [@@deriving sexp_of]
 
-      (* Multiple hooks of the same "class" get merged by Vdom.
-         You'll need to implement receiving multiple sets of inputs.*)
+      (* Multiple hooks of the same "class" get merged by Vdom. You'll need to implement
+         receiving multiple sets of inputs. *)
       let combine () () = ()
     end
 
     module State = Unit
 
     let init (_input : Input.t) (_element : Dom_html.element Js.t) =
-      (* [init] will run once the hook is attached to a DOM node. The DOM node might
-         not yet be mounted! This means that you can e.g. attach event listeners,
-         but not query the DOM / layout / size / etc.
+      (* [init] will run once the hook is attached to a DOM node. The DOM node might not
+         yet be mounted! This means that you can e.g. attach event listeners, but not
+         query the DOM / layout / size / etc.
 
          [init]'s main job is to create a [State.t], which often has some mutable fields.
       *)
@@ -72,7 +72,8 @@ module Noop_hook = struct
            is done by Bonsai; calling [Vdom.Node.to_dom] outside of a hook or widget won't
            run [on_mount]
          - [`Schedule_animation_frame] will run [on_mount] via [requestAnimationFrame].
-           This is not recommended, because it adds frame delays, and forces asynchronicity.
+           This is not recommended, because it adds frame delays, and forces
+           asynchronicity.
       *)
       ()
     ;;
@@ -95,7 +96,7 @@ module Noop_hook = struct
       (* [destroy] will run once the hook is removed from the DOM. This could mean that:
          - The element was removed
          - The hook was removed
-         - A diff moved the hook from one element to another*)
+         - A diff moved the hook from one element to another *)
       ()
     ;;
   end
@@ -173,15 +174,15 @@ module Trivial_widget = struct
   module Input = Bool
   module State = Int
 
-  (* Just a helper function.*)
+  (* Just a helper function. *)
   let redraw input state element =
     let display = if input then state else state * -1 in
     element##.innerHTML := Js.string (sprintf "%d" display)
   ;;
 
-  (* [create] will run on patch when the vdom is being converted to a DOM node.
-     Note that there are NO SAFEGUARDS against script injection, bad inputs, etc.
-     You are responsible for following security best practices. *)
+  (* [create] will run on patch when the vdom is being converted to a DOM node. Note that
+     there are NO SAFEGUARDS against script injection, bad inputs, etc. You are
+     responsible for following security best practices. *)
   let create input =
     let state = Random.int 100 in
     let element = Dom_html.createDiv Dom_html.document in
@@ -198,13 +199,13 @@ module Trivial_widget = struct
       state, element
   ;;
 
-  (* [destroy] will run when the widget is removed from the DOM. Do any cleanup here;
-     e.g. removing event listeners, undoing side effects, etc. *)
+  (* [destroy] will run when the widget is removed from the DOM. Do any cleanup here; e.g.
+     removing event listeners, undoing side effects, etc. *)
   let destroy ~prev_input:_ ~state:_ ~element:_ = ()
 
-  (* As with hooks, widgets don't run in [Bonsai_web_test]. But widgets give us a bit
-     more control over how their input is displayed in tests.
-     You could also just pass [let to_vdom_for_testing = `Sexp_of_input].*)
+  (* As with hooks, widgets don't run in [Bonsai_web_test]. But widgets give us a bit more
+     control over how their input is displayed in tests. You could also just pass
+     [let to_vdom_for_testing = `Sexp_of_input]. *)
   let to_vdom_for_testing =
     `Custom
       (fun input ->
@@ -275,8 +276,8 @@ module Widget_using_diff_patch = struct
   let update ~(prev_input : Input.t) ~(input : Input.t) ~(state : State.t) ~element =
     let num_patches = state.num_patches + 1 in
     (* You might need to use [Effect.Expert.handle_non_dom_event_exn] from within hooks
-       and widgets to interop with Bonsai. Do not do so anywhere else!
-       Also, this example dispatches an effect on every patch, which is a bad idea. *)
+       and widgets to interop with Bonsai. Do not do so anywhere else! Also, this example
+       dispatches an effect on every patch, which is a bad idea. *)
     Effect.Expert.handle_non_dom_event_exn (input.set_num_patches num_patches);
     match phys_equal input.vdom prev_input.vdom with
     | true -> { State.num_patches }, element

@@ -44,6 +44,13 @@ open Bonsai.For_open
     [get_output]. *)
 type ('query, 'response) t [@@deriving sexp_of]
 
+(** [map_response t ~f] transforms the response type by applying [f] to the response in
+    [last_ok_response], if present. *)
+val map_response
+  :  ('query, 'response1) t
+  -> f:('response1 -> 'response2)
+  -> ('query, 'response2) t
+
 module Fetching_status : sig
   type 'query t =
     | Not_fetching
