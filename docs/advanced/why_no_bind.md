@@ -5,9 +5,6 @@ a Monad?" Certainly, for the users of a library, having a Monad gives
 the user much more power. For example, take a look at this code using
 monadic bind:
 
-```{=html}
-<!-- $MDX skip -->
-```
 ``` ocaml
 val x: bool t
 val y: 'a t

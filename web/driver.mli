@@ -62,6 +62,9 @@ val schedule_event : _ t -> unit Effect.t -> unit
 (** [destroy] shuts down the incremental computation. It will not remove the app's DOM. *)
 val destroy : 'a t -> unit
 
+(** [destroy_dom] patches the vdom to an empty node, also triggering hook destruction. *)
+val destroy_dom : 'a t -> unit
+
 module Expert : sig
   val time_source : _ t -> Bonsai.Time_source.t
 end

@@ -7,9 +7,6 @@ For example, if `a` changes from `2` to `4`, `mod_two_a` is recomputed,
 but won't change, so we don't need to re-run
 `expensive_combine mod_two_a mod_three_b`.
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/cutoff_examples.ml,part=mod_cutoff -->
-```
 ``` ocaml
 let computation (a : int Bonsai.t) (b : int Bonsai.t) : int Bonsai.t =
   let mod_two_a =
@@ -30,9 +27,6 @@ By default, whether a `Bonsai.t` "has changed" is determined by
 might mint values that are equal, but not `phys_equal`. In this case,
 you can use `Bonsai.cutoff` to provide a custom equality function:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/cutoff_examples.ml,part=custom_cutoff -->
-```
 ``` ocaml
 let computation (a : int Bonsai.t) (b : int Bonsai.t) : int Bonsai.t =
   let secret_a =
@@ -53,9 +47,6 @@ let computation (a : int Bonsai.t) (b : int Bonsai.t) : int Bonsai.t =
 We can use custom cutoffs to implement some cool behavior, e.g. track
 the last time that a value changed:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/cutoff_examples.ml,part=last_modified_time -->
-```
 ``` ocaml
 let with_last_modified_time
   ~equal

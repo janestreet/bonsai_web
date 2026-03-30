@@ -1,10 +1,10 @@
 # Lifecycles
 
 The `match%sub` and `Bonsai.assoc` [control flow
-operators](../guide/05-control_flow.md) are very similar to regular
-OCaml `match` statements and `Map.map` calls. But because Bonsai is
-incremental, their code is constantly being rerun whenever some
-dependency changes.
+operators](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/05-control_flow.md)
+are very similar to regular OCaml `match` statements and `Map.map`
+calls. But because Bonsai is incremental, their code is constantly being
+rerun whenever some dependency changes.
 
 ## Active / Inactive Code
 
@@ -32,9 +32,6 @@ deactivation.
 containing code switches between active / inactive as `on_activate` and
 `on_deactivate` arguments:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lifecycle_examples.ml,part=lifecycle -->
-```
 ``` ocaml
 let lifecycle_demo (local_ graph) =
   let log_val, log =
@@ -72,12 +69,6 @@ let lifecycle_demo (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#lifecycle">
-```
-```{=html}
-</iframe>
-```
 If `Bonsai.Edge.lifecycle` is used outside of any `match%sub`s or
 `Bonsai.assoc`s, `on_activate` will run once when your app starts, and
 `on_deactivate` will never run.

@@ -78,9 +78,6 @@ a helper for generating `Vdom.Node.t Result_spec.t`s.
 
 Let's write a basic handle testing some constant vdom:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/testing_examples.ml,part=hello-world-test -->
-```
 ``` ocaml
 module Handle = Bonsai_web_test.Handle
 module Result_spec = Bonsai_web_test.Result_spec
@@ -119,9 +116,6 @@ synchronization](./organizing_state.md), which is preferable to avoid.
 You might notice that event handlers are weirdly formatted in vdom
 expect test output:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/testing_examples.ml,part=clickable-div-test -->
-```
 ``` ocaml
 let%expect_test "handlers in tests" =
   let clickable_div =
@@ -162,9 +156,6 @@ Whenever you call `Handle.show` on a `Handle.t` created with
 For instance, having sibling nodes with the same vdom key will crash
 your app, so we'll error if we ever seen this in tests:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/testing_examples.ml,part=vdom_linting -->
-```
 ``` ocaml
 let%expect_test "linter error on duplicate keys" =
   let vdom_with_duplicate_keys =
@@ -208,9 +199,6 @@ is useful when using a custom `Result_spec.t`.
 What if we want to test a
 `'a Bonsai.t -> local_ Bonsai.graph ->  'b Bonsai.t`?
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/testing_examples.ml,part=hello-user -->
-```
 ``` ocaml
 let hello_user (name : string Bonsai.t) (local_ _graph) : Vdom.Node.t Bonsai.t =
   let%arr name in
@@ -221,9 +209,6 @@ let hello_user (name : string Bonsai.t) (local_ _graph) : Vdom.Node.t Bonsai.t =
 We can use [Bonsai.Var.t](./var.md) to get a mutable handle on a
 `Bonsai.t`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/testing_examples.ml,part=hello-user-test -->
-```
 ``` ocaml
 let%expect_test "shows hello to a user" =
   let user_var = Bonsai.Expert.Var.create "Bob" in
@@ -247,9 +232,6 @@ run a cycle of the Bonsai runtime via `Handle.show` or
 If we only want to see what changed between two versions of the view, we
 can use `Handle.show_diff`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/testing_examples.ml,part=hello-user-diff-test -->
-```
 ``` ocaml
 let%expect_test "shows hello to a user" =
   let user_var = Bonsai.Expert.Var.create "Bob" in
@@ -280,9 +262,6 @@ Here, we actually use the `hello_user` we defined previously, but the
 `string Bonsai.t` comes from internal state instead of being passed in
 by the caller:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/testing_examples.ml,part=hello-text-box -->
-```
 ``` ocaml
 let hello_textbox ?test_selector (local_ graph) : Vdom.Node.t Bonsai.t =
   let state, set = Bonsai.state "" graph in
@@ -307,9 +286,6 @@ Event listeners added via `Vdom.Attr.*` are testable with Bonsai! We can
 use `Handle.input_text` to simulate interacting with the `<input />` DOM
 element:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/testing_examples.ml,part=hello-text-box-diff-test -->
-```
 ``` ocaml
 open Bonsai_web_test
 
@@ -367,9 +343,6 @@ as they are much less brittle. There's also a `Test_selector.Keyed`
 module, which allows generating a stable test selector for each value of
 some `'a`.
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/testing_examples.ml,part=test_selector_keyed -->
-```
 ``` ocaml
 open Bonsai_web_test
 
@@ -419,9 +392,6 @@ Many Bonsai functions expose a `'a -> unit Effect.t` that can be used to
 set some internal state, or apply an action to a state machine. An
 example is the second part of `Bonsai.state`'s output:
 
-```{=html}
-<!-- $MDX skip -->
-```
 ``` ocaml
 ('model Bonsai.t * ('model -> unit Effect.t) Bonsai.t)
 ```
@@ -433,9 +403,6 @@ function.
 We can use `val Handle.do_actions : Handle.t -> incoming list -> unit`
 to inject actions:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/testing_examples.ml,part=state-test -->
-```
 ``` ocaml
 module State_view_spec = struct
   type t = string * (string -> unit Effect.t)
@@ -473,9 +440,6 @@ represents "input events" we can inject.
 
 In the [how-to on time](./time.md), we wrote a UI that depends on time:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/time_examples.ml,part=clock_now -->
-```
 ``` ocaml
 let current_time (local_ graph) =
   let%arr now = Bonsai.Clock.Expert.now graph in
@@ -483,17 +447,8 @@ let current_time (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#clock_now">
-```
-```{=html}
-</iframe>
-```
 We can use `Handle.advance_clock_by` to mock time in tests:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/testing_examples.ml,part=test-clock -->
-```
 ``` ocaml
 let%expect_test "test clock" =
   let handle = Handle.create (Result_spec.vdom Fn.id) Time_examples.current_time in

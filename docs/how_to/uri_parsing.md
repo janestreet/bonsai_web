@@ -38,9 +38,6 @@ For instance, let's say we want to represent our navigation state as a
 string, which we get from the path of the URL. Not practical, but here's
 how we'd do it:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/uri_parsing_examples.ml,part=string_parser -->
-```
 ``` ocaml
 let (parser : string Parser.t) = Parser.from_path Value_parser.string
 
@@ -61,9 +58,6 @@ let%expect_test _ =
 Or maybe we only care about an int, and we want to get it from the query
 params:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/uri_parsing_examples.ml,part=int_parser -->
-```
 ``` ocaml
 let (parser : int Parser.t) = Parser.from_query_required ~key:"q" Value_parser.int
 
@@ -84,9 +78,6 @@ let%expect_test _ =
 Or maybe we want to use some abstract sexpable type (like `Id` from
 before!), and we expect a list of them:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/uri_parsing_examples.ml,part=many_id_parser -->
-```
 ``` ocaml
 let (parser : Id.t list Parser.t) =
   Parser.from_remaining_path (Value_parser.sexpable (module Id))
@@ -121,9 +112,6 @@ pages/subpages and their data dependencies.
 A common app structure is a set of pages, where each page takes some
 parameters. For instance, a forum might use the following type:
 
-```{=html}
-<!-- $MDX skip -->
-```
 ``` ocaml
 module Search_params = struct
   type t =
@@ -182,9 +170,6 @@ declare the order of all fields whos data comes from the path. [Typed
 fields](https://github.com/janestreet/ppx_typed_fields) enforces that
 we've gotten all cases, with the correct field types:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/uri_parsing_examples.ml,part=forum_search_params -->
-```
 ``` ocaml
 module Search_params = struct
   type t =
@@ -245,9 +230,6 @@ support for variants. It's nearly the same, except that we use
 `Parser.Variant.make` will generate a separate route for each variant
 case:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/uri_parsing_examples.ml,part=forum_admin_page -->
-```
 ``` ocaml
 module Admin_page = struct
   type t =
@@ -291,9 +273,6 @@ Our `Url.t` above contains records nested in variants, and vice-versa.
 `uri_parsing` is designed for this! Let's take a look at a parser for
 `User_page`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/uri_parsing_examples.ml,part=forum_user_page -->
-```
 ``` ocaml
 module User_page = struct
   module Subpage = struct
@@ -357,9 +336,6 @@ remaining record fields.
 Let's take a look at "Variant of Record" and "Variant of Variant" by
 writing a parser for `Url.t`, combining everything we've done so far:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/uri_parsing_examples.ml,part=forum_url -->
-```
 ``` ocaml
 module Url = struct
   type t =
@@ -423,9 +399,6 @@ type-first, not route first. You'll get the best results if you:
 You probably won't get your navigational state type right the first
 time. Let's say the first version of your forum looked like this:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/uri_parsing_examples.ml,part=forum_old -->
-```
 ``` ocaml
 module Old_url = struct
   type t =
@@ -462,9 +435,6 @@ let%expect_test _ =
 `Versioned_parser.t` allows you to update to the new `Url.t` without
 breaking old URLs:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/uri_parsing_examples.ml,part=forum_versioned -->
-```
 ``` ocaml
 let v1_parser = Versioned_parser.first_parser old_parser
 

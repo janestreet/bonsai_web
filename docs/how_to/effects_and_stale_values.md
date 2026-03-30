@@ -10,9 +10,6 @@ Let's say we have some state, which is used to calculate some
 How do we build an effect that sets the state, and then does something
 with the result of step 3 (the expensive transformation)? Let's try!
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/effect_stale_examples.ml,part=stale_closed_naive -->
-```
 ``` ocaml
 let set_and_run_effect_naive (other_input : string Bonsai.t) (local_ graph) =
   let count, set_state = Bonsai.state 0 graph in
@@ -33,12 +30,6 @@ let set_and_run_effect_naive (other_input : string Bonsai.t) (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#stale_closed_naive">
-```
-```{=html}
-</iframe>
-```
 Looks great! Except that it's wrong. The alert shows the *old* value of
 `computed`.
 
@@ -50,9 +41,6 @@ was clicked. So even though `computed` is recalculated when
 What we'd really like to do is "peek" at the current value of `computed`
 instead of having to close over it. Cue `Bonsai.peek`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/bonsai_types.mli,part=peek -->
-```
 ``` ocaml
 val peek
   :  here:[%call_pos]
@@ -61,9 +49,6 @@ val peek
   -> 'a Computation_status.t Effect.t Bonsai.t
 ```
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/effect_stale_examples.ml,part=stale_closed_peek -->
-```
 ``` ocaml
 let set_and_run_effect_peek (other_input : string Bonsai.t) (local_ graph) =
   let count, set_state = Bonsai.state 0 graph in
@@ -87,13 +72,8 @@ let set_and_run_effect_peek (other_input : string Bonsai.t) (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#stale_closed_peek">
-```
-```{=html}
-</iframe>
-```
 If the `peek` backing an effect is in an [inactive code
 branch](./lifecycles.md), it will be unable to retrieve a fresh value,
 so it returns values wrapped in a `Computation_status.t`, just like
-[`state_machine_with_input`'s `input`](../guide/04-state.md).
+[`state_machine_with_input`'s
+`input`](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/04-state.md).

@@ -1,37 +1,4 @@
-```{=html}
-<!-- Here be dragons! Virtual_dom doesn't play well with MDX, so we make a fake library
-to run the code examples below.
-
-```ocaml
-open! Core
-module Bonsai = Bonsai.Cont
-open! Bonsai.Let_syntax
-
-module Vdom = struct
-  module Node : sig
-      type t
-
-      val none : t
-
-      val div : t list -> t
-  end = struct
-      type t = unit
-
-      let none = ()
-      let div _ = ()
-  end
-end
-
-module State_examples = struct
-  let counter (local_ graph) =
-    Bonsai.return Vdom.Node.none
-end
-
-```
-
--->
-```
-# 05 - Control Flow
+# Control Flow
 
 In [chapter 3](./03-incrementality.md), we learned how to build and
 compose a static graph of incremental `Bonsai.t`s using the `let%arr`
@@ -46,13 +13,10 @@ operator. But often, web UIs need to express some dynamic patterns, and
 
 ## `match%sub`
 
-Let's say we want to show the counter we built in [the state
-chapter](./04-state.md) only when `show: bool Bonsai.t` is true. With
+Let's say we want to show a counter (built in [the state
+chapter](./04-state.md)) only when `show: bool Bonsai.t` is true. With
 the functions you've seen so far, you might write:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/control_flow_examples.ml,part=maybe_show_naive -->
-```
 ``` ocaml
 let maybe_show_naive show (local_ graph) =
   let counter = counter ~step:(return 1) graph in
@@ -63,12 +27,6 @@ let maybe_show_naive show (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#maybe_show_naive">
-```
-```{=html}
-</iframe>
-```
 But because we are `let%arr`-ing on `counter`, the incremental runtime
 will continuously recompute it, even when we aren't actually using it.
 
@@ -77,9 +35,6 @@ will continuously recompute it, even when we aren't actually using it.
 We can avoid this and get a performance boost using Bonsai's
 `match%sub`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/control_flow_examples.ml,part=maybe_show -->
-```
 ``` ocaml
 let maybe_show show (local_ graph) =
   let counter = counter ~step:(return 1) graph in
@@ -89,12 +44,6 @@ let maybe_show show (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#maybe_show">
-```
-```{=html}
-</iframe>
-```
 `match%sub` is like `match`, but for `Bonsai.t`s:
 
 1.  The matched value should be a `'a Bonsai.t` or a literal tuple of
@@ -112,9 +61,6 @@ let maybe_show show (local_ graph) =
 `match%sub` has a superpower: you can use `graph` inside its arms. This
 means we can instantiate some state that is local to one arm:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/control_flow_examples.ml,part=maybe_show_2 -->
-```
 ``` ocaml
 let maybe_show_2 show (local_ graph) =
   match%sub show with
@@ -124,36 +70,21 @@ let maybe_show_2 show (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#maybe_show_2">
-```
-```{=html}
-</iframe>
-```
 Note that each branch has an independent counter with its own state.
 You'll see this if you increment the first counter and then switch to
-the second.
+the second. Interestingly, state does not go away when a branch ceases
+to be active: as we noted [last chapter](./04-state.md), this is because
+Bonsai maintains a central copy of the entire application state.
 
-Interestingly, state does not go away when a branch ceases to be active:
-as we noted [last chapter](./04-state.md), this is because Bonsai
-maintains a central copy of the entire application state.
+> **Note:** Bonsai provides some [lifecycle
+> functions](../how_to/lifecycles.md) to schedule effects when a code
+> block becomes active or inactive.
 
-```{=html}
-<aside>
-```
-Bonsai provides some [lifecycle functions](../how_to/lifecycles.md) to
-schedule effects when a code block becomes active or inactive.
-```{=html}
-</aside>
-```
 ### Conditional Data Dependencies
 
 We can also use `match%sub` to pattern-match just like regular `match`,
 allowing us to conditionally access data:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/control_flow_examples.ml,part=maybe_show_var -->
-```
 ``` ocaml
 let maybe_show_var show (local_ graph) =
   match%sub show with
@@ -162,21 +93,12 @@ let maybe_show_var show (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#maybe_show_var">
-```
-```{=html}
-</iframe>
-```
 Note that all cases of `Count_by`, share the same counter state. That's
 because they all go to the same branch of the `match%sub`. If we wanted
 to create separate versions of state for individual cases of `step`, we
 could use guard clauses to create multiple branches that match the same
 pattern, each with their own locally instantiated state:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/control_flow_examples.ml,part=maybe_show_var_guard -->
-```
 ``` ocaml
 let maybe_show_var_guard show (local_ graph) =
   match%sub show with
@@ -187,20 +109,12 @@ let maybe_show_var_guard show (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#maybe_show_var_guard">
-```
-```{=html}
-</iframe>
-```
 This particular case is pretty silly: we're not going to write separate
 `match%sub` branches for every potential value of `int`. Instead, we
-could use [`scope_model`](../how_to/state_per_key.md), which maintains
-separate copies of state for some value of a key:
+could use
+[`scope_model`](https://github.com/janestreet/bonsai_web/blob/master/docs/how_to/state_per_key.md),
+which maintains separate copies of state for some value of a key:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/control_flow_examples.ml,part=maybe_show_var_scope_model -->
-```
 ``` ocaml
 let maybe_show_var_scope_model show (local_ graph) =
   match%sub show with
@@ -214,12 +128,6 @@ let maybe_show_var_scope_model show (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#maybe_show_var_scope_model">
-```
-```{=html}
-</iframe>
-```
 ## Creating a Dynamic Number of `Bonsai.t`s
 
 In the [last chapter](./04-state.md), we created two separate counters
@@ -229,15 +137,13 @@ counters, where `n` is an `int Bonsai.t` that can change at runtime?
 Let's try to build this with the tools we have:
 
 ``` ocaml
-# let multiple_counters (n : int Bonsai.t) (local_ graph) =
+let multiple_counters (n : int Bonsai.t) (local_ graph) =
   let%arr n = n in
   let (counters : Vdom.Node.t Bonsai.t list) =
-    List.init n ~f:(fun _ -> State_examples.counter graph)
+    List.init n ~f:(fun _ -> counter graph)
   in
   let%arr counters = Bonsai.all counters in
   Vdom.Node.div counters
-Line 6, characters 7-10:
-Error: Nested let%arr is not allowed. You cannot use %arr or %sub extensions inside the body of another let%arr.
 ```
 
 As you can see above, this won't even compile: the content of `let%arr`
@@ -248,9 +154,6 @@ Bonsai computation graph has to be static.
 
 Instead, we can use Bonsai's `assoc` primitive:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/bonsai_types.mli,part=assoc -->
-```
 ``` ocaml
 val assoc
   :  here:[%call_pos]
@@ -266,25 +169,16 @@ described by `f` on every value in the input map to produce the output
 map; think of it like `Map.mapi`, but on a `Map.t Bonsai.t` input, and
 with the ability to use `graph` to instantiate things per-key.
 
-```{=html}
-<aside>
-```
-`Comparator.Module.t` is a first class module with a `type t` and a
-`sexp_of` function.
-```{=html}
-</aside>
-```
+> **Note:** `Comparator.Module.t` is a first class module with a
+> `type t` and a `sexp_of` function.
+
 Each key/value pair in the output map has its own independent state and
 dependencies. This means that if the input map is 100,000 elements
 large, but only one of the keys has data that is changing frequently,
 only that key's instance will be re-run to recompute the overall output.
-
 Here's an example, which will make multiple copies of the counter we
 implemented [last chapter](./04-state.md):
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/control_flow_examples.ml,part=multiple_counters -->
-```
 ``` ocaml
 let multiple_counters (input : unit Int.Map.t Bonsai.t) (local_ graph) =
   let counters =
@@ -293,60 +187,36 @@ let multiple_counters (input : unit Int.Map.t Bonsai.t) (local_ graph) =
       input
       ~f:(fun key (_ : unit Bonsai.t) (local_ graph) ->
         let%arr key
-        (* [counter_ui] is like [counter] but only returns the view. *)
-        and counter = State_examples.counter_ui graph in
-        Vdom.Node.tr
-          [ Vdom.Node.td [ Vdom.Node.textf "counter #%d:" key ]
-          ; Vdom.Node.td [ counter ]
-          ])
+        and counter, _ = counter graph in
+        {%html|
+          <tr>
+            <td>counter #%{key#Int}:</td>
+            <td>%{counter}</td>
+          </tr>
+        |})
       graph
   in
   let%arr counters in
-  Vdom.Node.table (Map.data counters)
+  let counters_list = Map.data counters in
+  {%html|
+    <table>
+      *{counters_list}
+    </table>
+  |}
 ;;
 ```
 
-Let's try it out!
-
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/control_flow_examples.ml,part=multiple_counters_dynamic -->
-```
-``` ocaml
-let multiple_counters_dynamic graph =
-  let counter_view, n = State_examples.counter ~step:(Bonsai.return 1) graph in
-  let map_containing_n_entries =
-    let%arr n in
-    if n <= 0
-    then Int.Map.empty
-    else List.init n ~f:(fun i -> i, ()) |> Int.Map.of_alist_exn
-  in
-  let%arr counter_view
-  and table = multiple_counters map_containing_n_entries graph in
-  Vdom.Node.div [ counter_view; table ]
-;;
-```
-
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#multiple_counters_dynamic">
-```
-```{=html}
-</iframe>
-```
 Note that if you add, remove, and re-add a counter, it will retain its
-state.
-
-```{=html}
-<aside>
-```
-If your `Bonsai.assoc` produces `Vdom.Node.t`s, you might want to use
+state. **Tip:** If your `Bonsai.assoc` produces `Vdom.Node.t`s, you
+might want to use
 [`Vdom.Node.Map_children`](./01-virtual_dom.md#diffing-lists) for more
 efficient and stable diffing.
-```{=html}
-</aside>
-```
+
 ## Further Reading
 
 -   `match%sub` and `Bonsai.assoc` are [higher-order
-    functions](../how_to/higher_order_functions.md)
+    functions](https://github.com/janestreet/bonsai_web/blob/master/docs/how_to/higher_order_functions.md)
 -   The code inside `match%sub` branches or `assoc` can [become
-    inactive](../how_to/lifecycles.md).
+    inactive](https://github.com/janestreet/bonsai_web/blob/master/docs/how_to/lifecycles.md)
+    (lifecycle events).
+

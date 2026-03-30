@@ -9,9 +9,6 @@ some useful design patterns.
 
 Many functions in your Bonsai codebase will look something like:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/best_practices_examples.ml,part=typical_f -->
-```
 ``` ocaml
 let a_typical_function (input : int Bonsai.t) (local_ graph) =
   (* Declare your state *)
@@ -67,12 +64,6 @@ let a_typical_function (input : int Bonsai.t) (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#typical_f">
-```
-```{=html}
-</iframe>
-```
 Keep `let%arr` blocks simple. This often involves factoring out "pure"
 logic, like we did here with the presumably complicated
 `val compute_magic_number : int -> int -> int`.
@@ -112,9 +103,6 @@ functions](./higher_order_functions.md) expect their `~f` parameter to
 return a single `Bonsai.t`. You can combine `Bonsai.t`s with a `let%arr`
 block or a `Bonsai.both`, and split them later with `let%sub`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/best_practices_examples.ml,part=state_with_resetter -->
-```
 ``` ocaml
 let state_with_resetter ~default_value (local_ graph)
   : int Bonsai.t * (int -> unit Effect.t) Bonsai.t * unit Effect.t Bonsai.t
@@ -150,12 +138,13 @@ their dependencies are no longer `phys_equal`. Using mutable data
 undermines this in fairly fundamental ways.
 
 When you do need to use state, reach for [Bonsai's
-primitives](../guide/04-state.md). Likewise, any side effects you need
-to run should be wrapped in an [Effect.t](../guide/02-effects.md), and
-almost always dispatched on one of:
+primitives](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/04-state.md).
+Likewise, any side effects you need to run should be wrapped in an
+[Effect.t](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/02-effects.md),
+and almost always dispatched on one of:
 
 -   User interactions with
-    [vdom](../guide/01-virtual_dom.md#event-handlers)
+    [vdom](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/01-virtual_dom.md)
 -   A [Bonsai lifecycle activation or deactivation](./lifecycles.md)
 -   In response to [something changing](./edge_triggered_effects.md)
 
@@ -185,7 +174,7 @@ Don't use it for anything else; see [this article](./var.md).
 ### Don't over-incrementalize
 
 As we noted in the
-[guide](../guide/03-incrementality.md#incremental-structure-matters),
+[guide](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/03-incrementality.md),
 infrequent and expensive computations can be factored out into
 intermediate `Bonsai.t`s.
 
@@ -242,10 +231,10 @@ expensive, so there are workarounds for common scenarios:
 ## List performance in Vdom
 
 Vdom's algorithm for [diffing lists is
-naive](../guide/01-virtual_dom.md#diffing-lists): it just compares
-elements at corresponding indices. If an element gets inserted into, or
-removed from, a list, this can cause subsequent DOM nodes to be
-destroyed / recreated unnecessarily.
+naive](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/01-virtual_dom.md):
+it just compares elements at corresponding indices. If an element gets
+inserted into, or removed from, a list, this can cause subsequent DOM
+nodes to be destroyed / recreated unnecessarily.
 
 ### Avoid Variable Length / Order Lists
 

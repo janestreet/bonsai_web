@@ -6,6 +6,7 @@ bug-reports: "https://github.com/janestreet/bonsai_web/issues"
 dev-repo: "git+https://github.com/janestreet/bonsai_web.git"
 doc: "https://ocaml.janestreet.com/ocaml-core/latest/doc/bonsai_web/index.html"
 license: "MIT"
+x-maintenance-intent: ["(latest)"]
 build: [
   ["dune" "build" "-p" name "-j" jobs]
 ]

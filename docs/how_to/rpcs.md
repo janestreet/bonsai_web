@@ -24,18 +24,9 @@ In this example, we'll build a simple full-stack app:
 -   The server sends back the input multiplied by 2
 -   The client updates its state to the new, doubled number
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#double-the-number-rpc">
-```
-```{=html}
-</iframe>
-```
 The first step is to define an RPC that is shared between the server and
 client code.
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/rpc_examples.ml,part=protocol-1 -->
-```
 ``` ocaml
 let double_rpc =
   Rpc.Rpc.create
@@ -49,9 +40,6 @@ let double_rpc =
 
 Next, we provide the server's implementation of the RPC.
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/rpc_examples.ml,part=implementation-1 -->
-```
 ``` ocaml
 let double_implementation =
   Rpc.Rpc.implement' double_rpc (fun _connection_state query -> Int.max 1 (query * 2))
@@ -62,9 +50,6 @@ On the client side, we start by picking a server to send our RPCs to.
 Most users will pick `Self`, which causes RPCs to be sent to the same
 server hosting the web page itself.
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/rpc_examples.ml,part=where_to_connect -->
-```
 ``` ocaml
 let where_to_connect : Rpc_effect.Where_to_connect.t =
   Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()
@@ -73,9 +58,6 @@ let where_to_connect : Rpc_effect.Where_to_connect.t =
 
 Finally, we can build the client side of the app.
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/rpc_examples.ml,part=client-1 -->
-```
 ``` ocaml
 let double_number_app (local_ graph) =
   let dispatch_double_rpc =
@@ -138,12 +120,6 @@ This next example will build a UI that monitors the current time
 reported by the server, in order to provide a concrete example of using
 the `polling_state_rpc` library.
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#poll-the-current-time">
-```
-```{=html}
-</iframe>
-```
 Ten times a second, the client requests the current time for some
 timezone.
 
@@ -163,9 +139,6 @@ module for the response type that satisfies the `Diffable.S` module type
 To do so, we'll use a functor from the
 `diffable_polling_state_rpc_response` library:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/rpc_examples.ml,part=protocol-2 -->
-```
 ``` ocaml
 module Current_time = struct
   include String
@@ -186,9 +159,6 @@ let current_time_rpc =
 
 Next we provide a server implementation:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/rpc_examples.ml,part=implementation-2 -->
-```
 ``` ocaml
 let current_time_implementation =
   Polling_state_rpc.implement
@@ -226,9 +196,6 @@ which this example is different from the previous one:
 The code omits the implementation of `zone_form`, since that is not our
 focus in this chapter.
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/rpc_examples.ml,part=client-2 -->
-```
 ``` ocaml
 let current_time_app (local_ graph) =
   let zone, zone_view = zone_form graph in
@@ -291,9 +258,6 @@ Let's try to test the "number doubler" from the first example. Using the
 [testing tools](./testing.md) we are familiar with, we might write
 something like this:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/rpc_examples_test.ml,part=attempt-1 -->
-```
 ``` ocaml
 let%expect_test "Clicking the button should double the number" =
   let handle = Handle.create (Result_spec.vdom Fn.id) double_number_app in
@@ -322,9 +286,6 @@ be async. Native tests would accomplish this by adding `open Async` at
 the top of the test file, but since we're running in javascript, we have
 to use a different library.
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/rpc_examples_test.ml,part=open-bonsai-web-test-async -->
-```
 ``` ocaml
 open Async_kernel
 open Bonsai_web_test_async
@@ -336,9 +297,6 @@ pending side-effects to happen before the test quits. If we don't
 include that call, the output still gets printed, but after the
 `return ()`, which means the test doesn't typecheck.
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/rpc_examples_test.ml,part=attempt-2 -->
-```
 ``` ocaml
 let%expect_test "Clicking the button should double the number" =
   let handle = Handle.create (Result_spec.vdom Fn.id) double_number_app in
@@ -372,9 +330,6 @@ you might want to include a mock implementation that differs from the
 real one.) We should also yield to the scheduler *before* showing the
 output, so that we can see the effect of the RPC completing.
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/lib/rpc_examples_test.ml,part=attempt-3 -->
-```
 ``` ocaml
 let%expect_test "Clicking the button should double the number" =
   let handle =

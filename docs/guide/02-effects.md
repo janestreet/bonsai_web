@@ -1,19 +1,14 @@
-# 02 - Effects
+# Effects
 
 In the previous chapter, we built a `clicky` button that used
-`Effect.alert` and an `on_click` listener s attr to show browser alerts
+`Effect.alert` and an `on_click` listener attr to show browser alerts
 whenever a user clicks a button.
 
 This chapter explains the `Effect.t` type.
 
-```{=html}
-<aside>
-```
-`Effect.t` is an alias for `Ui_effect.t`, which you might see in other
-libraries or merlin. The convention is to use `Effect.t`.
-```{=html}
-</aside>
-```
+> **Aside:** `Effect.t` is an alias for `Ui_effect.t`, which you might
+> see in other libraries or merlin. The convention is to use `Effect.t`.
+
 ## What Is `Effect.t`?
 
 A `'a Effect.t` encapsulates some side effect, which may execute
@@ -41,30 +36,20 @@ that:
 
 Here's a demonstration:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/effect_examples.ml,part=clickies -->
-```
 ``` ocaml
 let clickies : Vdom.Node.t =
-  (* This won't run until scheduled... But it will run every time it is scheduled! *)
+  (* This won't run until scheduled... But it will run every time it is
+     scheduled! *)
   let greet_effect = Effect.alert "hello there!" in
-  Vdom.Node.div
-    [ Vdom.Node.button
-        ~attrs:[ Vdom.Attr.on_click (fun (_evt : mouse_event) -> greet_effect) ]
-        [ Vdom.Node.text "click me!" ]
-    ; Vdom.Node.button
-        ~attrs:[ Vdom.Attr.on_click (fun (_evt : mouse_event) -> greet_effect) ]
-        [ Vdom.Node.text "or me!" ]
-    ]
+  {%html|
+    <>
+      <button on_click=%{fun _ -> greet_effect}>click me!</button>
+      <button on_click=%{fun _ -> greet_effect}>or me!</button>
+    </>
+  |}
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#clickies">
-```
-```{=html}
-</iframe>
-```
 ## How to Get `Effect.t`s
 
 Many Bonsai tools and libraries will return some `'a Effect.t`s. For
@@ -72,18 +57,15 @@ example:
 
 -   Bonsai's [state primitives](./04-state.md) return `Effect.t`s to
     modify the state.
--   [Rpc_effect](../how_to/rpcs.md) return a `'response Effect.t` for
+-   [RPC Effect](../how_to/rpcs.md) returns a `'response Effect.t` for
     dispatching an RPC call.
 -   A modal library might return `Effect.t`s that open/close the modal.
--   The Effect module contains some [commonly used effects for browser
+-   The Effect module contains some commonly used [effects for browser
     APIs](../how_to/effects_for_browser_apis.md)
 
 You can also wrap arbitrary side-effectful OCaml functions in
 `Effect.t`s:
 
-```{=html}
-<!-- $MDX skip -->
-```
 ``` ocaml
 val Effect.of_sync_fun : ('query -> 'result) -> 'query -> 'result Effect.t
 val Effect.of_thunk : (unit -> 'result) -> 'result Effect.t
@@ -97,13 +79,9 @@ you generally shouldn't use them in app code.
 
 ## How to Compose `Effect.t`s
 
-The `Effect.t` type is a
-[monad](https://builtin.com/software-engineering-perspectives/monads),
-which means we can sequence `Effect.t`s with `let%bind`:
+The `Effect.t` type is a monad, which means we can sequence `Effect.t`s
+with `let%bind`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/effect_examples.ml,part=bind_chain -->
-```
 ``` ocaml
 let chain_some_effects
   (a : int Effect.t)
@@ -113,7 +91,8 @@ let chain_some_effects
   : unit Effect.t
   =
   let%bind.Effect a_return = a in
-  (* Sometimes we don't care about the effect's return value; we just want to execute it. *)
+  (* Sometimes we don't care about the effect's return value; we just want to
+     execute it. *)
   let%bind.Effect (_ : bool) = b a_return in
   let%bind.Effect () = c in
   d
@@ -123,9 +102,6 @@ let chain_some_effects
 If you don't care about passing anything between effects, and just want
 to run them in sequence, there are some utils implemented via `bind`:
 
-```{=html}
-<!-- $MDX skip -->
-```
 ``` ocaml
 val Effect.all_unit : unit Ui_effect.t list -> unit Ui_effect.t
 val Effect.all : 'a Ui_effect.t list -> 'a list Ui_effect.t
@@ -151,3 +127,4 @@ But you can also schedule `Effect.t`s:
 -   When an [incremental value
     changes](../how_to/edge_triggered_effects.md)
 -   At a [particular time](../how_to/time.md)
+

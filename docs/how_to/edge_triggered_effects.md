@@ -4,9 +4,6 @@
 `Effect.t` whenever some `'a Bonsai.t` changes, and when it is first
 calculated:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/edge_triggered_examples.ml,part=on_change -->
-```
 ``` ocaml
 let on_change_demo (local_ graph) =
   let view, value = State_examples.counter ~step:(Bonsai.return 1) graph in
@@ -26,12 +23,6 @@ let on_change_demo (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#on_change">
-```
-```{=html}
-</iframe>
-```
 The `~equal` argument allows us to define what "change" means.
 
 Another category of edge-triggering is the `on_activate` and

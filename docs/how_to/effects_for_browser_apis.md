@@ -7,7 +7,6 @@ abstractions over browser APIs.
 
 The following are useful in event handlers:
 
--   `val Effect.Prevent_default: unit Effect.t`
 -   `val Effect.Stop_propagation : unit Effect.t`
 -   `val Effect.Stop_immediate_propagation : unit Effect.t`; if using
     this, you'll need to compose effects with

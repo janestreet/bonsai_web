@@ -17,9 +17,6 @@ You can create a benchmark for the [startup
 time](./bonsai_runtime.md#startup) of some
 `local_ graph -> 'a Bonsai.t`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/bench/benchmarking_examples.ml,part=app_startup -->
-```
 ``` ocaml
 let app_startup_bench : Bonsai_bench.t =
   Bonsai_bench.create_for_startup ~name:"app startup" my_app
@@ -29,9 +26,6 @@ let app_startup_bench : Bonsai_bench.t =
 It's likely you'll want to test a bunch of different values for some
 parameter:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/bench/benchmarking_examples.ml,part=list_of_things_startup -->
-```
 ``` ocaml
 let list_of_things_bench : Bonsai_bench.t list =
   let create ~size =
@@ -51,9 +45,6 @@ let list_of_things_bench : Bonsai_bench.t list =
 You can also benchmark how long it takes Bonsai to recompute in response
 to some interactions, e.g. updating an input, or injecting an action:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/bench/benchmarking_examples.ml,part=state_interaction_bench -->
-```
 ``` ocaml
 open Bonsai_bench
 
@@ -73,9 +64,6 @@ let state_bench : Bonsai_bench.t =
 
 You can run your `Bonsai_bench.t`s via `Bonsai_bench.run_via_command`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/bench/benchmarking_examples.ml,part=running_benchmarks -->
-```
 ``` ocaml
 let () =
   Bonsai_bench.run_via_command
@@ -94,9 +82,6 @@ directory](https://github.com/janestreet/bonsai_bench/tree/master/example).
 You can also dig deeper into what's happening in a particular benchmark
 with `Bonsai_bench.profile`.
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/bench/benchmarking_examples.ml,part=profile -->
-```
 ``` ocaml
 let profile =
   Bonsai_bench.profile ~name:"Profiling Benchmarks" [ app_startup_bench; state_bench ]
@@ -125,9 +110,6 @@ some Bonsai computation.
 Let's say we want to compare the following implementations of "(foo a) +
 (bar b)":
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/bench/benchmarking_examples.ml,part=functions_to_compare -->
-```
 ``` ocaml
 let f1 a b =
   let%arr a and b in
@@ -152,9 +134,6 @@ To compare the startup times, we need to wrap our computations so that
 they take a single input, give each a name, and provide some initial
 input values to compare against:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/bench/benchmarking_examples.ml,part=startup_comparison -->
-```
 ``` ocaml
 let computations =
   let wrap f a_b (local_ _graph) =
@@ -175,9 +154,6 @@ And to compare recomputation time in response to some interactions, we
 take the same wrapped and named computations, and specify some
 `Bonsai_bench.Scenario.t`s:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/bench/benchmarking_examples.ml,part=interaction_comparison -->
-```
 ``` ocaml
 let scenarios =
   let update_inputs ~a_update_numerator ~a_update_denominator input =
@@ -225,9 +201,6 @@ let interaction_set : Bonsai_bench.Benchmark_set.t =
 We can then run `Benchmark_set.t`s via
 `Bonsai_bench.run_sets_via_command`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/bench/benchmarking_examples.ml,part=running_sets -->
-```
 ``` ocaml
 let () =
   Bonsai_bench.run_sets_via_command
@@ -267,9 +240,6 @@ To run the benchmark, pass it to `Bonsai_bench.bench`, a thin wrapper
 around `Core_bench_js.bench` that handles necessary cleanup between
 tests:
 
-```{=html}
-<!-- $MDX skip -->
-```
 ``` ocaml
 let () =
   let quota = Core_bench_js.Quota.Span (Time.Span.of_sec 1.0) in

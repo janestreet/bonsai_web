@@ -76,9 +76,6 @@ If something *can* be incrementally computed via `let%arr`ing, it
 probably should be. For example, the following is bad, because the view
 will be stale if the selected comment's data changes:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/organizing_state_examples.ml,part=storing_derived_values -->
-```
 ``` ocaml
 let comments (local_ graph) =
   let selected_comment_view, set_selected_comment_view = Bonsai.state None graph in
@@ -101,12 +98,6 @@ let comments (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#storing_derived_values">
-```
-```{=html}
-</iframe>
-```
 Indeed, if you click on a comment, then close it, and reopen it, you'll
 see that the number of likes has incremented!
 
@@ -115,9 +106,6 @@ duplicating state between the `all_comments` input, and our
 `selected_comment` state. Instead, we'll store the simplest thing we
 can: the comment's ID:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/organizing_state_examples.ml,part=computing_derived_values -->
-```
 ``` ocaml
 let comments (local_ graph) =
   let selected_comment_id, set_selected_comment_id = Bonsai.state None graph in
@@ -145,12 +133,6 @@ let comments (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#computing_derived_values">
-```
-```{=html}
-</iframe>
-```
 ```{=html}
 ```
 ## Use `Rpc_effect` Helpers for Server State
@@ -201,9 +183,6 @@ is called.
 
 Here's the type signature of `mirror`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/bonsai_types.mli,part=mirror -->
-```
 ``` ocaml
 val mirror
   :  ?sexp_of_model:('m -> Sexp.t)

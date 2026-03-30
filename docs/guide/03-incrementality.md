@@ -1,4 +1,4 @@
-# 03 - Incrementality
+# Incrementality
 
 In the last 2 chapters, we learned how to build functional web UIs with
 `virtual_dom`, and schedule side effects in response to user interaction
@@ -37,45 +37,29 @@ value.
 
 To create a new `Bonsai.t` as a function of other `Bonsai.t`s, we can
 use the `let%arr` operator. It works just like [`ppx_let`'s
-`let%map`](https://blog.janestreet.com/let-syntax-and-why-you-should-use-it/),
-but with some extra performance optimizations for pattern matching on
-incremental values. This is like a formula cell in Excel.
+`let%map`](https://github.com/janestreet/ppx_let), but with some extra
+performance optimizations for pattern matching on incremental values.
+This is like a formula cell in Excel.
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=int_view -->
-```
 ``` ocaml
 let int_view (a : int Bonsai.t) : Vdom.Node.t Bonsai.t =
   let%arr (a : int) = (a : int Bonsai.t) in
-  Vdom.Node.div [ Vdom.Node.text (Int.to_string a) ]
+  {%html|<div>%{a#Int}</div>|}
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#int_view">
-```
-```{=html}
-</iframe>
-```
 Most of your `let%arr`s will compute a `Bonsai.t` as a function of
 multiple `Bonsai.t`s:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=sum_and_display -->
-```
 ``` ocaml
-let sum_and_display (a : int Bonsai.t) (b : int Bonsai.t) : Vdom.Node.t Bonsai.t =
+let sum_and_display (a : int Bonsai.t) (b : int Bonsai.t)
+  : Vdom.Node.t Bonsai.t
+  =
   let%arr a and b in
   Vdom.Node.textf "%d + %d = %d" a b (a + b)
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#sum_and_display">
-```
-```{=html}
-</iframe>
-```
 ### `let%arr` vs `let%map` vs `Bonsai.map` vs `>>|`
 
 `let%arr` is just pretty syntax for
@@ -84,32 +68,23 @@ let sum_and_display (a : int Bonsai.t) (b : int Bonsai.t) : Vdom.Node.t Bonsai.t
 `let%arr` on a record, but only care about some of the fields,
 `let%arr`s will only recompute when that field changes:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=let_arr_record_good -->
-```
 ``` ocaml
-    let%arr { foo; _ } = my_thing in
-    do_something foo
+let%arr { foo; _ } = my_thing in
+do_something foo
 ```
 
 If you don't destructure in the `let%arr`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=let_arr_record_bad -->
-```
 ``` ocaml
-    let%arr my_thing in
-    do_something my_thing.foo
+let%arr my_thing in
+do_something my_thing.foo
 ```
 
 Or use `let%map`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=let_map_record_bad -->
-```
 ``` ocaml
-    let%map { foo; _ } = my_thing in
-    do_something foo
+let%map { foo; _ } = my_thing in
+do_something foo
 ```
 
 `do_something` will be recomputed every time *any* field of `my_thing`
@@ -124,16 +99,11 @@ As a guideline:
 -   Every `Bonsai.map` / `>>|` adds incremental nodes, so strongly
     prefer a single `let%arr` over chaining multiple `>>|`.
 
-```{=html}
-```
 ## `let%arr` Must Be Pure!
 
 It might be tempting to react to changes in a `Bonsai.t` by running side
 effects in a `let%arr` that depends on it. For example:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=side_effect_let_arr_print -->
-```
 ``` ocaml
 let print_on_change (a : int Bonsai.t) : int Bonsai.t =
   let%arr a in
@@ -144,9 +114,6 @@ let print_on_change (a : int Bonsai.t) : int Bonsai.t =
 
 or
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=side_effect_let_arr_send_query -->
-```
 ``` ocaml
 let dispatch_query_on_change (a : int Bonsai.t) : int Bonsai.t =
   let%arr a in
@@ -158,9 +125,9 @@ let dispatch_query_on_change (a : int Bonsai.t) : int Bonsai.t =
 Do not do this! A `let%arr`:
 
 -   might run multiple times per frame
--   might run as part of some code that starts as
-    [inactive](../how_to/lifecycles.md), switches to being active, and
-    then becomes inactive again, all in the same frame.
+-   might run as part of some code that starts as inactive, switches to
+    being active, and then becomes [inactive](../how_to/lifecycles.md)
+    again, all in the same frame.
 -   will only run when its explicit dependencies change
 -   not run at all, if it is not linked into the incremental computation
     of your app's result
@@ -171,9 +138,6 @@ the [document
 title](https://developer.mozilla.org/en-US/docs/Web/API/Document/title)
 changes:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=side_effect_let_arr_compute_title -->
-```
 ``` ocaml
 let compute_title (prefix : string Bonsai.t) (suffix : string Bonsai.t) : string Bonsai.t =
   let%arr prefix and suffix in
@@ -185,46 +149,36 @@ let compute_title (prefix : string Bonsai.t) (suffix : string Bonsai.t) : string
 
 This is one reason why side effects should be performed within a
 `'a Effect.t`: there's a limited set of safe APIs for running
-`Effect.t`s, so you can't accidentially run one within a `let%arr`.
+`Effect.t`s, so you can't accidentally run one within a `let%arr`.
 
 If you need to do something whenever a `'a Bonsai.t` changes, use
-[Edge.on_change](../how_to/edge_triggered_effects.md) or [lifeycle
+edge-triggered effects like
+[`Edge.on_change`](../how_to/edge_triggered_effects.md) or [lifecycle
 events](../how_to/lifecycles.md).
 
 ## Don't Do Work While Computing `Effect.t`s
 
 Most [`Effect.t`s](./02-effects.md) you'll see are incrementally
 computed, because most side effects you might want to perform depend on
-some `'a Bonsai.t`.
+some `'a Bonsai.t`. An easy mistake to make when incrementally computing
+an `Effect.t` is to do part of its work during computation. For example:
 
-An easy mistake to make when incrementally computing an `Effect.t` is to
-do part of its work during computation. For example:
-
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=doing_work_to_compute_effect -->
-```
 ``` ocaml
-let copy_to_clipboard_button (data : Big_data.t Bonsai.t) (label : string Bonsai.t)
+let copy_to_clipboard_button
+  (data : Big_data.t Bonsai.t)
+  (label : string Bonsai.t)
   : Vdom.Node.t Bonsai.t
   =
   let on_click =
     let%arr data in
     let serialized_data = Big_data.sexp_of_t data |> Sexp.to_string in
-    Byo_clipboard.copy_text serialized_data
+    Bonsai_web_clipboard.copy_text serialized_data
   in
   let%arr on_click and label in
-  Vdom.Node.button
-    ~attrs:[ Vdom.Attr.on_click (fun _ -> on_click) ]
-    [ Vdom.Node.text [%string "Copy: %{label}"] ]
+  {%html|<button on_click=%{fun _ -> on_click}>Copy: #{label}</button>|}
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#doing_work_to_compute_effect">
-```
-```{=html}
-</iframe>
-```
 Serializing data is pure, so this code isn't *incorrect*, but it's very
 *inefficient*, because we're doing an expensive serialization at least
 once every time `data` changes, but we don't actually use the result
@@ -232,11 +186,10 @@ unless the user clicks the button.
 
 Instead, we can move this work inside the `Effect.t`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=doing_work_as_part_of_effect -->
-```
 ``` ocaml
-let copy_to_clipboard_button (data : Big_data.t Bonsai.t) (label : string Bonsai.t)
+let copy_to_clipboard_button
+  (data : Big_data.t Bonsai.t)
+  (label : string Bonsai.t)
   : Vdom.Node.t Bonsai.t
   =
   let on_click =
@@ -244,26 +197,18 @@ let copy_to_clipboard_button (data : Big_data.t Bonsai.t) (label : string Bonsai
     let%bind.Effect serialized_data =
       Effect.of_thunk (fun () -> Big_data.sexp_of_t data |> Sexp.to_string)
     in
-    Byo_clipboard.copy_text serialized_data
+    Bonsai_web_clipboard.copy_text serialized_data
   in
   let%arr on_click and label in
-  Vdom.Node.button
-    ~attrs:[ Vdom.Attr.on_click (fun _ -> on_click) ]
-    [ Vdom.Node.text [%string "Copy: %{label}"] ]
+  {%html|<button on_click=%{fun _ -> on_click}>Copy: #{label}</button>|}
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#doing_work_as_part_of_effect">
-```
-```{=html}
-</iframe>
-```
 Now, we only serialize when the user clicks the button!
 
 There's still a potential bug if the `data` changes after `view` was
 last rendered, but before the user clicks the button. We can solve this
-with a [Bonsai.peek](../how_to/effects_and_stale_values.md).
+with a [`Bonsai.peek`](../how_to/effects_and_stale_values.md).
 
 ## Incremental Structure Matters
 
@@ -273,9 +218,6 @@ reused things.
 For instance, in this code, we run `expensive_calculate_exponent` every
 loop, even though it will be the same every time:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=analyze_list_inefficient -->
-```
 ``` ocaml
 let analyze_list (big_list : float list) (risk_parameter : float) : float =
   List.fold big_list ~init:0. ~f:(fun sum x ->
@@ -286,9 +228,6 @@ let analyze_list (big_list : float list) (risk_parameter : float) : float =
 Breaking it out into an "intermediate" computation is an easy
 performance win:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=analyze_list_efficient -->
-```
 ``` ocaml
 let analyze_list (big_list : float list) (risk_parameter : float) : float =
   let exponent = expensive_calculate_exponent ~risk_parameter in
@@ -299,15 +238,10 @@ let analyze_list (big_list : float list) (risk_parameter : float) : float =
 You can apply a similar concept to incremental computations. Imagine we
 want to implement the following function:
 
-$$
-F(a, b, c) = \frac{a^b}{c}
-$$
+    F(a, b, c) = (a^b) / c
 
 If we don't know anything about `a` and `b`, we would probably write:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=incremental_f_inefficient -->
-```
 ``` ocaml
 let exp_and_divide (a : float Bonsai.t) (b : float Bonsai.t) (c : float Bonsai.t) =
   let%arr a and b and c in
@@ -319,9 +253,6 @@ But if we know that `c` changes much more frequently than `a` and `b`,
 we can break out the expensive float exponentiation into an intermediate
 computation:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/incrementality_examples.ml,part=incremental_f_efficient -->
-```
 ``` ocaml
 let exp_and_divide (a : float Bonsai.t) (b : float Bonsai.t) (c : float Bonsai.t) =
   let dividend =
@@ -341,11 +272,11 @@ For incrementality to be useful, inputs need to actually change. On to
 
 ## The Underlying Machinery
 
-`Bonsai.t` is actually a wrapper around [Incremental's
-`Incr.t`](https://blog.janestreet.com/introducing-incremental/). The
+`Bonsai.t` is actually a wrapper around Incremental's `Incr.t`. The
 biggest user-facing difference is that there is no `Bonsai.bind`, which
 forces the computation graph to have a static shape. This enables some
 [useful features and performance
 optimizations](../advanced/why_no_bind.md). We'll learn how to write
 control flow code without `bind` in a [later
 chapter](./05-control_flow.md).
+
