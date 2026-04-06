@@ -221,7 +221,12 @@ module Fully_parametrized = struct
             |> Bonsai.Private.Input.to_incremental
           in
           fun () ~schedule_event model action ->
-            apply_action ~inject ~schedule_event (Some input) model action
+            apply_action
+              ~inject
+              ~schedule_event
+              (Bonsai.Computation_status.Active input)
+              model
+              action
         and before_display =
           let old_lifecycles = ref Bonsai.Private.Lifecycle.Collection.empty in
           let%map lifecycle =
@@ -316,7 +321,7 @@ module Fully_parametrized = struct
     =
     let module Profiling = Incr_dom.Start_app.For_profiling.Performance_measure in
     Util.For_bonsai_internal.set_stack_overflow_exception_check ();
-    let fresh = Type_equal.Id.create ~name:"" sexp_of_opaque in
+    let fresh = Bonsai.Private.Var_id.create () in
     let var =
       Bonsai.Private.Value.named App_input fresh |> Bonsai.Private.conceal_value
     in

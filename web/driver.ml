@@ -232,6 +232,13 @@ let schedule_event (T { bonsai_driver; _ }) effect =
 
 let destroy (T { on_stop; _ }) = on_stop ()
 
+let destroy_dom (T { prev_vdom; prev_elt; _ }) =
+  let empty = Vdom.Node.none in
+  let patch = Vdom.Node.Patch.create ~previous:!prev_vdom ~current:empty in
+  let (_ : Dom_html.element Js.t) = Vdom.Node.Patch.apply patch !prev_elt in
+  ()
+;;
+
 module Expert = struct
   let time_source (T { bonsai_driver; _ }) =
     Bonsai_driver.Expert.time_source bonsai_driver

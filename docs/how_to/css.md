@@ -31,9 +31,6 @@ Using `[%css {|CSS_PROPERTIES|}]` returns a `Vdom.Attr.t`, which will
 add a newly created CSS class with the given styles to the `Vdom.Node.t`
 it is attached to:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/css_examples.ml,part=ppx_css_inline -->
-```
 ``` ocaml
 let view =
   Vdom.Node.div
@@ -48,18 +45,9 @@ let view =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#ppx_css_inline">
-```
-```{=html}
-</iframe>
-```
 It also supports string interpolation, [similar to
 `ppx_string`](https://github.com/janestreet/ppx_string):
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/css_examples.ml,part=ppx_css_inline_interpol -->
-```
 ``` ocaml
 let box_with_border (color : Css_gen.Color.t) (width : Css_gen.Length.t) =
   Vdom.Node.div
@@ -68,21 +56,12 @@ let box_with_border (color : Css_gen.Color.t) (width : Css_gen.Length.t) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#ppx_css_inline_interpol">
-```
-```{=html}
-</iframe>
-```
 While you can interpolate raw `string`s, it is highly recommended to use
 the types in the `css_gen` library instead.
 
 You can also use pseudo-selectors, since ppx_css supports [nested
 css](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_nesting/Using_CSS_nesting).
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/css_examples.ml,part=ppx_css_inline_nesting -->
-```
 ``` ocaml
 let hoverable_blocks =
   let block =
@@ -109,17 +88,8 @@ let hoverable_blocks =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#ppx_css_inline_nesting">
-```
-```{=html}
-</iframe>
-```
 You can split up your styling into a bunch of `[%css {||}]` calls:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/css_examples.ml,part=ppx_css_inline_multiple -->
-```
 ``` ocaml
 let multiple_ppx_css =
   Vdom.Node.div
@@ -130,12 +100,6 @@ let multiple_ppx_css =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#ppx_css_inline_multiple">
-```
-```{=html}
-</iframe>
-```
 This helps avoid a lot of unintentional dependencies on the structure of
 your HTML, though [inherited CSS
 properties](https://web.dev/learn/css/inheritance) will still cause some
@@ -156,9 +120,6 @@ For more complex rules, `[%css stylesheet {|MULTIPLE_CSS_RULES_HERE|}]`
 accepts an entire style sheet and produces a module containing acessors
 for the ids, classes, and variables defined within.
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/css_examples.ml,part=ppx_css_stylesheet -->
-```
 ``` ocaml
 module Style =
   [%css
@@ -186,17 +147,8 @@ module Style =
 let stylesheet_demo = Vdom.Node.div ~attrs:[ Style.container ] [ Vdom.Node.text "Hello" ]
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#ppx_css_stylesheet">
-```
-```{=html}
-</iframe>
-```
 It supports interpolation, just like the inline `[%css {||}]`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/css_examples.ml,part=ppx_css_stylesheet_interpol -->
-```
 ``` ocaml
 let stylesheet_interpol small_bg large_bg =
   let module Style =
@@ -220,12 +172,6 @@ let stylesheet_interpol small_bg large_bg =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#ppx_css_stylesheet_interpol">
-```
-```{=html}
-</iframe>
-```
 All classnames used in `[%css stylesheet {||}]` blocks will be "hashed"
 to avoid naming collisions, so in the example above, `.container` will
 actually be something like `.container_hash_099cf63fc3`. There exist
@@ -237,9 +183,6 @@ identifiers from hashing.
 If any `var(...)`s are used in a `[%css stylesheet {||}]` block, a
 setter will be made available through a `Style.Variables` module:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/css_examples.ml,part=ppx_css_stylesheet_vars -->
-```
 ``` ocaml
   module Style =
     [%css
@@ -266,12 +209,6 @@ setter will be made available through a `Style.Variables` module:
   ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#ppx_css_stylesheet_vars">
-```
-```{=html}
-</iframe>
-```
 Just like classnames, CSS variable names in `[%css stylesheet {||}]`
 blocks will be hashed to avoid collisions.
 
@@ -290,9 +227,6 @@ performance downside.
 There is an API for setting inline styles on vdom nodes directly with
 `Vdom.Attr.style`:
 
-```{=html}
-<!-- $MDX skip -->
-```
     val Vdom.Attr.style : Css_gen.t -> Vdom.Attr.t
 
 We've already seen the `Css_gen` library, but until now have just been
@@ -300,9 +234,6 @@ using it to for its stringification functions to use with `ppx_css`'s
 string interpolation syntax. But there are also constructors for making
 `Css_gen.t`s, which can be combined via the `@>` operator:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/css_examples.ml,part=css_gen_inline -->
-```
 ``` ocaml
 let css_gen_inline =
   let style : Css_gen.t =
@@ -313,12 +244,6 @@ let css_gen_inline =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#css_gen_inline">
-```
-```{=html}
-</iframe>
-```
 This is much more verbose and hard to read than `ppx_css`, and is
 missing many css attributes. It also doesn't support pseudo-selectors.
 

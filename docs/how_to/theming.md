@@ -19,9 +19,6 @@ contain, but all-things-considered, is a pretty low-level interface.
 \[Vdom.\*.t\]. For instance, it can simplify common stuff like [flexbox
 containers](https://flexboxfroggy.com/), or even text:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/theming_examples.ml,part=view_unthemed -->
-```
 ``` ocaml
 let text_a = Vdom.Node.span [ Vdom.Node.text "A" ]
 let text_b = Vdom.Node.span [ Vdom.Node.text "B" ]
@@ -44,18 +41,9 @@ let text_a', text_b', text_c' = View.text "A", View.text "B", View.text "C"
 let flex_container' = View.hbox_wrap [ text_a'; text_b'; text_c' ]
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#view_button">
-```
-```{=html}
-</iframe>
-```
 There are also helper functions with simplified APIs for common UI
 elements like buttons:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/theming_examples.ml,part=view_button -->
-```
 ``` ocaml
 open Virtual_dom
 
@@ -70,12 +58,6 @@ let button =
 let button' = View.button theme ~on_click:do_thing "click me"
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#view_button">
-```
-```{=html}
-</iframe>
-```
 See [these
 demos](https://github.com/janestreet/bonsai/tree/master/examples/bonsai_view)
 for a full list of utils offered by `Bonsai_web.View`.
@@ -86,9 +68,6 @@ You may have noticed that the `button` helper took a
 `theme : View.Theme.t` argument. We can get the current theme anywhere
 we have a `local_ Bonsai.graph` by calling `View.Theme.current`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/theming_examples.ml,part=button_get_theme -->
-```
 ``` ocaml
 let error_button (local_ graph) =
   let theme = View.Theme.current graph in
@@ -97,12 +76,6 @@ let error_button (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#button_get_theme">
-```
-```{=html}
-</iframe>
-```
 The `View.*` functions themselves are pure OCaml functions, so they can
 be ergonomically used in place of `Vdom.Node.*` without having to
 `let%arr` on each one separately. That's why we have to pass them a
@@ -119,27 +92,15 @@ To set the theme, wrap your app's top-level
 `View.Theme.set_for_app`, passing in the theme of your choice. For
 example:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/theming_examples.ml,part=set_theme -->
-```
 ``` ocaml
 let app (local_ graph) =
   View.Theme.set_for_app (Kado.theme ~version:V1 () |> Bonsai.return) error_button graph
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#set_theme">
-```
-```{=html}
-</iframe>
-```
 Note that the theme you set is be a `Bonsai.t`, so we can determine it
 dynamically:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/theming_examples.ml,part=theme_toggle -->
-```
 ``` ocaml
 let themed_theme_toggler ~toggle_dark (local_ graph) =
   let%arr theme = View.Theme.current graph
@@ -165,12 +126,6 @@ let app (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#theme_toggle">
-```
-```{=html}
-</iframe>
-```
 `View.Theme.current` is a [dynamically-scoped
 variable](./dynamic_scope.md).
 
@@ -184,9 +139,6 @@ Most tweaks to themes can be done by overriding the theme's
 For instance, let's make the error button from before have a purple
 color:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/theming_examples.ml,part=override_constants -->
-```
 ``` ocaml
 let app (local_ graph) =
   View.Theme.override_constants_for_computation
@@ -202,12 +154,6 @@ let app (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#override_constants">
-```
-```{=html}
-</iframe>
-```
 But that's not all. `Theme.t`s are internally represented as
 [objects](https://dev.realworldocaml.org/objects.html), because their
 "open recursion" propert mean that if you override a method `x`, every
@@ -216,9 +162,6 @@ other method that references `x` will also be overridden.
 For example, let's replace `View.button`'s implementation with something
 that's... not a button:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/theming_examples.ml,part=override_theme -->
-```
 ``` ocaml
 let app (local_ graph) =
   View.Expert.override_theme_for_computation
@@ -238,12 +181,6 @@ let app (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#override_theme">
-```
-```{=html}
-</iframe>
-```
 To see everything overridable via theme, see
 [view/src/underlying_intf.ml](https://github.com/janestreet/bonsai/blob/master/web_ui/view/src/underlying_intf.ml).
 Note that some themable things are broken up into multiple methods; for

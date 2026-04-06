@@ -62,9 +62,6 @@ set and remove focus.
 
 Bonsai provides an effect-based wrapper via `Effect.Focus.on_effect`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/focus_examples.ml,part=effect_focus_api -->
-```
 ``` ocaml
 let effect_focus_demo (local_ graph) =
   let focus = Effect.Focus.on_effect () graph in
@@ -81,18 +78,9 @@ let effect_focus_demo (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#effect_focus_api">
-```
-```{=html}
-</iframe>
-```
 You can also use `Effect.Focus.on_activate` to focus elements on the
 [on_activate lifecycle event](./lifecycles.md):
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/focus_examples.ml,part=effect_focus_onactivate -->
-```
 ``` ocaml
 let effect_focus_onactivate (local_ graph) =
   let visible, set_visible = Bonsai.state false graph in
@@ -114,12 +102,6 @@ let effect_focus_onactivate (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#effect_focus_onactivate">
-```
-```{=html}
-</iframe>
-```
 Note that `Effect.Focus.on_activate` must be instantiated inside the
 control flow operator whose `on_activate` you care about; the example
 above would not work if `Effect.Focus.on_activate` was instantiated

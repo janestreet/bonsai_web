@@ -1,45 +1,4 @@
-```{=html}
-<!-- Here be dragons! Virtual_dom doesn't play well with MDX, so we make a fake library
-to run the code examples below.
-
-```ocaml
-open! Core
-module Bonsai = Bonsai.Cont
-open! Bonsai.Let_syntax
-
-module Vdom = struct
-  module Attr : sig
-    type t
-
-    val on_click : 'a -> t
-  end = struct
-    type t = unit
-
-    let on_click _ = ()
-  end
-
-  module Node : sig
-    type t
-
-    val none : t
-    val text : 'a -> t
-    val button : attrs:'a -> 'b -> t
-    val div : t list -> t
-  end = struct
-    type t = unit
-
-    let none = ()
-    let text _ = ()
-    let button ~attrs:_ _ = ()
-    let div _ = ()
-  end
-end
-
-```
-
--->
-```
-# 04 - State
+# State
 
 In the previous chapters, we learned how to build and compose
 incremental `Bonsai.t` computations via `let%arr`. But we don't yet have
@@ -86,13 +45,14 @@ The simplest state tool is `Bonsai.state`, which returns a
 `'model Bonsai.t` tracking the current value, and a
 `('model -> unit Effect.t) Bonsai.t` "setter [effect](./02-effects.md)"
 producing function. It takes a default starting value and a
-`local_ graph`.
+`(graph @ local)`.
 
 ### `local_ graph` is a Graph Builder
 
 `local_ graph : Bonsai.graph` is used by Bonsai to build a
-[static](../advanced/why_no_bind.md) computation graph. Because Bonsai's
-computation graph is static, you may not:
+[static](https://github.com/janestreet/bonsai_web/blob/master/docs/advanced/why_no_bind.md)
+computation graph. Because Bonsai's computation graph is static, you may
+not:
 
 -   Have a data structure with nested `Bonsai.t`s. A
     `'a Bonsai.t Bonsai.t` is illegal, and so are record `Bonsai.t`s
@@ -103,7 +63,7 @@ computation graph is static, you may not:
 Most nodes in the graph come from `let%arr` calls, but many "leaves" of
 the graph are "state" nodes, which require a `Bonsai.graph` parameter.
 
-The [`local_`
+The [`local`
 mode](https://blog.janestreet.com/oxidizing-ocaml-locality/) prevents
 `graph` from being closed over / stashed away, so the compiler makes it
 impossible to change the computation graph from any runtime code.
@@ -119,15 +79,10 @@ callback that doesn't give you a `graph` directly.
 Bonsai analyzes the entire computation at startup time and performs
 optimizations to make apps faster!
 
-```{=html}
-<aside>
-```
-`let%arr` actually uses `graph`, since it builds up the static
-computation graph. But it wouldn't be ergonomic to pass it in every
-time, so Bonsai's internals cheat and access it implicitly.
-```{=html}
-</aside>
-```
+> **Note:** `let%arr` actually uses `graph`, since it builds up the
+> static computation graph. But it wouldn't be ergonomic to pass it in
+> every time, so Bonsai's internals cheat and access it implicitly.
+
 ### State Lives Outside the Graph
 
 Although `Bonsai.state` might look like a fancy ref, it's actually a
@@ -139,7 +94,7 @@ powers all the state `Bonsai.t`s.
 
 ### Why are Setters `Bonsai.t`s?
 
-The \_value_s of `Bonsai.state`s are exposed as `'a Bonsai.t`s, because
+The values of `Bonsai.state`s are exposed as `'a Bonsai.t`s, because
 they change at runtime, and are inputs to incremental computations. But
 if our computation graph is static, why do the `'a -> unit Effect.t`
 setters need to be `Bonsai.t`s?
@@ -155,109 +110,67 @@ increase/decrease buttons. The counter will return a
 `Vdom.Node.t Bonsai.t` for the UI, and the current
 `count : int Bonsai.t`, which we'll use later.
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/state_examples.ml,part=counter -->
-```
 ``` ocaml
 let counter (local_ graph) : Vdom.Node.t Bonsai.t * int Bonsai.t =
   let count, set_count = Bonsai.state 0 graph in
   let view =
     let%arr count and set_count in
     (* view-construction logic *)
-    Vdom.Node.div
-      [ Vdom.Node.button
-          ~attrs:[ Vdom.Attr.on_click (fun _ -> set_count (count - 1)) ]
-          [ Vdom.Node.text "-1" ]
-      ; Vdom.Node.text [%string "Counter value: %{count#Int}"]
-      ; Vdom.Node.button
-          ~attrs:[ Vdom.Attr.on_click (fun _ -> set_count (count + 1)) ]
-          [ Vdom.Node.text "+1" ]
-      ]
+    {%html|
+      <>
+        <button on_click=%{fun _ -> set_count (count - 1)}>-1</button>
+        %{Vdom.Node.textf "Counter value: %d" count}
+        <button on_click=%{fun _ -> set_count (count + 1)}>+1</button>
+      </>
+    |}
   in
   view, count
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#counter_ui">
-```
-```{=html}
-</iframe>
-```
 ## Instantiating State
 
 To create several counters, we can simply call `counter` repeatedly:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/state_examples.ml,part=two_counters_correct -->
-```
 ``` ocaml
 let two_counters (local_ graph) =
   let counter1, _count1 = counter graph in
   let counter2, _count2 = counter graph in
   let%arr counter1 and counter2 in
-  Vdom.Node.div [ counter1; counter2 ]
+  {%html|<div>%{counter1}%{counter2}</div>|}
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#two_counters_correct">
-```
-```{=html}
-</iframe>
-```
 Critically, instances of state are created when the function is called
 with `graph`, **not** when you `let%arr` on the resulting `Bonsai.t`s.
 So this:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/state_examples.ml,part=two_counters_wrong_1 -->
-```
 ``` ocaml
 let two_counters_wrong_1 (local_ graph) =
   let counter, _count = counter graph in
   let%arr counter1 = counter
   and counter2 = counter in
-  Vdom.Node.div [ counter1; counter2 ]
+  {%html|<div>%{counter1}%{counter2}</div>|}
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#two_counters_wrong_1">
-```
-```{=html}
-</iframe>
-```
 is actually the same as:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/state_examples.ml,part=two_counters_wrong_2 -->
-```
 ``` ocaml
 let two_counters_wrong_2 (local_ graph) =
   let counter, _count = counter graph in
   let%arr counter in
-  Vdom.Node.div [ counter; counter ]
+  {%html|<div>%{counter}%{counter}</div>|}
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#two_counters_wrong_2">
-```
-```{=html}
-</iframe>
-```
 In both these cases, both counters share the same state, which probably
 isn't what you want.
 
-```{=html}
-<aside>
-```
-There's nothing wrong with using the same `val x : Vdom.Node.t` multiple
-times, since a `Vdom.Node.t` does not contain any state.
-```{=html}
-</aside>
-```
+> **Note:** There's nothing wrong with using the same
+> `val x : Vdom.Node.t` multiple times, since a `Vdom.Node.t` does not
+> contain any state.
+
 ## State Machine
 
 While `Bonsai.state`'s getter/setter pattern is quite useful, sometimes
@@ -270,22 +183,12 @@ click will be "lost"! This is because the "count" `Bonsai.t` is closed
 over by the event handler, so if the button is clicked again before the
 new view is computed, the event handler will still have a stale value.
 
-```{=html}
-<aside>
-```
-It's easy to say "clicking on a button that fast isn't particularly
-likely", and that may be true, but users can be *very fast* with
-keyboard shortcuts!
-```{=html}
-</aside>
-```
-There are some tools to deal with stale values at the [Effect.t
-level](./02-effects.md), but this case is best solved by using
-`Bonsai.state_machine`:
+> **Tip:** It's easy to say "clicking on a button that fast isn't
+> particularly likely", and that may be true, but users can be *very
+> fast* with keyboard shortcuts! There are some tools to deal with stale
+> values at the [Effect.t level](./02-effects.mdx), but this case is
+> best solved by using `Bonsai.state_machine`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/bonsai_types.mli,part=state_machine -->
-```
 ``` ocaml
 val state_machine
   :  default_model:'model
@@ -295,15 +198,10 @@ val state_machine
   -> 'model Bonsai.t * ('action -> unit Effect.t) Bonsai.t
 ```
 
-```{=html}
-<aside>
-```
-`Bonsai.state_machine` actually has also some optional `sexp_of_action`,
-`sexp_of_model` arguments which you can use to provide more information
-to debugging tools.
-```{=html}
-</aside>
-```
+> **Note:** `Bonsai.state_machine` actually has also some optional
+> `sexp_of_action`, `sexp_of_model` arguments which you can use to
+> provide more information to debugging tools.
+
 Compared to `Bonsai.state`, there are several similarities:
 
 1.  The default model is required.
@@ -320,15 +218,16 @@ produces an `unit Effect.t` to "inject" it into our state machine.
 So how would we use `state_machine` to fix the bug in the counter
 application?
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/state_examples.ml,part=counter_state_machine -->
-```
 ``` ocaml
-let counter_state_machine (local_ graph) : Vdom.Node.t Bonsai.t * int Bonsai.t =
+let counter_state_machine (local_ graph)
+  : Vdom.Node.t Bonsai.t * int Bonsai.t
+  =
   let count, inject =
     Bonsai.state_machine
       ~default_model:0
-      ~apply_action:(fun (_ : _ Bonsai.Apply_action_context.t) model action ->
+      ~apply_action:
+        (fun
+          (_ : _ Bonsai.Apply_action_context.t) model action ->
         match action with
         | `Increment -> model + 1
         | `Decrement -> model - 1)
@@ -336,26 +235,18 @@ let counter_state_machine (local_ graph) : Vdom.Node.t Bonsai.t * int Bonsai.t =
   in
   let view =
     let%arr count and inject in
-    Vdom.Node.div
-      [ Vdom.Node.button
-          ~attrs:[ Vdom.Attr.on_click (fun _ -> inject `Decrement) ]
-          [ Vdom.Node.text "-1" ]
-      ; Vdom.Node.text [%string "Counter value: %{count#Int}"]
-      ; Vdom.Node.button
-          ~attrs:[ Vdom.Attr.on_click (fun _ -> inject `Increment) ]
-          [ Vdom.Node.text "+1" ]
-      ]
+    {%html|
+      <>
+        <button on_click=%{fun _ -> inject `Decrement}>-1</button>
+        %{Vdom.Node.textf "Counter value: %d" count}
+        <button on_click=%{fun _ -> inject `Increment}>+1</button>
+      </>
+    |}
   in
   view, count
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#counter_state_machine">
-```
-```{=html}
-</iframe>
-```
 Now, when a button is clicked multiple times in quick succession,
 instead of calling `set_state` multiple times with the same value,
 Bonsai will call `inject` multiple times, and they'll be processed by
@@ -420,31 +311,23 @@ current value of a `Bonsai.t`:
    -> 'model Bonsai.t * ('action -> unit Effect.t) Bonsai.t
 ```
 
-```{=html}
-<aside>
-```
-If our state machine is [inactive](../how_to/lifecycles.md), it cannot
-access the current value of `'input`. `Computation_status.t` forces us
-to explicitly handle this.
-```{=html}
-</aside>
-```
-Let's take `step` as an input and update our implementation to use
-`state_machine_with_input`:
+**Note:** If our state machine is [inactive](../how_to/lifecycles.md),
+it cannot access the current value of `'input`. `Computation_status.t`
+forces us to explicitly handle this. Let's take `step` as an input and
+update our implementation to use `state_machine_with_input`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/state_examples.ml,part=counter_state_machine_with_input -->
-```
 ``` ocaml
 let counter_state_machine_with_input ~(step : int Bonsai.t) (local_ graph) =
   let count, inject =
     Bonsai.state_machine_with_input
       ~default_model:0
-      ~apply_action:(fun (_ : _ Bonsai.Apply_action_context.t) input model action ->
+      ~apply_action:
+        (fun
+          (_ : _ Bonsai.Apply_action_context.t) input model action ->
         match input with
         | Bonsai.Computation_status.Inactive ->
-          (* This state machine is inactive, so it can't access the current value of
-             [input]. Just keep the original model *)
+          (* This state machine is inactive, so it can't access the current
+             value of [input]. Just keep the original model *)
           model
         | Active step ->
           (match action with
@@ -455,15 +338,17 @@ let counter_state_machine_with_input ~(step : int Bonsai.t) (local_ graph) =
   in
   let view =
     let%arr step and count and inject in
-    Vdom.Node.div
-      [ Vdom.Node.button
-          ~attrs:[ Vdom.Attr.on_click (fun _ -> inject `Decrement) ]
-          [ Vdom.Node.text [%string "-%{step#Int}"] ]
-      ; Vdom.Node.text [%string "Counter value: %{count#Int}"]
-      ; Vdom.Node.button
-          ~attrs:[ Vdom.Attr.on_click (fun _ -> inject `Increment) ]
-          [ Vdom.Node.text [%string "+%{step#Int}"] ]
-      ]
+    {%html|
+      <>
+        <button on_click=%{fun _ -> inject `Decrement}>
+          %{Vdom.Node.textf "-%d" step}
+        </button>
+        %{Vdom.Node.textf "Counter value: %d" count}
+        <button on_click=%{fun _ -> inject `Increment}>
+          %{Vdom.Node.textf "+%d" step}
+        </button>
+      </>
+    |}
   in
   view, count
 ;;
@@ -473,25 +358,20 @@ We can even chain our counters together! One counter's `count` can be
 used as another counter's `step`, making what can only be described as a
 frankencounter:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/state_examples.ml,part=counter_state_machine_chained -->
-```
 ``` ocaml
 let counter_state_machine_chained (local_ graph) =
-  let counter1, count1 = counter_state_machine_with_input ~step:(Bonsai.return 1) graph in
-  let counter2, count2 = counter_state_machine_with_input ~step:count1 graph in
+  let counter1, count1 =
+    counter_state_machine_with_input ~step:(Bonsai.return 1) graph
+  in
+  let counter2, count2 =
+    counter_state_machine_with_input ~step:count1 graph
+  in
   let counter3, _ = counter_state_machine_with_input ~step:count2 graph in
   let%arr counter1 and counter2 and counter3 in
-  Vdom.Node.div [ counter1; counter2; counter3 ]
+  {%html|<div>%{counter1}%{counter2}%{counter3}</div>|}
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#counter_state_machine_chained">
-```
-```{=html}
-</iframe>
-```
 There is no `state_machine2` (or n), because multiple dependencies could
 be packaged together as a single `Bonsai.t`, and destructured inside
 `apply_action`.
@@ -512,8 +392,6 @@ itself, e.g. when dealing with timeouts.
 It's also useful for stitching together components that talk to each
 other.
 
-```{=html}
-```
 ## Other State Primitives
 
 Bonsai has some other tools for state, such as `Bonsai.state_opt`,
@@ -523,10 +401,8 @@ learn more.
 
 All Bonsai state primitives also take an optional `reset` argument,
 which allows you to control what happens when [state is
-reset](../how_to/resetting_state.md).
+reset](https://github.com/janestreet/bonsai_web/blob/master/docs/how_to/resetting_state.md).
 
-```{=html}
-```
 ## Which State To Use?
 
 It might appear that `state_machine` is strictly better than `state`.
@@ -542,10 +418,9 @@ This is not necessarily true! As a general guideline:
     state.
 -   Use `Bonsai.state_machine` if state can update in various ways, you
     need to dispatch other effects / use the time source while updating
-    state, or your state transition function has an input.
-
-Let's continue to [Bonsai Guide Part 5: Control
-Flow](./05-control_flow.md).
+    state, or your state transition function has an input. Let's
+    continue to [Bonsai Guide Part 5: Control
+    Flow](./05-control_flow.md).
 
 ## The Underlying Machinery
 
@@ -556,10 +431,10 @@ When writing Bonsai code, you're actually doing 2 different things:
 -   Defining the static computation graph; i.e. *what* is computed, and
     *which* inputs it has.
 -   Dictating runtime behavior of the web app; i.e. *how* it is
-    computed.
+    computed. Only the contents of `let%arr` blocks (everything after
+    the `in`), `apply_action` state transition functions, and functions
+    used to construct [effects](./02-effects.md) are "runtime" code.
+    Everything else only runs *exactly once* at app startup to construct
+    the computation graph, before it gets compiled to a
+    `Vdom.Node.t Incr.t`.
 
-Only the contents of `let%arr` blocks (everything after the `in`),
-`apply_action` state transition functions, and functions used to
-construct [effects](./02-effects.md) are "runtime" code. Everything else
-only runs *exactly once* at app startup to construct the computation
-graph, before it gets compiled to a `Vdom.Node.t Incr.t`.

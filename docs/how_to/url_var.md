@@ -41,9 +41,6 @@ Imagine you have a site with the following URLs:
 
 We could represent this as an OCaml type:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/url_var_examples.ml,part=type -->
-```
 ``` ocaml
   type t =
     | Homepage
@@ -55,9 +52,6 @@ Then, we need to write `parse_exn` and `unparse` functions. `Url_var`
 will actually extract out the path and query from the URL into a
 `Url_var.Components.t`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/bonsai_types.mli,part=url_var_components -->
-```
 ``` ocaml
   module Components : sig
     type t =
@@ -71,9 +65,6 @@ will actually extract out the path and query from the URL into a
 So we need to write functions mapping between `Components.t` and our
 custom `t`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/url_var_examples.ml,part=parse_unparse -->
-```
 ``` ocaml
   let parse_exn ({ path; query; _ } : Url_var.Components.t) : t =
     let path = String.split path ~on:'/' in
@@ -124,9 +115,6 @@ environment.
 
 You can use `Url_var.create_exn`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/bonsai_types.mli,part=url_var_from_handwritten -->
-```
 ``` ocaml
   module type T = sig
     type t [@@deriving sexp, equal]
@@ -146,9 +134,6 @@ You can use `Url_var.create_exn`:
 
 You can use `Url_var.Typed.make`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/bonsai_types.mli,part=url_var_from_uri_parsing -->
-```
 ``` ocaml
   module Typed : sig
     val make
@@ -168,16 +153,14 @@ You can use `Url_var.Typed.make`:
 A `Url_var.t` is a mutable, global variable that provides a
 Bonsai-friendly API for acccessing and modifying it:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/bonsai_types.mli,part=url_var_usage_api -->
-```
 ``` ocaml
   val value : 'a Url_var.t -> 'a Bonsai.t
   val set_effect : ?how:[ `Push | `Replace ] -> 'a Url_var.t -> 'a -> unit Effect.t
 ```
 
 Once you have your `'a Bonsai.t`, all you need to do is [`match%sub` on
-it](../guide/05-control_flow.md), and you have a router!
+it](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/05-control_flow.md),
+and you have a router!
 
 Changing the `Url_var.t` will automatically update the [browser
 history](https://developer.mozilla.org/en-US/docs/Web/API/History_API),

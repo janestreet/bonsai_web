@@ -92,9 +92,6 @@ If you need to interact with some property / method not exposed by these
 types, you'll need to hand-write bindings. When doing this, be **very
 explicit** about types:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/javascript_interop_examples.ml,part=custom_types_and_coerce -->
-```
 ``` ocaml
 open Js_of_ocaml
 

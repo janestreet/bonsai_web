@@ -16,9 +16,6 @@ your value
 Imagine we'd like to have a counter for each of many users. We could
 show all the counters with an `assoc`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/scope_model_examples.ml,part=counters_for_users_assoc -->
-```
 ``` ocaml
 let counters_for_users_assoc (local_ graph) : Vdom.Node.t Bonsai.t =
   let users =
@@ -43,20 +40,11 @@ let counters_for_users_assoc (local_ graph) : Vdom.Node.t Bonsai.t =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#counters_for_users_assoc">
-```
-```{=html}
-</iframe>
-```
 ## One at a time
 
 But what if we wanted to show one counter at a time, but still maintain
 separate counter state for each user? We can use `Bonsai.scope_model`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/scope_model_examples.ml,part=counters_for_users_scoped -->
-```
 ``` ocaml
 module Form = Bonsai_web_ui_form.With_automatic_view
 
@@ -80,12 +68,6 @@ let counters_for_users_scoped (local_ graph) : Vdom.Node.t Bonsai.t =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#counters_for_users_scoped">
-```
-```{=html}
-</iframe>
-```
 Bonsai will maintain a separate copy of all state created in `for_` for
 every key that is passed into `on`.
 
@@ -111,10 +93,12 @@ We also used [Bonsai's form library](./forms.md)!
 ```
 ## The Underlying Machinery
 
-Recall from the [state chapter](../guide/04-state.md) that Bonsai
-aggregates and stores all state centrally. But `Bonsai.assoc`s need a
-dynamic number state copies: one for each key. These states all have the
-same static structure though, so we can just use a big `Map.t`.
+Recall from the [state
+chapter](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/04-state.md)
+that Bonsai aggregates and stores all state centrally. But
+`Bonsai.assoc`s need a dynamic number state copies: one for each key.
+These states all have the same static structure though, so we can just
+use a big `Map.t`.
 
 `scope_model` is implemented as a `Bonsai.assoc`, who's input map is
 `Map.of_alist_exn [THE_CURRENT_KEY, ()]`: that's how we get state

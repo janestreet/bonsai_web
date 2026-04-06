@@ -10,9 +10,6 @@ bytecode. When you open your web app in the browser, that JavaScript
 runs sequentially. Your web app starts because in your `main.ml`, you
 wrote:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/bonsai_runtime_examples.ml,part=start -->
-```
 ``` ocaml
 let () = Bonsai_web.Start.start My_app.component
 ```
@@ -24,7 +21,8 @@ What does `Bonsai_web.Start.start` do?
 The first thing Bonsai does is run your
 `local_ graph -> Vdom.Node.t Bonsai.t` function. As it does so, it
 updates `graph` to create a static computation graph for your Bonsai
-program. This includes all the [state](../guide/04-state.md),
+program. This includes all the
+[state](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/04-state.md),
 [lifecycles](./lifecycles.md), and other \[Bonsai.\*\] APIs that take a
 `graph`. It also includes all the `let%arr`s and `match%sub`s in your
 Bonsai program: Bonsai's internals can get a `graph` implicitly.
@@ -76,8 +74,9 @@ that has passed.
 machines. To understand actions, we need to clarify how `Effect.t`s run.
 
 When an `Effect.t` runs due to a [lifecycle event](./lifecycles.md), a
-[DOM event listener](../guide/01-virtual_dom.md#event-handlers), an
-[on_change](./edge_triggered_effects.md), or anything else that
+[DOM event
+listener](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/01-virtual_dom.md),
+an [on_change](./edge_triggered_effects.md), or anything else that
 ultimately calls `Effect.Expert.handle` (do not use this outside of
 [hooks/widgets](./low_level_vdom.md)!):
 

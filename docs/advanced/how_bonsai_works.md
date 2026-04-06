@@ -326,9 +326,6 @@ Let's say we want to use the output of `comp1` and `comp2` (both
 `thing_we_want_to_compute`. This is what the corresponding computation
 graph looks like:
 
-```{=html}
-<!-- $MDX skip -->
-```
     Sub { from=comp1; via=<name1>; into =
         Sub { from=comp2; via=<name2>; into =
             ... into = thing_we_want_to_compute ...
@@ -368,9 +365,6 @@ implemented, except instead of operating over lists, we operate over
 Let's look at how this works in practice. The top part is the code, and
 the bottom is the value of `graph` after every line:
 
-```{=html}
-<!-- $MDX skip -->
-```
     1.let computation graph =
     2.  let model1, _inject = Bonsai.state 5 graph in
     3.  let model2, _inject = Bonsai.state 6 graph in

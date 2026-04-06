@@ -3,9 +3,6 @@
 We can reset all state created within some block of code by wrapping it
 in `Bonsai.with_model_resetter`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/state_reset_examples.ml,part=resettable_counters -->
-```
 ``` ocaml
 let two_counters (local_ graph) =
   let%arr counter1 = State_examples.counter_ui graph
@@ -34,18 +31,9 @@ let reset_ui (local_ graph) ~f =
 let resettable_counters = reset_ui ~f:two_counters
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#resettable_counters">
-```
-```{=html}
-</iframe>
-```
 There's also a `Bonsai.with_model_resetter'`, which allows blocks of
 code to reset their own state:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/state_reset_examples.ml,part=resettable_counters_from_inside -->
-```
 ``` ocaml
 let resettable_counters_from_inside (local_ graph) =
   Bonsai.with_model_resetter'
@@ -70,12 +58,6 @@ let resettable_counters_from_inside (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#resettable_counters_from_inside">
-```
-```{=html}
-</iframe>
-```
 ## Advanced: Customizing Reset Behavior
 
 By default, when the effect from a `with_model_resetter` is scheduled,
@@ -90,9 +72,6 @@ One use case of Bonsai state is tracking some non-Bonsai value. For
 instance, let's say we want to use the following API for getting the
 status of an RPC connection:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/state_reset_examples.ml,part=connection_type -->
-```
 ``` ocaml
 module Connection : sig
   (* Some generic connection type that doesn't know of Bonsai *)
@@ -112,9 +91,6 @@ end
 We could make its status available as a `Bonsai.t` by creating some
 state, and updating it via the `on_status_change` subscription:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/state_reset_examples.ml,part=connection_status -->
-```
 ``` ocaml
 let connection_status (local_ graph) conn
   : [ `Connected | `Connecting | `Disconnected ] Bonsai.t
@@ -132,9 +108,6 @@ let connection_status (local_ graph) conn
 We could then use this `status Bonsai.t` as an input to a UI that lets
 the user know if they are connected:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/state_reset_examples.ml,part=connection_status_ui -->
-```
 ``` ocaml
 let conn = Connection.create ~uri:"https://google.com"
 
@@ -150,19 +123,10 @@ let connection_status_ui (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#connection_status_ui">
-```
-```{=html}
-</iframe>
-```
 This works fine, but things get a bit dicey if our connection status
 function is included transitively in a call to `with_model_resetter`.
 For example:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/state_reset_examples.ml,part=resettable_connection_and_counters -->
-```
 ``` ocaml
 let connection_and_counters (local_ graph) =
   let%arr connection_status_ui = connection_status_ui graph
@@ -173,12 +137,6 @@ let connection_and_counters (local_ graph) =
 let resettable_ui = reset_ui ~f:connection_and_counters
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#resettable_connection_and_counters">
-```
-```{=html}
-</iframe>
-```
 The `state` we use to track `connection_status` isn't really *state*: it
 should persist across model resets. But if you click the reset, in
 addition to resetting the counters, the connection status switches to
@@ -188,9 +146,6 @@ changes.
 We can exclude state from being reset by providing a custom `reset`
 function:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/state_reset_examples.ml,part=connection_status_reset -->
-```
 ``` ocaml
 let connection_status (local_ graph) conn
   : [ `Connected | `Connecting | `Disconnected ] Bonsai.t
@@ -211,12 +166,6 @@ And now we observe the correct reset behaviour for both the counter and
 connection status UIs:
 
 ```{=html}
-<iframe data-external="1" src="https://bonsai:8535#proper_reset_ui_with_connection_status">
-```
-```{=html}
-</iframe>
-```
-```{=html}
 <aside>
 ```
 Bonsai has some optimizations that apply when a state machine's current
@@ -236,9 +185,6 @@ orders.
 
 An over-simplified interface for an exchange might look like:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/state_reset_examples.ml,part=exchange_type -->
-```
 ``` ocaml
 module Exchange : sig
   module Order_id = Int
@@ -263,9 +209,6 @@ end
 And we could write a state machine that lets users create and track
 their open and filled orders:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/state_reset_examples.ml,part=order_manager_definition -->
-```
 ``` ocaml
 module Model = struct
   type t =
@@ -334,9 +277,6 @@ with itself.
 
 We can incorporate our `order_manager` into our trading UI:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/state_reset_examples.ml,part=trading_ui -->
-```
 ``` ocaml
 let trading_ui exchange (local_ graph) =
   let open_orders, filled_orders, inject_new_order = order_manager exchange graph in
@@ -353,22 +293,10 @@ let trading_ui exchange (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#trading_ui">
-```
-```{=html}
-</iframe>
-```
 However, as in the previous example, something weird starts to happen if
 our trading UI happens to be nested in a model resetter. In the demo
 below, try resetting the computation when there are open orders.
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#trading_ui_reset">
-```
-```{=html}
-</iframe>
-```
 As you may have noticed, we can still receive fills for orders that were
 opened before resetting our model, even though resetting the model was
 supposed to restore our state to `Model.default`, which has no open
@@ -379,9 +307,6 @@ exchange: we need to do this ourselves. We'll change the use of
 `Bonsai.state_machine`, providing a `reset` implementation that uses the
 `Apply_action_context.t` parameter:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/state_reset_examples.ml,part=order_manager_with_reset -->
-```
 ``` ocaml
   let model, inject_action =
     Bonsai.state_machine
@@ -414,12 +339,6 @@ exchange: we need to do this ourselves. We'll change the use of
 With this new reset behaviour, orders don't persist between model
 resets.
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#proper_trading_ui_reset">
-```
-```{=html}
-</iframe>
-```
 ```{=html}
 <aside>
 ```

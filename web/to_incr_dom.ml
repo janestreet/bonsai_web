@@ -78,7 +78,12 @@ let convert_generic
       and model in
       let schedule_event = Vdom.Effect.Expert.handle_non_dom_event_exn in
       let apply_action action _state ~schedule_action:_ =
-        apply_action ~inject ~schedule_event (Some input) model action
+        apply_action
+          ~inject
+          ~schedule_event
+          (Bonsai.Computation_status.Active input)
+          model
+          action
       in
       let before_display _ ~schedule_action:_ ~apply_actions_recursor =
         match
@@ -146,7 +151,7 @@ let convert_with_extra
   ?(optimize = false)
   component
   =
-  let fresh = Type_equal.Id.create ~name:"" sexp_of_opaque in
+  let fresh = Bonsai.Private.Var_id.create () in
   let var = Bonsai.Private.(Value.named App_input fresh |> conceal_value) in
   let start_timer event =
     let event = Bonsai.Private.Timer.string_of_event event in

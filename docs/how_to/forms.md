@@ -3,6 +3,56 @@
 Bonsai has an entire library dedicated to building and combining forms
 called `Bonsai_web_ui_form`.
 
+## Should you use this library?
+
+For most forms, **hand-rolling with plain Bonsai primitives**
+(`Bonsai.state`, `let%arr`, etc.) is simpler and more flexible than
+using `Bonsai_web_ui_form`. The `Form.t` type bundles value, view, and
+setter together and wraps all values in `Or_error.t`, which adds
+constraints and boilerplate that often aren't needed.
+
+Consider this library primarily when you have a **form that
+significantly benefits from automatic type-driven generation** (e.g.,
+large records or variants), and you care less about precisely
+controlling the form's layout.
+
+Here's what a hand-rolled form can look like:
+
+``` ocaml
+let order_form (local_ graph) =
+  let price, set_price = Bonsai.state_opt graph in
+  let size, set_size = Bonsai.state_opt graph in
+  let value =
+    let%arr price and size in
+    { Order.price = Option.value price ~default:0.
+    ; size = Option.value size ~default:0
+    }
+  in
+  let view =
+    let%arr price and set_price and size and set_size in
+    {%html|
+      <Skyline_field_v2.view
+        ~label:(<Skyline_field_v2.Label.content> Price </>)>
+        <Skyline_text_input_v2.Numeric.content
+          ~stringable:%{(module Float)}
+          ~state:%{(price, set_price)} />
+      </>
+      <Skyline_field_v2.view
+        ~label:(<Skyline_field_v2.Label.content> Size </>)>
+        <Skyline_text_input_v2.Numeric.content
+          ~stringable:%{(module Int)}
+          ~state:%{(size, set_size)} />
+      </>
+    |}
+  in
+  value, view
+;;
+```
+
+## Using Bonsai_web_ui_form
+
+If you do decide to use this library, read on.
+
 ```{=html}
 ```
 There are two submodules within `Bonsai_web_ui_form`:
@@ -20,9 +70,6 @@ forms](#migrating-from-legacy-forms) to the new recommendation. For the
 rest of this doc, we'll focus on manual view forms and this module alias
 will be in effect:
 
-```{=html}
-<!-- $MDX skip -->
-```
 ``` ocaml
 module Form = Bonsai_web_ui_form.With_manual_view
 ```
@@ -31,9 +78,6 @@ module Form = Bonsai_web_ui_form.With_manual_view
 
 The primary type in the forms library is `('a, 'view) Form.t`:
 
-```{=html}
-<!-- $MDX skip -->
-```
 ``` ocaml
 type ('a, 'view) Form.t =
   { value : 'a Or_error.t
@@ -50,9 +94,6 @@ Because of the inherently stateful nature of form UIs, form building
 functions take `(local_ graph)`. For example, a Vdom-based textbox form
 element that produces strings has type:
 
-```{=html}
-<!-- $MDX skip -->
-```
 ``` ocaml
 val Form.Elements.Textbox.string
   :  ?placeholder:string Bonsai.t
@@ -64,9 +105,6 @@ val Form.Elements.Textbox.string
 
 And the type for a checkbox that produces bools has this type:
 
-```{=html}
-<!-- $MDX skip -->
-```
 ``` ocaml
 val Form.Elements.Checkbox.bool
   :  ?extra_attrs:Vdom.Attr.t list Value.t
@@ -90,9 +128,6 @@ could be any OCaml type.
 In the following example, the value of a textbox is extracted and
 printed as a sexp:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/form_examples.ml,part=form_textbox_value -->
-```
 ``` ocaml
 let textbox_value (local_ graph) =
   let textbox =
@@ -108,12 +143,6 @@ let textbox_value (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#form_textbox_value">
-```
-```{=html}
-</iframe>
-```
 Forms returning their values inside of an `Or_error.t` may be surprising
 at first, but in practice, many kinds of forms are fallible, either
 because validation has failed, or because a large form is only partially
@@ -131,9 +160,6 @@ the `Vdom.Node.t` you display in your app.
 Forms provides `Form.map_view` for modifying the view of a form. For
 example, we can use it to add a label to a textbox:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/form_examples.ml,part=textbox_with_label -->
-```
 ``` ocaml
 let labelled_textbox (label : string Bonsai.t) (local_ graph)
   : (string, Vdom.Node.t) Form.t Bonsai.t
@@ -147,12 +173,6 @@ let labelled_textbox (label : string Bonsai.t) (local_ graph)
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#textbox_with_label">
-```
-```{=html}
-</iframe>
-```
 Some other common uses of `Form.map_view` include:
 
 ### Displaying an error to the user
@@ -161,9 +181,6 @@ It's good practice to let users know when the form is in a bad state.
 Suppose you write the following function for displaying errors to a
 user:
 
-```{=html}
-<!-- $MDX skip -->
-```
 ``` ocaml
 (* Render a warning sign and show the error text to the user *)
 val display_error : Error.t -> Vdom.Node.t
@@ -172,9 +189,6 @@ val display_error : Error.t -> Vdom.Node.t
 It's easy to incorporate this function into the forms code! Suppose we
 want to augment an `int` textbox with its error message:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/form_examples.ml,part=textbox_with_error -->
-```
 ``` ocaml
 let display_error error =
   View.text ~attrs:[ {%css|color: red;|} ] [%string "⚠  %{Error.to_string_hum error}"]
@@ -193,12 +207,6 @@ let int_with_error_display (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#textbox_with_error">
-```
-```{=html}
-</iframe>
-```
 ### Submit Controls
 
 Many forms are explicitly submitted by the user by clicking a button, as
@@ -236,12 +244,6 @@ let textbox_with_submit (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#textbox_with_submit">
-```
-```{=html}
-</iframe>
-```
 ## Form.set
 
 Setting the contents of a form is a rarer requirement. Most forms are
@@ -249,9 +251,6 @@ read-only (the user is the only one filling it out), but sometimes, a
 form should be modified by the program, perhaps to initialize the form
 in a specific state.
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/form_examples.ml,part=form_set -->
-```
 ``` ocaml
 let form_set (local_ graph) =
   let textbox =
@@ -267,20 +266,11 @@ let form_set (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#form_set">
-```
-```{=html}
-</iframe>
-```
 # Projection
 
 Notably missing in the Forms API is a "map" function. In its place is
 `Form.project`, which has this type signature:
 
-```{=html}
-<!-- $MDX skip -->
-```
 ``` ocaml
 val project
   : ?extend_view_with_error:('view -> Error.t -> 'view)
@@ -303,9 +293,6 @@ In practice, `project` is used to build forms for types that can be
 parsed from other types. For example, `Form.Elements.Textbox.int` is
 implemented like so:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/form_examples.ml,part=int_textbox -->
-```
 ``` ocaml
 let int (local_ graph) : (int, Vdom.Node.t) Form.t Bonsai.t =
   let form = Form.Elements.Textbox.string ~allow_updates_when_focused:`Always () graph in
@@ -314,12 +301,6 @@ let int (local_ graph) : (int, Vdom.Node.t) Form.t Bonsai.t =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#int_textbox">
-```
-```{=html}
-</iframe>
-```
 You'll notice that non-integers are reported as an error. `Form.project`
 captures the exception thrown by `Int.of_string` and the `Form.value`
 returned by the `project`ed form is an `Error`. The optional
@@ -337,9 +318,6 @@ not raising, respectively.
 Because this is a common pattern, Bonsai Forms provides the following
 function, built on top of `Form.project` to help reduce boilerplate:
 
-```{=html}
-<!-- $MDX skip -->
-```
 ``` ocaml
 val validate : 'a t -> f:('a -> unit Or_error.t) -> 'a t
 ```
@@ -353,9 +331,6 @@ set of combinators for combining smaller subforms into a larger form.
 
 The simplest combinator is `Form.both`:
 
-```{=html}
-<!-- $MDX skip -->
-```
 ``` ocaml
 val both
   :  ('a, 'view_a) Form.t
@@ -366,9 +341,6 @@ val both
 We can use `Form.both` to combine many individual forms into a single
 one, and then manually construct a vdom view:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/form_examples.ml,part=form_both -->
-```
 ``` ocaml
 let big_tuple_form (local_ graph)
   : ((int * float) * (string * bool), Vdom.Node.t) Form.t Bonsai.t
@@ -404,21 +376,12 @@ let big_tuple_form (local_ graph)
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#form_both">
-```
-```{=html}
-</iframe>
-```
 ## Form.Typed module
 
 ### Records
 
 For this example, we'll build a form for the following type:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/form_examples.ml,part=record_form_type -->
-```
 ``` ocaml
 type t =
   { some_string : string
@@ -434,9 +397,6 @@ which you'll need to add to your jbuild. Deriving `typed_fields` will
 make a module named `Typed_field` containing a type with a constructor
 representing each field in the record it was derived on.
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/form_examples.ml,part=record_form -->
-```
 ``` ocaml
 module Record = struct
   type t =
@@ -502,9 +462,6 @@ end
 
 We can also do the same for variants with `[@@deriving typed_variants]`:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/form_examples.ml,part=variant_form -->
-```
 ``` ocaml
 module Variant = struct
   type t =
@@ -570,9 +527,6 @@ end
 Combining the record and variant forms from before using `Form.both`, we
 can create one final form and print the results:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/form_examples.ml,part=record_and_variant_form -->
-```
 ``` ocaml
 let view_record_and_variant_form : local_ Bonsai.graph -> Vdom.Node.t Bonsai.t =
   fun graph ->
@@ -596,12 +550,6 @@ let view_record_and_variant_form : local_ Bonsai.graph -> Vdom.Node.t Bonsai.t =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#record_and_variant_form">
-```
-```{=html}
-</iframe>
-```
 # Migrating from legacy forms
 
 `Bonsai_web_ui_form.With_automatic_view` used to be the default kind of
@@ -609,9 +557,6 @@ forms. However, they were extremely hard to customize. Thankfully,
 conversion between the two is easy and can be done with the following
 functions:
 
-```{=html}
-<!-- $MDX skip -->
-```
 ``` ocaml
 val to_manual_form
   :  'a Form.With_automatic_view.t

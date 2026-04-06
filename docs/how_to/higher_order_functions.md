@@ -5,8 +5,9 @@ pipeline operator, and `match` statements enable control flow and
 abstraction.
 
 The `match%sub` and `Bonsai.assoc` [control flow
-primitives](../guide/05-control_flow.md) are higher-order functions too!
-And we can use them to build higher-order abstractions like:
+primitives](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/05-control_flow.md)
+are higher-order functions too! And we can use them to build
+higher-order abstractions like:
 
 -   A generic query renderer, which dispatches an RPC to fetch some
     data, and uses `match%sub` to display a loading indicator while the
@@ -19,18 +20,12 @@ And we can use them to build higher-order abstractions like:
 
 These will have type signatures like:
 
-```{=html}
-<!-- $MDX skip -->
-```
 ``` ocaml
 val higher_order : ('a Bonsai.t -> local_ graph -> 'b Bonsai.t) -> ... -> local_ graph -> 'c Bonsai.t
 ```
 
 For example, here's how we'd build a simple modal:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/higher_order_examples.ml,part=hoc_modal -->
-```
 ``` ocaml
 type t =
   { view : Vdom.Node.t Bonsai.t
@@ -85,9 +80,6 @@ let modal
 And here's how we could use the modal, with content that instantiates
 state:
 
-```{=html}
-<!-- $MDX file=../../examples/bonsai_guide_code/higher_order_examples.ml,part=modal_example -->
-```
 ``` ocaml
 let modal_example (local_ graph) =
   let title = Bonsai.return (Vdom.Node.text "Hi there!") in
@@ -114,11 +106,5 @@ let modal_example (local_ graph) =
 ;;
 ```
 
-```{=html}
-<iframe data-external="1" src="https://bonsai:8535#modal_example">
-```
-```{=html}
-</iframe>
-```
 Note that state is retained, and [lifecycle effects](./lifecycles.md)
 run on every open / close.

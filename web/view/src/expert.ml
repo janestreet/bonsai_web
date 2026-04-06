@@ -314,7 +314,7 @@ let default_theme =
               | `Yes_with_length_px _ -> Some (self#toplayer_tooltip_arrow ~intent)
               | `No -> None
             in
-            Byo_toplayer_private_vdom.tooltip
+            Bonsai_web_toplayer_private_vdom.tooltip
               ~tooltip_attrs:([ self#toplayer_tooltip_styles ~intent ] @ tooltip_attrs)
               ~position:
                 (match position with
