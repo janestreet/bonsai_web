@@ -1,5 +1,5 @@
 (library
- (name bonsai_web_ui_toggle)
+ (name bonsai_web_contrib_toggle)
  (public_name bonsai_web.ui_toggle)
  (libraries core virtual_dom.css_gen virtual_dom)
  (preprocess

@@ -1,10 +1,10 @@
 (library
- (name bonsai_web_ui_view)
+ (name bonsai_web_legacy_view)
  (public_name bonsai_web.ui_view)
- (libraries bonsai toplayer.popover bonsai_web_ui_form_view
-   bonsai_web_ui_partial_render_table_styling bonsai_web_ui_toggle
-   bonsai_web_ui_view_tailwind_interop core virtual_dom.css_gen js_of_ocaml
-   virtual_dom.input_widgets virtual_dom)
+ (libraries bonsai bonsai_web_contrib_toggle bonsai_web_form_view
+   bonsai_web_legacy_view_tailwind_interop
+   bonsai_web_partial_render_table_styling toplayer.popover core
+   virtual_dom.css_gen js_of_ocaml virtual_dom.input_widgets virtual_dom)
  (preprocess
   (pps ppx_jane bonsai.ppx_bonsai ppx_css js_of_ocaml-ppx))
  (flags :standard -alert -private_bonsai_view_library))

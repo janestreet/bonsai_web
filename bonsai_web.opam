@@ -16,12 +16,14 @@ depends: [
   "async_durable"
   "async_js"
   "async_kernel"
+  "async_log"
   "async_rpc_kernel"
   "babel"
   "bonsai"
   "bonsai_concrete"
   "core"
   "core_kernel"
+  "fastdom"
   "incr_dom"
   "ocaml-embed-file"
   "pending_or_error"
@@ -38,7 +40,7 @@ depends: [
   "js_of_ocaml-ppx"             {>= "6.0.0"}
   "uri"                         {>= "3.0.0"}
 ]
-available: arch != "arm32" & arch != "x86_32"
+available: arch != "x86_32"
 synopsis: "A library for building dynamic webapps, using Js_of_ocaml"
 description: "
 Bonsai is a library for building reusable UI components inside an

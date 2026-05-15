@@ -1,5 +1,5 @@
 (library
- (name bonsai_web_ui_view_tailwind_interop)
+ (name bonsai_web_legacy_view_tailwind_interop)
  (public_name bonsai_web.ui_view_tailwind_interop)
  (preprocess
   (pps ppx_jane -compare-require-explicit-locality)))

@@ -486,10 +486,9 @@ module Table : sig
     -> Vdom.Node.t
 end
 
-(** Hooks for building controlled form inputs. You may want to consider
-    [Bonsai_web_ui_form] instead of using these directly, as it provides combinators for
-    building large forms. These methods underlie [Bonsai_web_ui_form]'s analagous
-    elements. *)
+(** Hooks for building controlled form inputs. You may want to consider [Bonsai_web_form]
+    instead of using these directly, as it provides combinators for building large forms.
+    These methods underlie [Bonsai_web_form]'s analagous elements. *)
 module Form_inputs : sig
   val textbox
     :  Theme.t
@@ -593,7 +592,7 @@ module For_components : sig
   end
 
   module Prt : sig
-    val styling : Theme.t -> Bonsai_web_ui_partial_render_table_styling.t
+    val styling : Theme.t -> Bonsai_web_partial_render_table_styling.t
   end
 
   module Changelog : sig
@@ -633,7 +632,7 @@ module Expert : sig
     -> 'a Bonsai.t
 
   (* An attr that sets the
-     [Bonsai_web_ui_view_tailwind_interop.bonsai_dark_class_for_tailwind] class on the
+     [Bonsai_web_legacy_view_tailwind_interop.bonsai_dark_class_for_tailwind] class on the
      root [<html />] node. This allows Tailwind-styled apps to toggle dark mode using a
      Bonsai theme. If your custom theme overrides [app_attr], you probably want to include
      this attr if your theme's [self#constants.is_dark] is [true].

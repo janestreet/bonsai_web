@@ -26,7 +26,19 @@ There are also helper functions for some common DOM operations you might
 want to do in an `Effect.t`:
 
 -   `val Effect.print_s : Sexp.t -> unit Effect.t`
--   `val Effect.alert : string -> unit Effect.t`
 -   `val Effect.reload_page : unit Effect.t`
 -   `module Effect.Focus` contains some useful tools for focusing DOM
     elements via effect.
+
+We also have `Effect.alert`, which is a simple wrapper around
+[`window.alert`](https://developer.mozilla.org/en-US/docs/Web/API/Window/alert).
+We don't recommend using it, since it has a rather poor user experience.
+
+-   `val Effect.alert : string -> unit Effect.t`
+
+## Testing
+
+Because these functions rely on the browser's API, they are all mocked
+out for JSDom tests, with the exception of `Effect.alert`, which will
+throw an exception in tests. As mentioned above, we don't recommend
+using `Effect.alert`.

@@ -46,7 +46,7 @@ But what if we wanted to show one counter at a time, but still maintain
 separate counter state for each user? We can use `Bonsai.scope_model`:
 
 ``` ocaml
-module Form = Bonsai_web_ui_form.With_automatic_view
+module Form = Bonsai_web_form.With_automatic_view
 
 let counters_for_users_scoped (local_ graph) : Vdom.Node.t Bonsai.t =
   let form =
@@ -94,7 +94,7 @@ We also used [Bonsai's form library](./forms.md)!
 ## The Underlying Machinery
 
 Recall from the [state
-chapter](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/04-state.md)
+chapter](https://github.com/janestreet/bonsai_web/blob/master/docs/public_garden_exports/quick_start.md#state)
 that Bonsai aggregates and stores all state centrally. But
 `Bonsai.assoc`s need a dynamic number state copies: one for each key.
 These states all have the same static structure though, so we can just

@@ -50,6 +50,7 @@ module For_bonsai_internal = struct
 <truncated stack to preserve determinism between fast-build and fast-exe>|}
             first_line
     in
+    Bonsai_private_base.Debug_node_output.set_output (fun s -> Core.print_endline s);
     Bonsai.Private.set_perform_on_exception (fun exn ->
       match exn with
       | Stack_overflow ->

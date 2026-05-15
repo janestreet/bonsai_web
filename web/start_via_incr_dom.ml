@@ -285,6 +285,7 @@ module Fully_parametrized = struct
       ;;
     end
     in
+    Js.Unsafe.global##.isBonsaiApplication := Js.bool true;
     Incr_dom.Start_app.Private.start_bonsai
       ~simulate_body_focus_on_root_element
       ~profile
@@ -485,6 +486,7 @@ let computation_with_rpc_and_result_spec computation ~custom_connector ~result_s
 ;;
 
 let start_and_get_handle
+  ?(call_pos = Stdlib.Lexing.dummy_pos)
   result_spec
   ?(optimize = true)
   ?(custom_connector = default_custom_connector)
@@ -510,12 +512,20 @@ let start_and_get_handle
   in
   (* Note: duplicated between [start_experimental] and [start_via_incr_dom]. *)
   Deferred.upon (Handle.started bonsai_handle) (fun () ->
+    Js.Unsafe.global##.bonsaiStartCallPos
+    := call_pos
+       |> [%sexp_of: Source_code_position.Stable.V1.t]
+       |> Sexp.to_string
+       |> Js.string;
+    (* NOTE: We set [bonsaiHasStarted] as a witness that bonsai has started successfully
+       for use in browser testing. *)
     Js.Unsafe.global##.bonsaiHasStarted := Js.bool true);
   let () = ignore (pre_startup : unit) in
   bonsai_handle
 ;;
 
 let start
+  ?(call_pos = Stdlib.Lexing.dummy_pos)
   ?custom_connector
   ?(bind_to_element_with_id = "app")
   ?simulate_body_focus_on_root_element
@@ -525,6 +535,7 @@ let start
   =
   let (_ : _ Handle.t) =
     start_and_get_handle
+      ~call_pos
       Result_spec.just_the_view
       ~bind_to_element_with_id
       ?simulate_body_focus_on_root_element

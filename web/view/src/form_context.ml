@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web_ui_form_view
+open Bonsai_web_form_view
 
 type t =
   { depth : int

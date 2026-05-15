@@ -138,13 +138,17 @@ their dependencies are no longer `phys_equal`. Using mutable data
 undermines this in fairly fundamental ways.
 
 When you do need to use state, reach for [Bonsai's
-primitives](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/04-state.md).
+primitives](https://github.com/janestreet/bonsai_web/blob/master/docs/public_garden_exports/quick_start.md#state).
 Likewise, any side effects you need to run should be wrapped in an
-[Effect.t](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/02-effects.md),
+[Effect.t](https://github.com/janestreet/bonsai_web/blob/master/docs/public_garden_exports/quick_start.md#effects),
 and almost always dispatched on one of:
 
--   User interactions with
-    [vdom](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/01-virtual_dom.md)
+-   User interactions with [event
+    handlers](https://github.com/janestreet/bonsai_web/blob/master/docs/public_garden_exports/quick_start.md)
+
+```{=html}
+<!-- -->
+```
 -   A [Bonsai lifecycle activation or deactivation](./lifecycles.md)
 -   In response to [something changing](./edge_triggered_effects.md)
 
@@ -173,16 +177,12 @@ Don't use it for anything else; see [this article](./var.md).
 
 ### Don't over-incrementalize
 
-As we noted in the
-[guide](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/03-incrementality.md),
-infrequent and expensive computations can be factored out into
-intermediate `Bonsai.t`s.
-
-Often, this isn't actually worth it. Incremental nodes aren't *super*
-expensive, but they aren't free to create, fire, and track. In the
-"a_typical_function" example at the start of this chapter, it would
-probably be more performant to fold the "intermediate" computations into
-the main `let%arr` block.
+Infrequent and expensive computations can be factored out into
+intermediate `Bonsai.t`s. However, this often isn't actually worth it.
+Incremental nodes aren't *super* expensive, but they aren't free to
+create, fire, and track. In the "a_typical_function" example at the
+start of this chapter, it would probably be more performant to fold the
+"intermediate" computations into the main `let%arr` block.
 
 You also can't chain incrementalization forever: Bonsai incremental
 graphs have a max height of 1024. This is rarely an issue, but sometimes
@@ -230,11 +230,10 @@ expensive, so there are workarounds for common scenarios:
 
 ## List performance in Vdom
 
-Vdom's algorithm for [diffing lists is
-naive](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/01-virtual_dom.md):
-it just compares elements at corresponding indices. If an element gets
-inserted into, or removed from, a list, this can cause subsequent DOM
-nodes to be destroyed / recreated unnecessarily.
+Vdom's algorithm for diffing lists is naive: it just compares elements
+at corresponding indices. If an element gets inserted into, or removed
+from, a list, this can cause subsequent DOM nodes to be destroyed /
+recreated unnecessarily.
 
 ### Avoid Variable Length / Order Lists
 

@@ -2265,7 +2265,8 @@ module Status = struct
                writeback Connected;
                upon
                  (Rpc.Connection.close_reason connection ~on_close:`started)
-                 (fun reason -> writeback (Disconnected (Error.of_info reason)));
+                 (fun reason ->
+                    writeback (Disconnected (Error.of_info (Info.of_portable reason))));
                Deferred.Or_error.return ())
          with
          | Ok () -> ()

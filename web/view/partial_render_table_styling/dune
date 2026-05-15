@@ -1,5 +1,5 @@
 (library
- (name bonsai_web_ui_partial_render_table_styling)
+ (name bonsai_web_partial_render_table_styling)
  (public_name bonsai_web.web_ui_partial_render_table_styling)
  (libraries core virtual_dom.css_gen virtual_dom)
  (preprocess

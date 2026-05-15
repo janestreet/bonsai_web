@@ -34,7 +34,7 @@ module Set_dark_class_on_html = Vdom.Attr.Hooks.Make (struct
 
     let init () _elem =
       Dom_html.document##.documentElement##.classList##add
-        (Js.string Bonsai_web_ui_view_tailwind_interop.bonsai_dark_class_for_tailwind)
+        (Js.string Bonsai_web_legacy_view_tailwind_interop.bonsai_dark_class_for_tailwind)
     ;;
 
     let on_mount = `Do_nothing
@@ -42,13 +42,13 @@ module Set_dark_class_on_html = Vdom.Attr.Hooks.Make (struct
 
     let destroy () () _elem =
       Dom_html.document##.documentElement##.classList##remove
-        (Js.string Bonsai_web_ui_view_tailwind_interop.bonsai_dark_class_for_tailwind)
+        (Js.string Bonsai_web_legacy_view_tailwind_interop.bonsai_dark_class_for_tailwind)
     ;;
   end)
 
 let set_dark_class_on_html =
   Vdom.Attr.create_hook
-    "bonsai_web_ui_view.set_dark_class_on_html"
+    "bonsai_web_legacy_view.set_dark_class_on_html"
     (Set_dark_class_on_html.create ())
 ;;
 
@@ -56,7 +56,7 @@ let root_styles =
   lazy
     (Inline_css.Private.Dynamic.attr
        {|
-@layer bonsai_web_ui_view.app {
+@layer bonsai_web_legacy_view.app {
   :root {
     font-family: sans-serif;
   }
@@ -395,7 +395,7 @@ let default_theme =
           method codemirror_theme : For_codemirror.Theme.t option = None
 
           method prt_styling =
-            Bonsai_web_ui_partial_render_table_styling.create
+            Bonsai_web_partial_render_table_styling.create
               { colors =
                   { page_bg = self#constants.primary.background
                   ; page_fg = self#constants.primary.foreground
@@ -420,9 +420,8 @@ let default_theme =
                   ; body_body_border = self#constants.table.body_body_border
                   ; header_body_border = self#constants.table.header_body_border
                   }
-              ; lengths =
-                  Bonsai_web_ui_partial_render_table_styling.Params.Lengths.default
-              ; fonts = Bonsai_web_ui_partial_render_table_styling.Params.Fonts.default
+              ; lengths = Bonsai_web_partial_render_table_styling.Params.Lengths.default
+              ; fonts = Bonsai_web_partial_render_table_styling.Params.Fonts.default
               }
 
           method changelog_styling = For_changelog.default self#constants

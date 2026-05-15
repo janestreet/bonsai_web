@@ -12,9 +12,8 @@ benefits over just storing "which page am I on" state:
 4.  Reading and editing URLs can be used (as a last resort maybe) for
     precise navigation
 
-The `bonsai_web_ui_url_var` library provides a `'a Url_var.t` type,
-which is a global variable that tracks some `'a` parsed from the current
-URL.
+The `bonsai_web_url_var` library provides a `'a Url_var.t` type, which
+is a global variable that tracks some `'a` parsed from the current URL.
 
 URLs are strings, but we usually want to use some OCaml data structure
 to represent the navigational state. We'll need `parse_exn` and
@@ -159,7 +158,7 @@ Bonsai-friendly API for acccessing and modifying it:
 ```
 
 Once you have your `'a Bonsai.t`, all you need to do is [`match%sub` on
-it](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/05-control_flow.md),
+it](https://github.com/janestreet/bonsai_web/blob/master/docs/public_garden_exports/quick_start.md#mapping-and-control-flow),
 and you have a router!
 
 Changing the `Url_var.t` will automatically update the [browser

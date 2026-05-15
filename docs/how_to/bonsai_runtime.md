@@ -22,8 +22,8 @@ The first thing Bonsai does is run your
 `local_ graph -> Vdom.Node.t Bonsai.t` function. As it does so, it
 updates `graph` to create a static computation graph for your Bonsai
 program. This includes all the
-[state](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/04-state.md),
-[lifecycles](./lifecycles.md), and other \[Bonsai.\*\] APIs that take a
+[state](https://github.com/janestreet/bonsai_web/blob/master/docs/public_garden_exports/quick_start.md#state),
+[lifecycles](./lifecycles.md), and other `Bonsai.*` APIs that take a
 `graph`. It also includes all the `let%arr`s and `match%sub`s in your
 Bonsai program: Bonsai's internals can get a `graph` implicitly.
 
@@ -74,11 +74,9 @@ that has passed.
 machines. To understand actions, we need to clarify how `Effect.t`s run.
 
 When an `Effect.t` runs due to a [lifecycle event](./lifecycles.md), a
-[DOM event
-listener](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/01-virtual_dom.md),
-an [on_change](./edge_triggered_effects.md), or anything else that
-ultimately calls `Effect.Expert.handle` (do not use this outside of
-[hooks/widgets](./low_level_vdom.md)!):
+DOM event listener, an [on_change](./edge_triggered_effects.md), or
+anything else that ultimately calls `Effect.Expert.handle` (do not use
+this outside of [hooks/widgets](./low_level_vdom.md)!):
 
 -   If the effect is an `Effect.Ignore`, it completes immediately
 -   If the effect is a synchronous function (e.g. `Effect.of_sync_fun`,

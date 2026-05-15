@@ -218,7 +218,7 @@ let app (local_ graph) =
   let%arr invert and toggle_invert in
   let widget = trivial_widget invert in
   (* Note that each usage of widget has a separate internal state! *)
-  {%html|
+  {%html.jsx|
     <div>
       <button on_click=%{fun _ -> toggle_invert}>Invert</button>
       %{widget} %{widget} %{widget}
@@ -285,7 +285,7 @@ let app (local_ graph) =
   let num_patches, set_num_patches = Bonsai.state 0 graph in
   let view =
     let%arr num_patches and num_clicks in
-    {%html|
+    {%html.jsx|
       <div>
         <p>Clicks: %{num_clicks#Int}</p>
         <p>Patches: %{num_patches#Int}</p>
@@ -299,12 +299,11 @@ let app (local_ graph) =
   let widget =
     widget_using_diff_patch { Widget_using_diff_patch.Input.vdom = view; set_num_patches }
   in
-  {%html|
+  {%html.jsx|
     <div>
       <button on_click=%{fun _ -> update_num_clicks (fun x -> x + 1)}>
-        Click me
-      </button>
-      %{widget}
+        #{" Click me "}</button
+      >%{widget}
     </div>
   |}
 ;;
@@ -361,10 +360,9 @@ A few things to keep in mind:
 
 ## Bonsai Interop
 
-The `Bonsai_web_ui_low_level_vdom` library wraps the `virtual_dom` hook
-and widget APIs with a Bonsai layer, which gives you the ability to
-access the inputs and states of hooks / widgets through an `Effect.t`
-API.
+The `Bonsai_web_low_level_vdom` library wraps the `virtual_dom` hook and
+widget APIs with a Bonsai layer, which gives you the ability to access
+the inputs and states of hooks / widgets through an `Effect.t` API.
 
 ```{=html}
 ```

@@ -9,7 +9,7 @@ end
 
 module Incr = Ui_incr
 module Vdom = Virtual_dom.Vdom
-module View = Bonsai_web_ui_view
+module View = Bonsai_web_legacy_view
 module To_incr_dom = Bonsai_web.To_incr_dom
 module Persistent_var = Bonsai_web.Persistent_var
 module Rpc_effect = Bonsai_web.Rpc_effect
