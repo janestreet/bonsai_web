@@ -89,3 +89,7 @@
   background: var(--cell-focused-bg);
   color: var(--cell-focused-fg);
 }
+
+/* Dummy rules to trigger a specific function in the generated module */
+.autosize_table_cell_wrapper {
+}

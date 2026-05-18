@@ -77,7 +77,7 @@ module C = struct
        HTML structure. Due to this, the styling and classes may be implemented differently
        between the `autosize` version and the standard version of the table.
     *)
-    method prt_styling : Bonsai_web_ui_partial_render_table_styling.t
+    method prt_styling : Bonsai_web_partial_render_table_styling.t
     method changelog_styling : For_changelog.t
     method toplayer_tooltip_arrow : intent:Constants.Intent.t option -> Vdom.Node.t
     method toplayer_popover_arrow : Vdom.Node.t

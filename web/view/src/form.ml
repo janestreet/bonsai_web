@@ -1,7 +1,7 @@
 open! Core
 open Import
 open Form_view
-module Toggle = Bonsai_web_ui_toggle
+module Toggle = Bonsai_web_contrib_toggle
 
 let rec view_error (e : Error.Internal_repr.t) : Vdom.Node.t list =
   let bold text = Vdom.Node.strong [ Vdom.Node.text text ] in

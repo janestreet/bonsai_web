@@ -1,8 +1,8 @@
 # `Bonsai.View` and Theming
 
 NOTE: We are in the process of deprecating the `theme` API and
-`Bonsai_web_ui_view` in favor of styled UI component libraries. We do
-not recommend using `theme` in new apps.
+`Bonsai_web_legacy_view` in favor of styled UI component libraries. We
+do not recommend using `theme` in new apps.
 
 The `Bonsai_web.View` library defines themable, higher-level helpers for
 common UI patterns and elements. It enables the creation of unstyled,
@@ -58,9 +58,7 @@ let button =
 let button' = View.button theme ~on_click:do_thing "click me"
 ```
 
-See [these
-demos](https://github.com/janestreet/bonsai/tree/master/examples/bonsai_view)
-for a full list of utils offered by `Bonsai_web.View`.
+See the `Bonsai_web.View` module for a full list of utils.
 
 ## Themability
 

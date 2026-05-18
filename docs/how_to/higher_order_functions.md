@@ -5,7 +5,7 @@ pipeline operator, and `match` statements enable control flow and
 abstraction.
 
 The `match%sub` and `Bonsai.assoc` [control flow
-primitives](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/05-control_flow.md)
+primitives](https://github.com/janestreet/bonsai_web/blob/master/docs/public_garden_exports/quick_start.md#mapping-and-control-flow)
 are higher-order functions too! And we can use them to build
 higher-order abstractions like:
 

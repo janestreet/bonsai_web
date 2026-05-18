@@ -1,8 +1,8 @@
 (library
  (name kado)
  (public_name bonsai_web.kado)
- (libraries bonsai bonsai_web_ui_view core virtual_dom.css_gen js_of_ocaml
-   virtual_dom.ui_effect virtual_dom)
+ (libraries bonsai bonsai_web_legacy_view core virtual_dom.css_gen
+   js_of_ocaml virtual_dom.ui_effect virtual_dom)
  (preprocess
   (pps ppx_jane ppx_css js_of_ocaml-ppx bonsai.ppx_bonsai)))
 

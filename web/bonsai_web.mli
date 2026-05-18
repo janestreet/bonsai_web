@@ -16,7 +16,7 @@ module Bonsai : sig
 end
 
 module Incr = Import.Incr
-module View = Bonsai_web_ui_view
+module View = Bonsai_web_legacy_view
 module To_incr_dom = To_incr_dom
 module Persistent_var = Persistent_var
 module Rpc_effect = Rpc_effect
@@ -42,14 +42,21 @@ module Start : sig
       Read more about it in rpc_effect.mli. Notably, [Self] and [Url] are implemented as
       custom connectors, but won't be exposed to your [custom_connector] function.
 
-      [time_source] should only be passed in tests. *)
+      [time_source] should only be passed in tests.
+
+      [log_to_console_by_level] (default [true]) routes [Async_log] output to the
+      corresponding [console] method ([console.debug], [console.info], [console.warn],
+      [console.error]) based on the log level. When [false], all log output goes through
+      [console.error]. *)
   val start
-    :  ?use_new_experimental_implementation:bool
+    :  call_pos:[%call_pos]
+    -> ?use_new_experimental_implementation:bool
     -> ?custom_connector:(Rpc_effect.Where_to_connect.Custom.t -> Rpc_effect.Connector.t)
     -> ?bind_to_element_with_id:string
     -> ?simulate_body_focus_on_root_element:bool
     -> ?time_source:Bonsai.Time_source.t
     -> ?optimize:bool
+    -> ?log_to_console_by_level:bool
     -> (local_ Bonsai.graph -> Vdom.Node.t Bonsai.t)
     -> unit
 
@@ -153,12 +160,14 @@ module Start : sig
 
       [time_source] should only be passed in tests. *)
   val start_and_get_handle
-    :  ?use_new_experimental_implementation:bool
+    :  call_pos:[%call_pos]
+    -> ?use_new_experimental_implementation:bool
     -> ('result, 'extra, 'incoming) Result_spec.t
     -> ?optimize:bool
     -> ?custom_connector:(Rpc_effect.Where_to_connect.Custom.t -> Rpc_effect.Connector.t)
     -> ?simulate_body_focus_on_root_element:bool
     -> ?time_source:Bonsai.Time_source.t
+    -> ?log_to_console_by_level:bool
     -> bind_to_element_with_id:string
     -> (local_ Bonsai.graph -> 'result Bonsai.t)
     -> ('extra, 'incoming) Handle.t

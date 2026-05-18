@@ -45,7 +45,7 @@ let default_styles ~intent constants =
     [%css
     stylesheet
       {|
-        @layer bonsai_web_ui_view.toplayer_defaults {
+        @layer bonsai_web_legacy_view.toplayer_defaults {
           .toplayer {
             padding: 0.2em 0.3em;
             border-radius: 2px;
@@ -65,7 +65,7 @@ let default_tooltip_styles ~intent constants =
     [%css
     stylesheet
       {|
-        @layer bonsai_web_ui_view.tooltip_defaults {
+        @layer bonsai_web_legacy_view.tooltip_defaults {
           .tooltip {
             max-width: 300px;
           }
@@ -80,7 +80,7 @@ let default_tooltip_anchor_styles =
     [%css
     stylesheet
       {|
-        @layer bonsai_web_ui_view.tooltip_defaults {
+        @layer bonsai_web_legacy_view.tooltip_defaults {
           .anchor {
             text-decoration: underline;
             text-decoration-style: dotted;
@@ -99,7 +99,7 @@ let default_modal_styles constants =
     [%css
     stylesheet
       {|
-        @layer bonsai_web_ui_view.modal_defaults {
+        @layer bonsai_web_legacy_view.modal_defaults {
           .modal {
             padding: 0.4em 0.6em;
             margin: auto;

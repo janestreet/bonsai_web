@@ -114,9 +114,21 @@ let start
   warn_if_quirks_mode ();
   let vdom, elt =
     timer Mount_initial_dom ~f:(fun () ->
+      let (`Run_writes run_writes) =
+        (* For initial mount, we have to run all reads before we do anything at all to the
+           DOM. As we aren't sure if any of the hooks or widgets are reading the DOM, we
+           execute reads before vdom runs at all. *)
+        Fastdom.Expert.run_reads ()
+      in
       let vdom = Bonsai_driver.result bonsai_driver |> get_vdom in
       let elt =
         Vdom.Node.For_changing_dom.with_on_mount_at_end (fun () ->
+          let ( (* We have to run the writes prior to [to_dom] for the same reason we run
+                   them prior to [Vdom.Node.patch] further below
+                *) )
+            =
+            run_writes ()
+          in
           let elt = Vdom.Node.to_dom vdom in
           let elem = Dom_html.getElementById_exn bind_to_element_with_id in
           let parent = Option.value_exn (Js.Opt.to_option elem##.parentNode) in
@@ -191,8 +203,23 @@ let recompute
     timer Diff_vdom ~f:(fun () ->
       Vdom.Node.Patch.create ~previous:!prev_vdom ~current:vdom)
   in
+  let (`Run_writes run_writes) =
+    (* Splitting this up so that we can run it outside of the [Patch_vdom] timer *)
+    Fastdom.Expert.run_reads ()
+  in
   timer Patch_vdom ~f:(fun () ->
     Vdom.Node.For_changing_dom.with_on_mount_at_end (fun () ->
+      let ( (* This could be run post-patch, but that would cause any mutations to the dom
+               that the user does in hooks to overwrite what [Vdom] would expect the node
+               to be.
+
+               For example, if a hook set [class="foo"] but the user was using [ppx_css],
+               running writes after the patch would cause the hook to win and [class]
+               would equal [foo]
+            *) )
+        =
+        run_writes ()
+      in
       let elt = Vdom.Node.Patch.apply patch !prev_elt in
       (* [!prev_elt] should almost always refer to the current app root element, and be
          connected. The exceptions are if something external has mutated DOM, which we

@@ -7,7 +7,7 @@ graph: note that `Var.create` does not take a `graph` parameter. As a
 result:
 
 -   `Var`s inside of
-    [Bonsai.assoc](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/05-control_flow.md)s
+    [Bonsai.assoc](https://github.com/janestreet/bonsai_web/blob/master/docs/public_garden_exports/quick_start.md#mapping-and-control-flow)s
     will not have separate state for each key in the input map.
 -   [Model resetters](./resetting_state.md) will not work on `Var`s
 -   [scope_model](./state_per_key.md)s will not work with `Var`s
@@ -36,4 +36,4 @@ You should always instantiate these at the toplevel.
 
 Note that [one-shot RPC responses](./rpcs.md#one-shot-rpcs) can be
 stored in a regular
-[Bonsai.state](https://github.com/janestreet/bonsai_web/blob/master/docs/guide/04-state.md).
+[Bonsai.state](https://github.com/janestreet/bonsai_web/blob/master/docs/public_garden_exports/quick_start.md#state).

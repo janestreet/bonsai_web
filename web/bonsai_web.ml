@@ -24,24 +24,49 @@ module Bonsai = struct
 end
 
 module Incr = Import.Incr
-module View = Bonsai_web_ui_view
+module View = Bonsai_web_legacy_view
 module To_incr_dom = To_incr_dom
 module Persistent_var = Persistent_var
 module Rpc_effect = Rpc_effect
 
+let set_async_log_level_and_output_to_browser_console () =
+  let zone = force Core.Timezone.local in
+  let output =
+    Async_log_kernel.Output.create_unbuffered ~flush:Async_kernel.return (fun msg ->
+      let text =
+        Async_log_kernel.Message.to_write_only_text
+          (Async_log_kernel.Message_event.to_serialized_message_lossy msg)
+          zone
+      in
+      let js_text = Js.string text in
+      match Async_log_kernel.Message_event.level msg with
+      | Some `Debug -> Console.console##debug js_text
+      | Some `Info -> Console.console##info js_text
+      | Some `Warn -> Console.console##warn js_text
+      | Some `Error -> Console.console##error js_text
+      | None -> Console.console##log js_text)
+  in
+  Async_log_kernel.Global.set_output [ output ];
+  Async_log_kernel.Global.set_level `Debug
+;;
+
 module Start = struct
   let start
+    ~(call_pos : [%call_pos])
     ?(use_new_experimental_implementation = false)
     ?custom_connector
     ?bind_to_element_with_id
     ?simulate_body_focus_on_root_element
     ?time_source
     ?optimize
+    ?(log_to_console_by_level = true)
     app
     =
+    if log_to_console_by_level then set_async_log_level_and_output_to_browser_console ();
     if use_new_experimental_implementation
     then
       Start_experimental.start
+        ~call_pos
         ?custom_connector
         ?bind_to_element_with_id
         ?simulate_body_focus_on_root_element
@@ -50,6 +75,7 @@ module Start = struct
         app
     else
       Start_via_incr_dom.start
+        ~call_pos
         ?custom_connector
         ?bind_to_element_with_id
         ?simulate_body_focus_on_root_element
@@ -92,18 +118,22 @@ module Start = struct
   module Result_spec = Start_via_incr_dom.Result_spec
 
   let start_and_get_handle
+    ~(call_pos : [%call_pos])
     ?(use_new_experimental_implementation = false)
     result_spec
     ?optimize
     ?custom_connector
     ?simulate_body_focus_on_root_element
     ?time_source
+    ?(log_to_console_by_level = true)
     ~bind_to_element_with_id
     app
     =
+    if log_to_console_by_level then set_async_log_level_and_output_to_browser_console ();
     if use_new_experimental_implementation
     then
       Start_experimental.start_and_get_handle
+        ~call_pos
         result_spec
         ?optimize
         ?custom_connector
@@ -114,6 +144,7 @@ module Start = struct
       |> Handle.Experimental
     else
       Start_via_incr_dom.start_and_get_handle
+        ~call_pos
         result_spec
         ?optimize
         ?custom_connector

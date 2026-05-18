@@ -23,7 +23,7 @@ let default (constants : Constants.t) =
     [%css
     stylesheet
       {|
-        @layer bonsai_web_ui_view.changelog_defaults {
+        @layer bonsai_web_legacy_view.changelog_defaults {
           .entry {
             font-size: 1.2em;
             padding-bottom: 10px;

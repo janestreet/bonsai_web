@@ -1,13 +1,13 @@
 # Forms
 
 Bonsai has an entire library dedicated to building and combining forms
-called `Bonsai_web_ui_form`.
+called `Bonsai_web_form`.
 
 ## Should you use this library?
 
 For most forms, **hand-rolling with plain Bonsai primitives**
 (`Bonsai.state`, `let%arr`, etc.) is simpler and more flexible than
-using `Bonsai_web_ui_form`. The `Form.t` type bundles value, view, and
+using `Bonsai_web_form`. The `Form.t` type bundles value, view, and
 setter together and wraps all values in `Or_error.t`, which adds
 constraints and boilerplate that often aren't needed.
 
@@ -49,19 +49,19 @@ let order_form (local_ graph) =
 ;;
 ```
 
-## Using Bonsai_web_ui_form
+## Using Bonsai_web_form
 
 If you do decide to use this library, read on.
 
 ```{=html}
 ```
-There are two submodules within `Bonsai_web_ui_form`:
+There are two submodules within `Bonsai_web_form`:
 
-1.  `Bonsai_web_ui_form.With_manual_view` is the newer, recommended way
-    to build forms and gives you full control over the composition of
-    the views of your form.
-2.  `Bonsai_web_ui_form.With_automatic_view` is a legacy implementation
-    and composes the views of your form automatically, but in a highly
+1.  `Bonsai_web_form.With_manual_view` is the newer, recommended way to
+    build forms and gives you full control over the composition of the
+    views of your form.
+2.  `Bonsai_web_form.With_automatic_view` is a legacy implementation and
+    composes the views of your form automatically, but in a highly
     opinionated and not-so-customizable way.
 
 Both modules share an underlying type, which makes it easy to convert
@@ -71,7 +71,7 @@ rest of this doc, we'll focus on manual view forms and this module alias
 will be in effect:
 
 ``` ocaml
-module Form = Bonsai_web_ui_form.With_manual_view
+module Form = Bonsai_web_form.With_manual_view
 ```
 
 # Form.t
@@ -212,7 +212,7 @@ let int_with_error_display (local_ graph) =
 Many forms are explicitly submitted by the user by clicking a button, as
 opposed to automatic submissions whenever values change. We can write a
 general function which adds a submit button underneath a form:
-`<!-- $MDX file=../../examples/bonsai_guide_code/form_examples.ml,part=with_submit_button -->`{=html}
+`<!-- $MDX file=../../old-examples/bonsai_guide_code/form_examples.ml,part=with_submit_button -->`{=html}
 
 ``` ocaml
 let with_submit_button (form : ('a, 'view) Form.t) ~(on_submit : 'a -> unit Effect.t) =
@@ -234,7 +234,7 @@ let with_submit_button (form : ('a, 'view) Form.t) ~(on_submit : 'a -> unit Effe
 
 Now, look how easy it is to add a submit button to our textbox with
 error messages above:
-`<!-- $MDX file=../../examples/bonsai_guide_code/form_examples.ml,part=textbox_with_submit -->`{=html}
+`<!-- $MDX file=../../old-examples/bonsai_guide_code/form_examples.ml,part=textbox_with_submit -->`{=html}
 
 ``` ocaml
 let textbox_with_submit (local_ graph) =
@@ -552,7 +552,7 @@ let view_record_and_variant_form : local_ Bonsai.graph -> Vdom.Node.t Bonsai.t =
 
 # Migrating from legacy forms
 
-`Bonsai_web_ui_form.With_automatic_view` used to be the default kind of
+`Bonsai_web_form.With_automatic_view` used to be the default kind of
 forms. However, they were extremely hard to customize. Thankfully,
 conversion between the two is easy and can be done with the following
 functions:

@@ -23,7 +23,8 @@ open! Import
     constant folding, graph simplifications + more internal optizations). Defaults to
     [true]. *)
 val start
-  :  ?custom_connector:(Rpc_effect.Where_to_connect.Custom.t -> Rpc_effect.Connector.t)
+  :  call_pos:[%call_pos]
+  -> ?custom_connector:(Rpc_effect.Where_to_connect.Custom.t -> Rpc_effect.Connector.t)
   -> ?bind_to_element_with_id:string
   -> ?simulate_body_focus_on_root_element:bool
   -> ?time_source:Bonsai.Time_source.t
@@ -127,7 +128,8 @@ end
 
     [time_source] should only be passed in tests. *)
 val start_and_get_handle
-  :  ('result, 'extra, 'incoming) Result_spec.t
+  :  call_pos:[%call_pos]
+  -> ('result, 'extra, 'incoming) Result_spec.t
   -> ?optimize:bool
   -> ?custom_connector:(Rpc_effect.Where_to_connect.Custom.t -> Rpc_effect.Connector.t)
   -> ?simulate_body_focus_on_root_element:bool

@@ -2,33 +2,34 @@ open! Core
 
 let escaping = String.substr_replace_all ~pattern:"\'" ~with_:""
 
-type t = string
+type t = string Lazy.t
 
-let am_running_screenshot_test =
-  lazy (Sys.getenv "AM_RUNNING_SCREENSHOT_TEST" |> Option.is_some)
+let am_running_screenshot_test () =
+  Sys.getenv "AM_RUNNING_SCREENSHOT_TEST" |> Option.is_some
 ;;
 
 let make' ~(here : [%call_pos]) ~name bag_inst =
-  if am_running_test || force am_running_screenshot_test
-  then
-    [%sexp
-      { name : (string option[@sexp.option])
-      ; here : Source_code_position.t
-      ; bag_inst : (Sexp.t option[@sexp.option])
-      }]
-    |> Sexp.to_string_mach
-    |> escaping
-  else ""
+  lazy
+    (if am_running_test || am_running_screenshot_test ()
+     then
+       [%sexp
+         { name : (string option[@sexp.option])
+         ; here : Source_code_position.t
+         ; bag_inst : (Sexp.t option[@sexp.option])
+         }]
+       |> Sexp.to_string_mach
+       |> escaping
+     else "")
 ;;
 
 let make ~(here : [%call_pos]) ?name () = make' ~here ~name None
 
 module For_bonsai_web = struct
   let attr_name = "data-bonsai-test-selector"
-  let to_selector_data = Fn.id
+  let to_selector_data t = force t
 
   let css_selector t =
-    match t with
+    match force t with
     | "" -> ""
     | selector_data -> [%string "[%{attr_name}='%{selector_data}']"]
   ;;
@@ -37,7 +38,7 @@ module For_bonsai_web = struct
     if String.equal key attr_name then false else true
   ;;
 
-  let display = Fn.id
+  let display t = force t
   let filter_printed_attributes = our_filter_printed_attributes
 
   let filter_printed_attributes_with_test_selector_filtering ~filter_printed_attributes =
@@ -69,7 +70,7 @@ module Keyed = struct
   ;;
 
   let get t a =
-    if am_running_test
+    if am_running_test || am_running_screenshot_test ()
     then (
       let { selectors; here; to_sexp; name } = t in
       let sexp = to_sexp a in
@@ -78,6 +79,6 @@ module Keyed = struct
            | Some v -> v
            | None -> make' ~here ~name (Some sexp));
       Map.find_exn !selectors sexp)
-    else ""
+    else lazy ""
   ;;
 end

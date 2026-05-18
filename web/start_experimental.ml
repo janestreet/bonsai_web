@@ -162,6 +162,7 @@ module Timer = struct
 end
 
 let start_and_get_handle
+  ~(call_pos : [%call_pos])
   result_spec
   ?optimize
   ?(custom_connector = default_custom_connector)
@@ -238,15 +239,19 @@ let start_and_get_handle
     in
     let start_bonsai_debugger () = print_endline bonsai_bug_moved_message in
     let stop_bonsai_debugger () = print_endline bonsai_bug_moved_message in
+    Js.Unsafe.global##.isBonsaiApplication := Js.bool true;
     Js.Unsafe.global##.startBonsaiDebugger := Js.Unsafe.callback start_bonsai_debugger;
     Js.Unsafe.global##.stopBonsaiDebugger := Js.Unsafe.callback stop_bonsai_debugger;
     handle
   in
   (* Note: duplicated between [start_experimental] and [start_via_incr_dom]. *)
-  Deferred.upon (Handle.started bonsai_handle) (fun () ->
-    Js.Unsafe.global##.bonsaiHasStarted := Js.bool true);
   let () =
     Deferred.upon (Handle.started bonsai_handle) (fun () ->
+      Js.Unsafe.global##.bonsaiStartCallPos
+      := call_pos
+         |> [%sexp_of: Source_code_position.Stable.V1.t]
+         |> Sexp.to_string
+         |> Js.string;
       (* NOTE: We set [bonsaiHasStarted] as a witness that bonsai has started successfully
          for use in browser testing. *)
       Js.Unsafe.global##.bonsaiHasStarted := Js.bool true);
@@ -256,6 +261,7 @@ let start_and_get_handle
 ;;
 
 let start
+  ~(call_pos : [%call_pos])
   ?custom_connector
   ?(bind_to_element_with_id = "app")
   ?simulate_body_focus_on_root_element
@@ -266,6 +272,7 @@ let start
   let (_ : _ Handle.t) =
     start_and_get_handle
       Result_spec.just_the_view
+      ~call_pos
       ~bind_to_element_with_id
       ?simulate_body_focus_on_root_element
       ?custom_connector

@@ -3,7 +3,7 @@
     {|
 This library is private, for use by Bonsai developers in [lib/bonsai/web_ui/view] and
 [lib/bonsai/web_ui/form]. If that doesn't apply to you, then you should use the public
-[Bonsai_web_ui_form] library, which re-exports this functionality as part of its [View]
+[Bonsai_web_form] library, which re-exports this functionality as part of its [View]
 module.
 |}]
 
