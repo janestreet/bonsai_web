@@ -86,7 +86,7 @@ let comments (local_ graph) =
         let close = set_selected_comment_view None in
         set_selected_comment_view (Some (comment_view ~close comment))
       in
-      {%html.jsx|<li on_click=%{on_click}>#{comment.title}</li>|})
+      {%html|<li on_click=%{on_click}>#{comment.title}</li>|})
     |> Vdom.Node.ul
   in
   let comment_detail =
@@ -113,7 +113,7 @@ let comments (local_ graph) =
     let%arr all_comments and set_selected_comment_id in
     List.map all_comments ~f:(fun comment ->
       let on_click _ = set_selected_comment_id (Some comment.id) in
-      {%html.jsx|<li on_click=%{on_click}>#{comment.title}</li>|})
+      {%html|<li on_click=%{on_click}>#{comment.title}</li>|})
     |> Vdom.Node.ul
   in
   let selected_comment =

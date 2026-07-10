@@ -76,4 +76,4 @@ If the `peek` backing an effect is in an [inactive code
 branch](./lifecycles.md), it will be unable to retrieve a fresh value,
 so it returns values wrapped in a `Computation_status.t`, just like
 [`state_machine_with_input`'s
-`input`](https://github.com/janestreet/bonsai_web/blob/master/docs/public_garden_exports/quick_start.md#state).
+`input`](https://github.com/janestreet/bonsai_web/blob/master/docs/quick_start.md#state).

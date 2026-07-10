@@ -28,7 +28,8 @@ let dropdown ~constants ~input_attr ~container_attr ~title ~on_change ~options =
         [ Vdom.Attr.many [ attr; Vdom.Attr.on_change (fun _ value -> on_change value) ] ]
       (List.map options ~f:(fun (value, selected, view) ->
          Vdom.Node.option
-           ~attrs:[ Vdom.Attr.bool_property "selected" selected; Vdom.Attr.value value ]
+           ~attrs:
+             [ Vdom.Attr.bool_property "selected" selected; Vdom.Attr.value_attr value ]
            [ view ])))
 ;;
 
@@ -39,7 +40,7 @@ let extend ~input_attr ~on_change =
 let textbox ~constants ~input_attr ~container_attr ~title ~on_change ~value =
   let input_attr = extend ~input_attr ~on_change in
   generic_input ~constants ~input_attr ~container_attr ~title (fun attr ->
-    Vdom.Node.input ~attrs:[ Vdom.Attr.value_prop value; attr ] ())
+    Vdom.Node.input ~attrs:[ Vdom.Attr.value value; attr ] ())
 ;;
 
 let date ~constants ~input_attr ~container_attr ~title ~on_change ~value =

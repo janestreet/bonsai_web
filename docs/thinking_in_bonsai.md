@@ -73,7 +73,7 @@ module Counter = struct
     let ( (* Inside the [let%arr] block *) ) =
       print_s [%message "inside"]
     in
-    {%html.jsx|
+    {%html|
       <div %{counter_style}>
         <button on_click=%{fun _ -> set_counter (fun counter -> counter - 1)}>-</button>
         <span>%{counter#Int}</span>
@@ -190,7 +190,7 @@ the result, and interpolate that result in `ppx_html`:
 ``` ocaml
 let component (local_ graph) =
   let%arr shuffle_component = Shuffle.component graph in
-  {%html.jsx|<div>%{shuffle_component}</div>|}
+  {%html|<div>%{shuffle_component}</div>|}
 ;;
 ```
 
@@ -252,7 +252,7 @@ let component ~log (graph @ local) =
         graph;
       let color, set_color = Bonsai.state (random_color ()) graph in
       let%arr color and set_color in
-      {%html.jsx|
+      {%html|
         <div
           style="
             width: 100%;
@@ -271,7 +271,7 @@ let component ~log (graph @ local) =
     | false -> Bonsai.return Vdom.Node.none
   in
   let%arr toggle_show and match_sub_view in
-  {%html.jsx|
+  {%html|
     <div style="width: 384px; display: flex; flex-direction: column">
       <div style="margin-bottom: 16px; height: 100px">%{match_sub_view}</div>
       <button on_click=%{fun _ -> toggle_show}>Toggle show</button>
@@ -295,7 +295,7 @@ module Counter = struct
   let component (graph @ local) =
     let counter, set_counter = Bonsai.state' 0 graph in
     let%arr counter and set_counter in
-    {%html.jsx|
+    {%html|
       <div style="display: flex; gap: 8px; justify-content: space-between">
         <button on_click=%{fun _ -> set_counter (fun c -> c - 1)}>-</button>
         <div style="width: 4ch; text-align: center">%{counter#Int}</div>
@@ -313,7 +313,7 @@ let component (graph @ local) =
     | false -> Bonsai.return Vdom.Node.none
   in
   let%arr toggle_show and counter in
-  {%html.jsx|
+  {%html|
     <div>
       <div style="padding: 8px 0; height: 36px">%{counter}</div>
       <button on_click=%{fun _ -> toggle_show}>Toggle counter</button>
@@ -385,7 +385,7 @@ end
 module Navigation_buttons = struct
   let component ~set_uri () =
     let%arr set_uri in
-    {%html.jsx|
+    {%html|
       <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap">
         <button on_click=%{fun _ -> set_uri Route.Homepage }>#{"Go Home"}</button
         ><button on_click=%{fun _ -> set_uri (Post 42)}>#{"View Post 42"}</button
@@ -417,7 +417,7 @@ let component (local_ graph) =
     Url_display.component ~current_route ~string_of_route ()
   and nav_buttons = Navigation_buttons.component ~set_uri ()
   and page_content in
-  {%html.jsx|
+  {%html|
     <div style="max-width: 600px">
       <h3 style="margin-top: 0">URL-Based Routing Demo</h3>
       %{current_url_display} %{nav_buttons} %{page_content}
@@ -479,7 +479,7 @@ module User_profile = struct
     in
     let username = Option.value profile.username ~default:"<none>" in
     let email = Option.value profile.email ~default:"<none>" in
-    {%html.jsx|
+    {%html|
       <div style="display: flex; flex-direction: column">
         <button
           style="width: 200px; margin: 10px"
@@ -538,7 +538,7 @@ module User_profile = struct
     in
     let username = Option.value profile.username ~default:"<none>" in
     let email = Option.value profile.email ~default:"<none>" in
-    {%html.jsx|
+    {%html|
       <div style="display: flex; flex-direction: column">
         <button
           style="width: 200px; margin: 10px"
@@ -587,7 +587,7 @@ component can be declared as both a view or as a component.
 ``` ocaml
 module Increment_button = struct
   let view ~set_counter () =
-    {%html.jsx|
+    {%html|
       <button
         on_click=%{fun _ -> set_counter (fun c -> c + 1)}
         %{increment_button_style}
@@ -602,7 +602,7 @@ module Counter = struct
   let component (graph @ local) =
     let counter, set_counter = Bonsai.state' 0 graph in
     let%arr counter and set_counter in
-    {%html.jsx|
+    {%html|
       <div %{counter_container_style}>
         <Increment_button.view ~set_counter />
         <div %{count_style}>
@@ -616,7 +616,7 @@ end
 module Page = struct
   let component (graph @ local) =
     let%arr counter = Counter.component graph in
-    {%html.jsx|
+    {%html|
       <div>
         <h1>Press the button</h1>
         %{counter}

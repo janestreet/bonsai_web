@@ -138,13 +138,13 @@ their dependencies are no longer `phys_equal`. Using mutable data
 undermines this in fairly fundamental ways.
 
 When you do need to use state, reach for [Bonsai's
-primitives](https://github.com/janestreet/bonsai_web/blob/master/docs/public_garden_exports/quick_start.md#state).
+primitives](https://github.com/janestreet/bonsai_web/blob/master/docs/quick_start.md#state).
 Likewise, any side effects you need to run should be wrapped in an
-[Effect.t](https://github.com/janestreet/bonsai_web/blob/master/docs/public_garden_exports/quick_start.md#effects),
+[Effect.t](https://github.com/janestreet/bonsai_web/blob/master/docs/quick_start.md#effects),
 and almost always dispatched on one of:
 
 -   User interactions with [event
-    handlers](https://github.com/janestreet/bonsai_web/blob/master/docs/public_garden_exports/quick_start.md)
+    handlers](https://github.com/janestreet/bonsai_web/blob/master/docs/quick_start.md)
 
 ```{=html}
 <!-- -->

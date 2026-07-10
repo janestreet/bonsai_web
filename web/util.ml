@@ -18,11 +18,17 @@ let am_within_disabled_fieldset (event : #Dom_html.event Js.t) =
   match am_running_how with
   | `Node_test | `Node_jsdom_test | `Node_benchmark | `Node -> false
   | `Browser | `Browser_test | `Browser_benchmark ->
-    let (event : < composedPath : 'a Js.js_array Js.t Js.meth ; Dom_html.event > Js.t) =
-      Js.Unsafe.coerce event
-    in
     Js.to_array event##composedPath
     |> Array.exists ~f:(fun element ->
+      let (element
+            : < tagName : Js.js_string Js.t Js.optdef Js.readonly_prop
+              ; disabled : bool Js.t Js.optdef Js.readonly_prop >
+                Js.t)
+        =
+        (* [composedPath] is in [Js_of_ocaml.Dom] as an array of [Unsafe.any] so we have
+           to unsafe coerce *)
+        Js.Unsafe.coerce element
+      in
       let tag_name = Js.Optdef.to_option element##.tagName in
       let disabled = Js.Optdef.to_option element##.disabled in
       match Option.both tag_name disabled with

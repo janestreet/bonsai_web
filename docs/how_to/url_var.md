@@ -158,7 +158,7 @@ Bonsai-friendly API for acccessing and modifying it:
 ```
 
 Once you have your `'a Bonsai.t`, all you need to do is [`match%sub` on
-it](https://github.com/janestreet/bonsai_web/blob/master/docs/public_garden_exports/quick_start.md#mapping-and-control-flow),
+it](https://github.com/janestreet/bonsai_web/blob/master/docs/quick_start.md#mapping-and-control-flow),
 and you have a router!
 
 Changing the `Url_var.t` will automatically update the [browser

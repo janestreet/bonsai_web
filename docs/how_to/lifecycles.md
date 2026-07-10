@@ -1,7 +1,7 @@
 # Lifecycles
 
 The `match%sub` and `Bonsai.assoc` [control flow
-operators](https://github.com/janestreet/bonsai_web/blob/master/docs/public_garden_exports/quick_start.md#mapping-and-control-flow)
+operators](https://github.com/janestreet/bonsai_web/blob/master/docs/quick_start.md#mapping-and-control-flow)
 are very similar to regular OCaml `match` statements and `Map.map`
 calls. But because Bonsai is incremental, their code is constantly being
 rerun whenever some dependency changes.

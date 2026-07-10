@@ -85,7 +85,7 @@ grouping of columns.
     Structure.Group.(
       [ leaf Col_id.Symbol
       ; group
-          ~label:(return {%html.jsx|Position|})
+          ~label:(return {%html|Position|})
           [ leaf Col_id.Price; leaf Col_id.Num_owned ]
       ; leaf Col_id.Last_updated
       ]

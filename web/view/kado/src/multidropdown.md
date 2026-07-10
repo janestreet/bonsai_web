@@ -54,7 +54,7 @@ let dropdown ~constants ~input_attr ~container_attr ~title ~value ~options =
     ; Vdom.Node.select
         ~attr:
           (Vdom.Attr.many
-             [ Vdom.Attr.value_prop value; input_attr; onfocus; onblur; oninput ])
+             [ Vdom.Attr.value value; input_attr; onfocus; onblur; oninput ])
         (List.map options ~f:(fun text ->
            Vdom.Node.option ~attr:onclick [ Vdom.Node.text text ]))
     ]

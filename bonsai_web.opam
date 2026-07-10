@@ -21,6 +21,7 @@ depends: [
   "babel"
   "bonsai"
   "bonsai_concrete"
+  "browser"
   "core"
   "core_kernel"
   "fastdom"
