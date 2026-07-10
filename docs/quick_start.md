@@ -20,7 +20,7 @@ like `<div></div>` or use a fragment `<></>`.
 
 ``` ocaml
 (* Multiple root nodes - use a fragment *)
-{%html.jsx|
+{%html|
   <>
     <h1>Welcome</h1>
     <p>This is my page</p>
@@ -33,11 +33,11 @@ recommend structuring components as modules with a `view` function:
 
 ``` ocaml
 module Greeting = struct
-  let view () = {%html.jsx|<div class="greeting">Hello, world!</div>|}
+  let view () = {%html|<div class="greeting">Hello, world!</div>|}
 end
 
 module Home_page = struct
-  let view () = {%html.jsx|<Greeting.view />|}
+  let view () = {%html|<Greeting.view />|}
 end
 ```
 
@@ -47,7 +47,7 @@ Any HTML tag with a corresponding function in `Vdom.Node` can be used in
 `ppx_html`.
 
 ``` ocaml
-{%html.jsx|
+{%html|
   <div>
     <h1>Title</h1>
     <span>Here is a span</span>
@@ -72,11 +72,11 @@ inserts a `Vdom.Node.t option` (renders nothing if `None`)
 ``` ocaml
 let name = "Alice"
 let age = 25
-let greeting_node = {%html.jsx|<strong>Welcome!</strong>|}
-let optional_subtitle = Some {%html.jsx|<em>(new user)</em>|}
+let greeting_node = {%html|<strong>Welcome!</strong>|}
+let optional_subtitle = Some {%html|<em>(new user)</em>|}
 
 let view =
-  {%html.jsx|
+  {%html|
     <div>
       #{name} is %{age#Int} years old. %{greeting_node}
       ?{optional_subtitle}
@@ -92,9 +92,9 @@ let items = [ "Apples"; "Bananas"; "Oranges" ]
 
 let view =
   let item_nodes =
-    List.map items ~f:(fun item -> {%html.jsx|<li>#{item}</li>|})
+    List.map items ~f:(fun item -> {%html|<li>#{item}</li>|})
   in
-  {%html.jsx|
+  {%html|
     <ul>
       *{item_nodes}
     </ul>
@@ -113,12 +113,10 @@ syntaxes for rendering them in `ppx_html`:
 ``` ocaml
 module Card = struct
   (* Component function with standard signature *)
-  let view ?(attrs = []) children =
-    {%html.jsx|<div *{attrs}>*{children}</div>|}
-  ;;
+  let view ?(attrs = []) children = {%html|<div *{attrs}>*{children}</div>|}
 end
 
-let view = {%html.jsx|<Card.view>Hello, world!</>|}
+let view = {%html|<Card.view>Hello, world!</>|}
 ```
 
 **`<%{expression}>` syntax** (general form) - Can use any OCaml
@@ -128,7 +126,7 @@ positional arguments
 ``` ocaml
 (* Note the positional `header` argument *)
 let card (header : string) ?(attrs = []) children =
-  {%html.jsx|
+  {%html|
     <div *{attrs}>
       <h1>#{header}</h1>
       *{children}
@@ -137,7 +135,7 @@ let card (header : string) ?(attrs = []) children =
 ;;
 
 let view =
-  {%html.jsx|
+  {%html|
     <%{card "Hello, world!"} class="greeting"
       >#{" Card content here "}</>
   |}
@@ -154,10 +152,10 @@ how to call your function.
 ``` ocaml
 module Self_closing_component = struct
   (* Must end with unit *)
-  let view () = {%html.jsx|<div>No children</div>|}
+  let view () = {%html|<div>No children</div>|}
 end
 
-let view = {%html.jsx|<Self_closing_component.view />|}
+let view = {%html|<Self_closing_component.view />|}
 ```
 
 **Opening and closing tags:** `<Foo.view></>` requires the function to
@@ -169,13 +167,11 @@ You can also use `<Foo.view></Foo.view>` as alternate syntax for
 ``` ocaml
 module Component_with_children = struct
   (* Must end with Vdom.Node.t list *)
-  let view (children : Vdom.Node.t list) =
-    {%html.jsx|<div>*{children}</div>|}
-  ;;
+  let view (children : Vdom.Node.t list) = {%html|<div>*{children}</div>|}
 end
 
 let view =
-  {%html.jsx|
+  {%html|
     <Component_with_children.view>
       <Component_with_children.view>Child 1</Component_with_children.view>
       <div>Child 2</div>
@@ -203,14 +199,14 @@ that are called when events happen. These can be used to trigger
 
 ``` ocaml
 module Greeting = struct
-  let view ?(attrs = []) () = {%html.jsx|<div *{attrs}>Hello there!</div>|}
+  let view ?(attrs = []) () = {%html|<div *{attrs}>Hello there!</div>|}
 end
 
 let id = "my-id"
 
 let view =
   (* [id] is being passed to the function [Vdom.Attr.id] *)
-  {%html.jsx|<Greeting.view id=%{id} style="background-color: yellow" />|}
+  {%html|<Greeting.view id=%{id} style="background-color: yellow" />|}
 ;;
 ```
 
@@ -231,7 +227,7 @@ let optional_id = Some (Vdom.Attr.id "my-div")
 let extra_attrs = [ Vdom.Attr.style (Css_gen.color (`Name "red")) ]
 
 let view =
-  {%html.jsx|<div %{class_attr} ?{optional_id} *{extra_attrs}>Hello, world!</div>|}
+  {%html|<div %{class_attr} ?{optional_id} *{extra_attrs}>Hello, world!</div>|}
 ;;
 ```
 
@@ -243,7 +239,7 @@ same name, you can use the `~arg` shorthand
 ``` ocaml
 module Name_input = struct
   let view ?(placeholder_name = "") ~label () =
-    {%html.jsx|
+    {%html|
       <div %{style}>
         <label>#{label}</label>
         <input type="text" placeholder=%{placeholder_name} />
@@ -255,7 +251,7 @@ end
 let placeholder_name = "Alice"
 
 let view =
-  {%html.jsx|<Name_input.view ~label:%{"What's your name?"} ~placeholder_name />|}
+  {%html|<Name_input.view ~label:%{"What's your name?"} ~placeholder_name />|}
 ;;
 ```
 
@@ -266,7 +262,7 @@ the `~arg:(<></>)` syntax.
 ``` ocaml
 module Container = struct
   let view ?(bottom = Vdom.Node.None) ~top () =
-    {%html.jsx|
+    {%html|
       <div>
         <div>%{top}</div>
         <div>%{bottom}</div>
@@ -276,7 +272,7 @@ module Container = struct
 end
 
 let view =
-  {%html.jsx|<Container.view ~bottom:(<p>Bottom</p>) ~top:(<>Top</>) />|}
+  {%html|<Container.view ~bottom:(<p>Bottom</p>) ~top:(<>Top</>) />|}
 ;;
 ```
 
@@ -285,7 +281,7 @@ let view =
 `ppx_html` uses HTML-style comments
 
 ``` ocaml
-{%html.jsx|
+{%html|
   <!-- this is a comment! -->
   <div></div>
 |}
@@ -312,7 +308,7 @@ in your markup. You can embed OCaml values into the styles:
 
 ``` ocaml
 let height = `Px 20 in
-{%html.jsx|
+{%html|
   <div
     style="
       background-color: #ff0099;
@@ -345,7 +341,7 @@ let style =
     }
   |}
 in
-{%html.jsx|<div %{style}>Hover Over Me</div>|}
+{%html|<div %{style}>Hover Over Me</div>|}
 ```
 
 ### `[%css stylesheet {| |}]`
@@ -381,7 +377,7 @@ module Styles =
     |}]
 
 let view =
-  {%html.jsx|<div %{Styles.greeting}><span %{Styles.child}>Good morning!</span></div>|}
+  {%html|<div %{Styles.greeting}><span %{Styles.child}>Good morning!</span></div>|}
 ;;
 ```
 
@@ -399,7 +395,7 @@ when destructuring a type.
 module Student_badge = struct
   let component student =
     let%arr student in
-    {%html.jsx|<div class="student-badge">My name is #{Student.name student}</div>|}
+    {%html|<div class="student-badge">My name is #{Student.name student}</div>|}
   ;;
 end
 
@@ -421,12 +417,12 @@ When you need to conditionally render different content based on a
 **Use `match%arr`** (simpler, preferred) when each branch just returns a
 different value: - You're transforming data, not creating new
 computations - No branch needs state, effects, or access to
-[`graph`](https://github.com/janestreet/bonsai_web/blob/master/docs/public_garden_exports/thinking_in_bonsai.md) -
+[`graph`](https://github.com/janestreet/bonsai_web/blob/master/docs/thinking_in_bonsai.md) -
 It's syntactic sugar for `let%arr value in match value with ...`
 
 **Use `match%sub`** (more powerful, can have significant overhead) when
 each branch may need their own state: - You need to use
-[`graph`](https://github.com/janestreet/bonsai_web/blob/master/docs/public_garden_exports/thinking_in_bonsai.md)
+[`graph`](https://github.com/janestreet/bonsai_web/blob/master/docs/thinking_in_bonsai.md)
 within the match arms - Each match arm creates a separate Bonsai node
 with state local to the arm
 
@@ -441,10 +437,10 @@ module Student_category = struct
        branches *)
     match%arr student with
     | Student.Phd _ ->
-      {%html.jsx|<div>You're a grad student doing a PhD</div>|}
+      {%html|<div>You're a grad student doing a PhD</div>|}
     | Student.Masters _ ->
-      {%html.jsx|<div>You're a grad student doing a Masters</div>|}
-    | Bachelors _ -> {%html.jsx|<div>You're an undergrad</div>|}
+      {%html|<div>You're a grad student doing a Masters</div>|}
+    | Bachelors _ -> {%html|<div>You're an undergrad</div>|}
   ;;
 end
 ```
@@ -464,7 +460,7 @@ let component (student_name : string Bonsai.t) (graph @ local) =
     let style =
       if is_light_mode then light_on_style else light_off_style
     in
-    {%html.jsx|
+    {%html|
       <div %{style}>
         #{student_name}#{" is an electrician "}<button
           on_click=%{fun _ -> toggle_light_mode}
@@ -477,7 +473,7 @@ let component (student_name : string Bonsai.t) (graph @ local) =
     (* Alice's page needs counter state *)
     let count, set_count = Bonsai.state' 0 graph in
     let%arr count and set_count in
-    {%html.jsx|
+    {%html|
       <div>
         #{" Alice is an accountant "}<button
           on_click=%{fun _ -> set_count (fun count -> count - 1)}
@@ -493,7 +489,7 @@ let component (student_name : string Bonsai.t) (graph @ local) =
   | student ->
     (* This branch doesn't need state, just returns markup *)
     let%arr student in
-    {%html.jsx|<div>#{student} does not attend this school</div>|}
+    {%html|<div>#{student} does not attend this school</div>|}
 ;;
 ```
 
@@ -524,7 +520,7 @@ module Student_page = struct
       Grad_student_page.component ~name ~thesis
     | Bachelors { name; major } ->
       let%arr name and major in
-      {%html.jsx|<div>#{name} is a Bachelors student majoring in #{major}!</div>|}
+      {%html|<div>#{name} is a Bachelors student majoring in #{major}!</div>|}
   ;;
 end
 
@@ -559,9 +555,9 @@ let component ~todos (graph @ local) =
         let%arr todo and is_finished and set_is_finished in
         let icon =
           match is_finished with
-          | true -> {%html.jsx|<span %{icon_style}>✓</span>|}
+          | true -> {%html|<span %{icon_style}>✓</span>|}
           | false ->
-            {%html.jsx|
+            {%html|
               <button %{button_style} on_click=%{fun _ ->
                 set_is_finished true
               }>
@@ -569,7 +565,7 @@ let component ~todos (graph @ local) =
               </button>
             |}
         in
-        {%html.jsx|<div %{todo_style}>%{icon}<span> #{todo}</span></div>|})
+        {%html|<div %{todo_style}>%{icon}<span> #{todo}</span></div>|})
       graph
   in
   let%arr assoc_view in
@@ -585,7 +581,7 @@ what has changed and allows your UI to respond dynamically.
 
 Bonsai provides several state APIs depending on your needs. Each takes a
 [`graph`
-parameter](https://github.com/janestreet/bonsai_web/blob/master/docs/public_garden_exports/thinking_in_bonsai.md)
+parameter](https://github.com/janestreet/bonsai_web/blob/master/docs/thinking_in_bonsai.md)
 and returns both the current state value and a way to update it (either
 a setter function or an action dispatcher).
 
@@ -603,7 +599,7 @@ module Student_major = struct
   let component (graph @ local) =
     let major, set_major = Bonsai.state (Array.get majors 0) graph in
     let%arr major and set_major in
-    {%html.jsx|
+    {%html|
       <div>
         #{" Your major is "}#{major}<button
           style="margin-left: 8px; margin-right: 8px"
@@ -628,7 +624,7 @@ state, and the new state depends on the old state (e.g. counters).
 let component (graph @ local) =
   let classes, set_classes = Bonsai.state' 0 graph in
   let%arr classes and set_classes in
-  {%html.jsx|
+  {%html|
     <div>
       #{" You are enrolled in "}#{Int.to_string classes}#{" classes. "}<button
         on_click=%{fun _ -> set_classes (fun classes -> classes + 1)}
@@ -662,7 +658,7 @@ module Theme_toggle = struct
       then light_mode_styles, "Light Mode"
       else dark_mode_styles, "Dark Mode"
     in
-    {%html.jsx|
+    {%html|
       <div %{style}>
         #{" Current theme: "}#{mode_text}<button
           style="margin-left: 16px"
@@ -695,7 +691,7 @@ module Settings_panel = struct
     let status_text =
       if notifications_enabled then "Enabled" else "Disabled"
     in
-    {%html.jsx|
+    {%html|
       <div style="padding: 16px; border: 1px solid #d1d5db">
         <div>Notifications: #{status_text}</div>
         <div style="display: flex; gap: 8px; margin-top: 8px">
@@ -752,7 +748,7 @@ module Student_progress = struct
       then "N/A"
       else Float.to_string (total_points /. Float.of_int num_grades)
     in
-    {%html.jsx|
+    {%html|
       <div style="display: flex; flex-direction: column">
         <span style="padding: 16px">#{"Average grade: "}#{average}</span
         ><button style="padding: 16px" on_click=%{fun _ -> inject (Add_grade 90.0)}>
@@ -820,7 +816,7 @@ module Todo_list = struct
     in
     let todo_items =
       List.map todos ~f:(fun (id, text) ->
-        {%html.jsx|
+        {%html|
           <li>
             #{text}<button
               style="margin-left: 8px"
@@ -832,7 +828,7 @@ module Todo_list = struct
           </li>
         |})
     in
-    {%html.jsx|
+    {%html|
       <div style="padding: 16px">
         <button on_click=%{fun _ -> add_todo_effect}>Add Todo</button>
         <ul style="margin-top: 8px">
@@ -879,7 +875,7 @@ module Counter_with_step = struct
         graph
     in
     let%arr count and update_count and step_size and set_step_size in
-    {%html.jsx|
+    {%html|
       <div style="padding: 16px">
         <div style="margin-bottom: 16px">
           <span>Step size: %{step_size#Int}</span>
@@ -913,7 +909,7 @@ module Counter = struct
   let component (graph @ local) =
     let count, set_count = Bonsai.state' 0 graph in
     let%arr count and set_count in
-    {%html.jsx|
+    {%html|
       <div>
         #{" Count: "}#{Int.to_string count}<button
           style="margin-left: 16px; margin-right: 16px"
@@ -946,7 +942,7 @@ module Scoped_counters = struct
       ~for_:(fun graph ->
         let%arr counter = Counter.component graph
         and form in
-        {%html.jsx|
+        {%html|
           <div>
             <div>User: %{Form.view form}</div>
             %{counter}
@@ -985,7 +981,7 @@ let component (graph @ local) =
   (* Effects are constructed here but don't run yet *)
   let decrement : unit Effect.t = set_counter (fun c -> c - 1) in
   let increment : unit Effect.t = set_counter (fun c -> c + 1) in
-  {%html.jsx|
+  {%html|
     <div>
       <!-- Effects are scheduled (run) when the button is clicked -->
       <button on_click=%{fun _ -> decrement}>-</button>
@@ -1015,7 +1011,7 @@ module Multi_step_form = struct
       set_message "Form submitted successfully!"
     in
     let%arr message and submit_form in
-    {%html.jsx|
+    {%html|
       <div style="padding: 16px">
         <button on_click=%{fun _ -> submit_form}>Submit Form</button>
         <div style="margin-top: 8px">#{message}</div>
@@ -1044,7 +1040,7 @@ module Random_number_generator = struct
       set_number random_number
     in
     let%arr current_number and generate_random in
-    {%html.jsx|
+    {%html|
       <div style="padding: 16px">
         <div>#{"Current number: "}%{current_number#Int}</div>
         <button style="margin-top: 8px" on_click=%{fun _ -> generate_random}>
@@ -1076,7 +1072,7 @@ module Custom_link = struct
         ; Effect.print_s [%message "Link clicked!"]
         ]
     in
-    {%html.jsx|
+    {%html|
       <div style="padding: 16px">
         <a
           href="https://example.com"
@@ -1107,9 +1103,9 @@ module Student_profile = struct
   let component ~(student : Student.t Or_error.t) () =
     match student with
     | Ok student ->
-      {%html.jsx|<div %{student_style}>Hi I'm #{Student.name student}</div>|}
+      {%html|<div %{student_style}>Hi I'm #{Student.name student}</div>|}
     | Error error ->
-      {%html.jsx|<div %{error_style}>Failed to fetch student: #{Error.to_string_hum error}</div>|}
+      {%html|<div %{error_style}>Failed to fetch student: #{Error.to_string_hum error}</div>|}
   ;;
 end
 
@@ -1120,7 +1116,7 @@ module Student_profile_page = struct
     let student, set_student = Bonsai.state (Ok eve) graph in
     let%arr student and set_student in
     let has_error = Or_error.is_error student in
-    {%html.jsx|
+    {%html|
       <div %{container_style}><div %{button_wrapper_style}><button
             disabled'=%{has_error}
             on_click=%{fun _ -> set_student (Or_error.error_string "Student not found")}

@@ -166,6 +166,12 @@ let send_and_track_rpc_from_dispatch
 let last_sent_tracing_event_id = ref None
 let tracing_event_id_to_rpc_id = Int63.Table.create ()
 
+(* Tracing event IDs of ignored RPC events.
+
+   Events that are ignored include [Polling_state_rpc]'s [Cancel_ongoing] and
+   [Forget_client] messages. *)
+let ignored_tracing_event_ids : Int63.Hash_set.t = Int63.Hash_set.create ()
+
 let handle_tracing_event (event @ local) =
   let open Async_rpc_kernel in
   let%tydi { event; rpc; id = tracing_event_id; payload_bytes } =
@@ -180,16 +186,15 @@ let handle_tracing_event (event @ local) =
        maybe_record_event
          (Lazy.return (Rpc_effect_protocol.Event.V1.Response_size { id; payload_bytes }))
      | None ->
-       if payload_bytes = 7
-       then
-         (* This is the size of abort, forget on server, and cancel current query
-            messages. We probably don't care about this extra message too much, so we can
-            just ignore it/not print anything. *)
-         ()
+       if Hash_set.mem ignored_tracing_event_ids tracing_event_id
+       then ()
        else
+         (* This can occur if recording is stopped while an RPC is in-flight or a
+            dispatched RPC did not call [Rpc_effect_introspection.just_sent_query_with_id]
+            or [Rpc_effect_introspection.just_sent_ignored_query]. *)
          print_s
            [%message
-             "RPC response not tracked by RPC Effect Inspector"
+             "Received RPC response not tracked by RPC Effect Inspector."
                (rpc : Rpc.Description.t)
                (payload_bytes : int)])
   | _ -> ()
@@ -207,7 +212,9 @@ let trace_connection conn =
          recording to prevent memory leaks. *)
       match event.event with
       | Received (Response Partial_response) -> ()
-      | Received (Response _) -> Hashtbl.remove tracing_event_id_to_rpc_id event.id
+      | Received (Response _) ->
+        Hashtbl.remove tracing_event_id_to_rpc_id event.id;
+        Hash_set.remove ignored_tracing_event_ids event.id
       | _ -> ())
 ;;
 
@@ -219,6 +226,12 @@ let just_sent_query_with_id id =
     (match Hashtbl.add tracing_event_id_to_rpc_id ~key:tracing_event_id ~data:id with
      | `Duplicate -> print_endline "Tracing event ID already in use."
      | `Ok -> ())
+;;
+
+let just_sent_ignored_query () =
+  match is_recording (), !last_sent_tracing_event_id with
+  | false, _ | true, None -> ()
+  | true, Some tracing_event_id -> Hash_set.add ignored_tracing_event_ids tracing_event_id
 ;;
 
 let rpc_name ~rpc_kind =

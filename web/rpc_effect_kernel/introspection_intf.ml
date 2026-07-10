@@ -52,6 +52,9 @@ module type S = sig
   (** This function should be called immediately after an RPC is dispatched. *)
   val just_sent_query_with_id : Rpc_effect_protocol.Rpc_id.t option -> unit
 
+  (** Like [just_sent_query_with_id], but for RPC messages that should not be traced. *)
+  val just_sent_ignored_query : unit -> unit
+
   (** [time_rpc_effect] will time the individual call to an RPC Effect function. This is
       used in bonsai_web for adding performance metrics to the devtool panel. *)
   val time_rpc_effect
@@ -96,5 +99,6 @@ module No_instrospection : S = struct
 
   let trace_connection _ = ()
   let just_sent_query_with_id _ = ()
+  let just_sent_ignored_query () = ()
   let time_rpc_effect ~rpc_kind:_ effect = effect
 end

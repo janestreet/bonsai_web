@@ -218,7 +218,7 @@ let app (local_ graph) =
   let%arr invert and toggle_invert in
   let widget = trivial_widget invert in
   (* Note that each usage of widget has a separate internal state! *)
-  {%html.jsx|
+  {%html|
     <div>
       <button on_click=%{fun _ -> toggle_invert}>Invert</button>
       %{widget} %{widget} %{widget}
@@ -285,7 +285,7 @@ let app (local_ graph) =
   let num_patches, set_num_patches = Bonsai.state 0 graph in
   let view =
     let%arr num_patches and num_clicks in
-    {%html.jsx|
+    {%html|
       <div>
         <p>Clicks: %{num_clicks#Int}</p>
         <p>Patches: %{num_patches#Int}</p>
@@ -299,7 +299,7 @@ let app (local_ graph) =
   let widget =
     widget_using_diff_patch { Widget_using_diff_patch.Input.vdom = view; set_num_patches }
   in
-  {%html.jsx|
+  {%html|
     <div>
       <button on_click=%{fun _ -> update_num_clicks (fun x -> x + 1)}>
         #{" Click me "}</button

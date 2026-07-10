@@ -352,7 +352,7 @@ let%expect_test "shows hello to a specified user" =
   let handle =
     Handle.create (Result_spec.vdom Fn.id) (fun _ ->
       let button i =
-        {%html.jsx|
+        {%html|
           <button
             on_click=%{fun _ -> Effect.print_s [%message "Clicked!" (i : int)]}
             %{keyed_selector i |> Test_selector.attr}
@@ -361,7 +361,7 @@ let%expect_test "shows hello to a specified user" =
           </button>
         |}
       in
-      return {%html.jsx|<div>%{button 1}%{button 2}%{button 3}%{button 4}</div>|})
+      return {%html|<div>%{button 1}%{button 2}%{button 3}%{button 4}</div>|})
   in
   Handle.show handle;
   [%expect

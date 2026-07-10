@@ -94,7 +94,7 @@ We also used [Bonsai's form library](./forms.md)!
 ## The Underlying Machinery
 
 Recall from the [state
-chapter](https://github.com/janestreet/bonsai_web/blob/master/docs/public_garden_exports/quick_start.md#state)
+chapter](https://github.com/janestreet/bonsai_web/blob/master/docs/quick_start.md#state)
 that Bonsai aggregates and stores all state centrally. But
 `Bonsai.assoc`s need a dynamic number state copies: one for each key.
 These states all have the same static structure though, so we can just

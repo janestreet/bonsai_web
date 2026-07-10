@@ -22,7 +22,7 @@ The first thing Bonsai does is run your
 `local_ graph -> Vdom.Node.t Bonsai.t` function. As it does so, it
 updates `graph` to create a static computation graph for your Bonsai
 program. This includes all the
-[state](https://github.com/janestreet/bonsai_web/blob/master/docs/public_garden_exports/quick_start.md#state),
+[state](https://github.com/janestreet/bonsai_web/blob/master/docs/quick_start.md#state),
 [lifecycles](./lifecycles.md), and other `Bonsai.*` APIs that take a
 `graph`. It also includes all the `let%arr`s and `match%sub`s in your
 Bonsai program: Bonsai's internals can get a `graph` implicitly.

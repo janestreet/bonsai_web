@@ -19,7 +19,7 @@ outdated with changes to Bonsai's internals.
 
 One of Bonsai's invariants is that the computation graph is a static
 DAG. This offers [a lot of
-benefits](https://github.com/janestreet/bonsai_web/blob/master/docs/public_garden_exports/thinking_in_bonsai.md#why-does-bonsai.t-not-have-a-bind-function).
+benefits](https://github.com/janestreet/bonsai_web/blob/master/docs/thinking_in_bonsai.md#why-does-bonsai.t-not-have-a-bind-function).
 
 Bonsai's internal representation of this graph is based around 2 types.
 
